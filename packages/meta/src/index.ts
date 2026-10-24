@@ -6,5 +6,5 @@ export type { Decoded, GeneSpec, GeneValue, Genome, GenomeSpace, LegacyGenome } 
 export { genomeSha, sha256Hex } from "./sha"
 export { parsePosterior, POSTERIOR_SCHEMA } from "./posterior"
 export type { ArmName, GpHyper, GpModel, Incumbent, Mode, Posterior, PosteriorPage, ServedConfirmation } from "./posterior"
-export { birthDraw, drawSeedOf, evalPanelOf, PANELS, UNIFORM_SHARE } from "./draw"
+export { armOfSeed, birthDraw, drawSeedOf, evalPanelOf, ARM_OF_J, CONFIRM_SEEDS, CONFIRM_SHARE_END, PANELS, UNIFORM_SHARE } from "./draw"
 export type { Draw, DrawInput, Method, Role } from "./draw"

@@ -92,6 +92,21 @@ One tab birth = `conditionGp` + `candidateSet` + `thompsonPick` (512 candidates,
 
 That is under the spec's estimate (§4.3: 1–3 s at birth in a worker). Browsers are not measured here (Task 6).
 
+### Draw order [agent; within spec §4.1, §4.5]
+
+`birthDraw` (`packages/meta/src/draw.ts`) keeps 05a's checks (genome schema, centre sha) and its first draw, u0 = rng(). After that, the rng is read in this exact order:
+
+- **gpu + calibrate:** unchanged from 05a (one rng() picks a calibration genome by need).
+- **gpu + search:**
+  1. **u0 < 0.2 → `uniform`**, unchanged (d more draws).
+  2. **A confirmation in flight and u0 < 0.7 (`CONFIRM_SHARE_END`):** j = ⌊rng()·1000⌋ (`CONFIRM_SEEDS`), arm = `ARM_OF_J[j mod 4]` = candidate, centre, newborn, newborn. If need[arm] > 0 the draw is `confirm`, role `confirm`, with evalSeed = seedBase + j, evalPanel null and confirmation { id, arm }. The candidate and newborn arms run `candidate.values`; the centre arm runs `centre.values`. If need[arm] = 0, the birth goes on to `ts` with the same rng, after j.
+  3. **`ts`:** `candidateSet(post, rng)`, then `thompsonPick(post, cands, rng)`; the genome is `fromUnit(space, pick.x, centre)`. It falls back to `centre`, with a reason, when there is no gpu model, when the model's genes are not exactly `searched(space)`'s names in order, when `modelPosterior` is null, or when `thompsonPick` is null.
+- **paused, flat, and every mode on cpu:** unchanged. CPU tabs never draw `ts` or `confirm`.
+- **The mode is tested first.** The branches check `widthsClass === "gpu" && mode === "search"` before they read `models` or `confirmation`. So even a hand-built `Posterior` (bypassing the parser's mode guard) with a model or a confirmation in mode calibrate, paused or flat draws exactly as 05a.
+- **A v1 file draws 05a's draws exactly.** It has no model, so its gpu search births with u0 ≥ 0.2 draw `centre` with no reason, as 05a did. A v2 search file without a gpu model gives `centre` with the reason "no gpu model". `evalSeed` and `confirmation` are null for every method but `confirm`, and 05a's `packages/meta/test/fixtures/draws.json` is unchanged (`fixtures/draws-05b.json` pins 20 ts and confirm draws).
+- **A confirmation genome is checked like a calibration genome.** If `checkGenome` refuses it, the draw is `centre` with a reason, not a life the session would refuse.
+- **`armOfSeed(evalSeed, id)` = `ARM_OF_J[(evalSeed − 10000 − 1000·id) mod 4]`** (the mod taken non-negative), so the arm can be recomputed from the seed alone.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

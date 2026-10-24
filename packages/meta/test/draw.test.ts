@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest"
 import { createHash } from "node:crypto"
 import { readFileSync, writeFileSync } from "node:fs"
-import { chiSquareSf } from "@blanktab/detmath"
+import { chiSquareSf, createRng } from "@blanktab/detmath"
 import {
-  birthDraw, checkGenome, drawSeedOf, evalPanelOf, fromUnit, genomeSha, parseCentre, parseGenomeSpace, parsePosterior, searched,
-  PANELS, UNIFORM_SHARE,
-  type Draw, type DrawInput, type Genome, type Mode, type Posterior,
+  armOfSeed, birthDraw, checkGenome, decodeGenome, drawSeedOf, evalPanelOf, fromUnit, genomeSha, parseCentre, parseGenomeSpace,
+  parsePosterior, searched,
+  ARM_OF_J, CONFIRM_SEEDS, CONFIRM_SHARE_END, PANELS, UNIFORM_SHARE,
+  type ArmName, type Draw, type DrawInput, type Genome, type Mode, type Posterior,
 } from "@blanktab/meta"
+import { candidateSet, modelPosterior, thompsonPick } from "../src/thompson"
 
 const readJson = (name: string): unknown => JSON.parse(readFileSync(new URL(`../../../knowledge/${name}`, import.meta.url), "utf8"))
 const space = parseGenomeSpace(readJson("genome-space.json"))
@@ -42,22 +44,32 @@ function input(learnerId: string, p: V1File | null, widthsClass: "gpu" | "cpu" =
   return { learnerId, space, centre, centreSha, widthsClass, posterior: parsed, posteriorSha: HEX(text) }
 }
 
+/** 05a's golden draws (fixtures/draws.json, frozen), and a 05a Draw as 05b code returns it. */
+const fixture05a = () => JSON.parse(readFileSync(FIXTURE, "utf8")) as Omit<Draw, "evalSeed" | "confirmation">[]
+const as05b = (d: Omit<Draw, "evalSeed" | "confirmation">): Draw => ({ ...d, evalSeed: null, confirmation: null })
+
 const UNIFORM_PAUSED_ID = "lrn_fixture_paused_5"
 const CALIB_NONCENTRE_ID = "lrn_fixture_calib_0"
 const ids = (k: number, tag: string) => Array.from({ length: k }, (_, i) => `lrn_${tag}_${i.toString(36)}`)
 
+/** The 22 inputs that pin fixtures/draws.json (05a): 20 by mode and widths class, and two added in 05a's review. */
+function cases05a(): DrawInput[] {
+  const cases: DrawInput[] = []
+  const modes: (Mode | null)[] = [null, "calibrate", "search", "paused", "flat"]
+  for (let i = 0; i < 20; i++) {
+    const mode = modes[i % modes.length]!
+    cases.push(input(`lrn_fixture_${i}`, mode === null ? null : posterior(mode), i % 3 === 2 ? "cpu" : "gpu"))
+  }
+  // Added cases (review round 1), ids chosen so the fixture pins a uniform draw in mode paused and a calibrate
+  // draw that picks a non-centre genome.
+  cases.push(input(UNIFORM_PAUSED_ID, posterior("paused")))
+  cases.push(input(CALIB_NONCENTRE_ID, posterior("calibrate")))
+  return cases
+}
+
 describe("birthDraw", () => {
   it("birthDraw is a pure function: the same input gives a deep-equal Draw; 22 draws equal fixtures/draws.json", () => {
-    const cases: DrawInput[] = []
-    const modes: (Mode | null)[] = [null, "calibrate", "search", "paused", "flat"]
-    for (let i = 0; i < 20; i++) {
-      const mode = modes[i % modes.length]!
-      cases.push(input(`lrn_fixture_${i}`, mode === null ? null : posterior(mode), i % 3 === 2 ? "cpu" : "gpu"))
-    }
-    // Added cases (review round 1), ids chosen so the fixture pins a uniform draw in mode paused and a calibrate
-    // draw that picks a non-centre genome.
-    cases.push(input(UNIFORM_PAUSED_ID, posterior("paused")))
-    cases.push(input(CALIB_NONCENTRE_ID, posterior("calibrate")))
+    const cases = cases05a()
     const draws = cases.map(c => birthDraw(c))
     expect(draws[20]!.method).toBe("uniform")
     expect(draws[21]!.method).toBe("calibrate")
@@ -65,19 +77,16 @@ describe("birthDraw", () => {
     for (let i = 0; i < cases.length; i++) expect(birthDraw(cases[i]!)).toEqual(draws[i])
     // The 20 cases cover every method 05a has.
     expect(new Set(draws.map(d => d.method))).toEqual(new Set(["centre", "calibrate", "uniform"]))
-    if (process.env.DRAW_WRITE === "1") {
-      expect(process.env.CI, "never regenerate the golden draws in CI").toBeUndefined()
-      writeFileSync(FIXTURE, JSON.stringify(draws, null, 2) + "\n")
-    }
-    const fixture = JSON.parse(readFileSync(FIXTURE, "utf8")) as Draw[]
-    expect(draws).toEqual(fixture)
+    // draws.json is 05a's, frozen: it is never regenerated. 05b's Draw adds evalSeed and confirmation (null for every
+    // 05a method); every other field must equal 05a's bit for bit.
+    expect(draws).toEqual(fixture05a().map(as05b))
   })
 
   it("no posterior → centre, drawSeed null, genome = centre", () => {
     for (const id of ids(50, "none")) {
       for (const w of ["gpu", "cpu"] as const) {
         const d = birthDraw(input(id, null, w))
-        expect(d).toEqual({ role: "search", method: "centre", drawSeed: null, posteriorSha: null, evalPanel: evalPanelOf(id), genome: centre })
+        expect(d).toEqual({ role: "search", method: "centre", drawSeed: null, posteriorSha: null, evalPanel: evalPanelOf(id), evalSeed: null, confirmation: null, genome: centre })
       }
     }
   })
@@ -186,4 +195,290 @@ describe("birthDraw", () => {
     expect(chiSquareSf(chi2, PANELS - 1)).toBeGreaterThan(0.001)
     expect(Math.min(...counts)).toBeGreaterThan(0)
   })
+})
+
+// ---- 05b: the ts and confirm branches (plan 05b, Task 5) ----
+
+const V2_FIXTURE = new URL("./fixtures/posterior-v2-search.json", import.meta.url)
+const FIXTURE_05B = new URL("./fixtures/draws-05b.json", import.meta.url)
+type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/** The v2 search fixture (a real fit on the real space, with a confirmation in flight: id 3, need 7/9/22) as an object. */
+const v2File = (): Json => JSON.parse(readFileSync(V2_FIXTURE, "utf8")) as Json
+
+/** The v2 search fixture with `o` over it: the confirmation removed (null) or its need replaced, the model's block edited. */
+function v2(o: { mode?: Mode; confirmation?: null; need?: Partial<Record<ArmName, number>>; models?: Json } = {}): Json {
+  const f = v2File()
+  if (o.mode !== undefined) f.mode = o.mode
+  if (o.confirmation === null) f.confirmation = null
+  if (o.need !== undefined) f.confirmation.need = { ...f.confirmation.need, ...o.need }
+  if (o.models !== undefined) { f.models = o.models; if (!o.models.gpu) f.incumbent = null }
+  return f
+}
+
+/** A tab's input for a file object: its JSON text parsed by parsePosterior (it must parse), and the text's sha256. */
+function inputOfFile(learnerId: string, f: Json, widthsClass: "gpu" | "cpu" = "gpu"): DrawInput {
+  const text = JSON.stringify(f)
+  const parsed = parsePosterior(text)
+  if (parsed === null) throw new Error("test posterior does not parse")
+  return { learnerId, space, centre, centreSha, widthsClass, posterior: parsed, posteriorSha: HEX(text) }
+}
+
+/** An input whose Posterior bypasses the parser (a hand-built object), with a stand-in sha. */
+const handBuilt = (learnerId: string, p: Posterior, widthsClass: "gpu" | "cpu" = "gpu", sha = HEX("hand-built")): DrawInput =>
+  ({ learnerId, space, centre, centreSha, widthsClass, posterior: p, posteriorSha: sha })
+
+/** The draw's own rng, as birthDraw seeds it, and its first two values: u0 and the confirmation's j (if it draws one). */
+function streamOf(i: DrawInput): { rng: () => number; u0: number } {
+  const rng = createRng(drawSeedOf(i.learnerId, i.posteriorSha!))
+  return { rng, u0: rng() }
+}
+
+const fixedGenes = space.genes.filter(g => g.owner !== "gp").map(g => g.name)
+/** A ts draw's genome is a point of the space: checkGenome passes, it decodes, and the fixed genes are the centre's. */
+function expectRunnable(g: Genome): void {
+  expect(checkGenome(space, g)).toBeNull()
+  expect(() => decodeGenome(g, space)).not.toThrow()
+  for (const name of fixedGenes) expect(g[name]).toBe(centre[name])
+}
+
+const share = (ds: readonly Draw[], m: string) => ds.filter(d => d.method === m).length / ds.length
+
+/** The two 2,000-draw runs (the costly part: ~1,600 + ~600 Thompson picks), computed once. */
+let runs: { plain: Draw[]; confirming: Draw[] } | undefined
+function searchRuns() {
+  if (runs === undefined) {
+    const plainFile = v2({ confirmation: null }), confFile = v2()
+    const plain = ids(2000, "ts").map(id => birthDraw(inputOfFile(id, plainFile)))
+    const confirming = ids(2000, "tc").map(id => birthDraw(inputOfFile(id, confFile)))
+    runs = { plain, confirming }
+  }
+  return runs
+}
+
+describe("05b branches", () => {
+  it("the fixtures fit the tab: the v2 file's centre is knowledge/genome.json's, and its model searches the space's genes", () => {
+    const f = v2File()
+    expect(f.centre.genomeSha).toBe(centreSha)
+    expect(f.models.gpu.genes).toEqual(searched(space).map(g => g.name))
+    expect(f.confirmation.need).toEqual({ candidate: 7, centre: 9, newborn: 22 })
+    expect([CONFIRM_SHARE_END, CONFIRM_SEEDS]).toEqual([0.7, 1000])
+    expect(ARM_OF_J).toEqual(["candidate", "centre", "newborn", "newborn"])
+  })
+
+  it("05a's 20 fixture draws (draws.json) are unchanged under 05b code", () => {
+    const fixture = fixture05a()
+    expect(fixture).toHaveLength(22)
+    for (const d of fixture) {
+      expect(Object.hasOwn(d, "evalSeed")).toBe(false)
+      expect(Object.hasOwn(d, "confirmation")).toBe(false)
+    }
+    const draws = cases05a().map(c => birthDraw(c))
+    // toEqual compares numbers with Object.is, so every genome value, seed and panel is 05a's bit for bit.
+    expect(draws).toEqual(fixture.map(as05b))
+  })
+
+  it("a v1 search posterior (models {}): gpu births with u0 ≥ 0.2 draw centre, as in 05a", () => {
+    const p = posterior("search")
+    let centres = 0
+    for (const id of ids(2000, "v1s")) {
+      const i = input(id, p)
+      const d = birthDraw(i)
+      const { u0 } = streamOf(i)
+      if (u0 < UNIFORM_SHARE) { expect(d.method).toBe("uniform"); continue }
+      centres++
+      // Exactly 05a's draw: no reason, no seed, no confirmation.
+      expect(d).toEqual({ role: "search", method: "centre", drawSeed: drawSeedOf(id, i.posteriorSha!), posteriorSha: i.posteriorSha, evalPanel: evalPanelOf(id), evalSeed: null, confirmation: null, genome: centre })
+    }
+    expect(centres).toBeGreaterThan(1500)
+  })
+
+  it("search with a model: over 2,000 ids, uniform 0.2 ± 0.03, ts 0.8 ± 0.03; with a confirmation: uniform 0.2, confirm ≈ 0.5, ts ≈ 0.3 (± 0.03)", () => {
+    const { plain, confirming } = searchRuns()
+    expect(new Set(plain.map(d => d.method))).toEqual(new Set(["uniform", "ts"]))
+    expect(Math.abs(share(plain, "uniform") - 0.2)).toBeLessThanOrEqual(0.03)
+    expect(Math.abs(share(plain, "ts") - 0.8)).toBeLessThanOrEqual(0.03)
+    expect(new Set(confirming.map(d => d.method))).toEqual(new Set(["uniform", "confirm", "ts"]))
+    expect(Math.abs(share(confirming, "uniform") - 0.2)).toBeLessThanOrEqual(0.03)
+    expect(Math.abs(share(confirming, "confirm") - 0.5)).toBeLessThanOrEqual(0.03)
+    expect(Math.abs(share(confirming, "ts") - 0.3)).toBeLessThanOrEqual(0.03)
+    for (const d of [...plain, ...confirming]) {
+      if (d.method === "confirm") continue
+      expect(d.role).toBe("search")
+      expect(d.evalSeed).toBeNull()
+      expect(d.confirmation).toBeNull()
+      expect(d.reason).toBeUndefined()
+      expectRunnable(d.genome)
+    }
+    // The picks spread over the cube: ts genomes are not one point.
+    expect(new Set(plain.filter(d => d.method === "ts").map(d => JSON.stringify(d.genome))).size).toBeGreaterThan(100)
+  }, 600_000)
+
+  it("confirm draws: evalSeed − seedBase = j, arm = ARM_OF_J[j mod 4]; candidate and newborn run candidate.values, centre runs centre.values; evalPanel null", () => {
+    const f = v2File()
+    const { confirming } = searchRuns()
+    const tc = ids(2000, "tc")
+    const file = v2()
+    const arms = new Set<ArmName>()
+    for (let k = 0; k < confirming.length; k++) {
+      const d = confirming[k]!
+      if (d.method !== "confirm") continue
+      const { rng, u0 } = streamOf(inputOfFile(tc[k]!, file))
+      expect(u0 >= UNIFORM_SHARE && u0 < CONFIRM_SHARE_END).toBe(true)
+      const j = Math.floor(rng() * CONFIRM_SEEDS)
+      const arm = ARM_OF_J[j % 4]!
+      arms.add(arm)
+      expect(d.role).toBe("confirm")
+      expect(d.evalPanel).toBeNull()
+      expect(d.evalSeed! - f.confirmation.seedBase).toBe(j)
+      expect(d.evalSeed).toBe(13_000 + j)
+      expect(d.confirmation).toEqual({ id: 3, arm })
+      expect(armOfSeed(d.evalSeed!, 3)).toBe(arm)
+      expect(d.genome).toEqual(arm === "centre" ? f.confirmation.centre.values : f.confirmation.candidate.values)
+      expect(d.reason).toBeUndefined()
+      expect(checkGenome(space, d.genome)).toBeNull()
+      expect(() => decodeGenome(d.genome, space)).not.toThrow()
+    }
+    expect(arms).toEqual(new Set(["candidate", "centre", "newborn"]))
+    // The seed's arm, from the table (spec §4.5).
+    expect([13_004, 13_005, 13_006, 13_007, 13_999].map(e => armOfSeed(e, 3))).toEqual(["candidate", "centre", "newborn", "newborn", "newborn"])
+    expect(armOfSeed(10_000, 0)).toBe("candidate")
+  }, 600_000)
+
+  it("an arm with need 0 falls through to ts with the same rng stream (the ts genome equals the one drawn when that arm's need is 0 by construction)", () => {
+    const file = v2({ need: { candidate: 0 } })
+    const post = modelPosterior(v2File().models.gpu)!
+    let fell = 0, confirmed = 0
+    for (const id of ids(600, "fall")) {
+      const i = inputOfFile(id, file)
+      const { rng, u0 } = streamOf(i)
+      if (u0 < UNIFORM_SHARE || u0 >= CONFIRM_SHARE_END) continue
+      const arm = ARM_OF_J[Math.floor(rng() * CONFIRM_SEEDS) % 4]!
+      const d = birthDraw(i)
+      if (arm !== "candidate") { expect(d.method).toBe("confirm"); confirmed++; continue }
+      // The rng has given u0 and j; the ts pick continues the same stream.
+      const pick = thompsonPick(post, candidateSet(post, rng), rng)!
+      expect(d).toEqual({
+        role: "search", method: "ts", drawSeed: drawSeedOf(id, i.posteriorSha!), posteriorSha: i.posteriorSha, evalPanel: evalPanelOf(id),
+        evalSeed: null, confirmation: null, genome: fromUnit(space, pick.x, centre),
+      })
+      fell++
+    }
+    expect(fell).toBeGreaterThanOrEqual(20)
+    expect(confirmed).toBeGreaterThanOrEqual(60)
+  }, 600_000)
+
+  it("mode guard: a hand-built Posterior with mode calibrate/paused/flat and models.gpu + confirmation set → no draw is ts or confirm over 2,000 ids", () => {
+    const parsed = parsePosterior(JSON.stringify(v2File()))!
+    expect(parsed.models.gpu).toBeDefined()
+    expect(parsed.confirmation).not.toBeNull()
+    for (const mode of ["calibrate", "paused", "flat"] as const) {
+      const guarded: Posterior = { ...parsed, mode }
+      const stripped: Posterior = { ...parsed, mode, models: {}, incumbent: null, confirmation: null }
+      const seen = new Set<string>()
+      for (const id of ids(2000, `g${mode}`)) {
+        const d = birthDraw(handBuilt(id, guarded))
+        seen.add(d.method)
+        // Exactly the draw of the same posterior with nothing of the search in it (05a's draw).
+        expect(d).toEqual(birthDraw(handBuilt(id, stripped)))
+      }
+      expect(seen.has("ts") || seen.has("confirm"), mode).toBe(false)
+      expect([...seen].sort(), mode).toEqual(mode === "calibrate" ? ["calibrate"] : ["centre", "uniform"])
+    }
+  })
+
+  it("cpu in search with a model and a confirmation → only uniform or centre", () => {
+    const file = v2()
+    const cpuIds = ids(2000, "cpu05b")
+    const draws = cpuIds.map(id => birthDraw(inputOfFile(id, file, "cpu")))
+    expect(new Set(draws.map(d => d.method))).toEqual(new Set(["uniform", "centre"]))
+    expect(Math.abs(share(draws, "uniform") - UNIFORM_SHARE)).toBeLessThanOrEqual(0.03)
+    draws.forEach((d, k) => {
+      expect(d.role).toBe("search")
+      expect(d.evalPanel).toBe(evalPanelOf(cpuIds[k]!))
+      expect(d.evalSeed).toBeNull()
+      expect(d.confirmation).toBeNull()
+      expect(d.reason).toBeUndefined()
+      if (d.method === "centre") expect(d.genome).toEqual(centre)
+    })
+  })
+
+  it("a model whose genes differ from the space's searched genes → centre with reason", () => {
+    const gpu = v2File().models.gpu
+    const names = searched(space).map(g => g.name)
+    const check = (i: DrawInput, why: RegExp) => {
+      const d = birthDraw(i)
+      const { u0 } = streamOf(i)
+      if (u0 < UNIFORM_SHARE) { expect(d.method).toBe("uniform"); return 0 }
+      expect(d.role).toBe("search")
+      expect(d.method).toBe("centre")
+      expect(d.genome).toEqual(centre)
+      expect(d.reason).toMatch(why)
+      expect(d.drawSeed).toBe(drawSeedOf(i.learnerId, i.posteriorSha!))
+      return 1
+    }
+    const cases: [Json, RegExp][] = [
+      [v2({ confirmation: null, models: { gpu: { ...gpu, genes: [...names].reverse() } } }), /model's genes are not the space's searched genes/],
+      [v2({ confirmation: null, models: { gpu: { ...gpu, genes: names.map((n, j) => j === 3 ? "notAGene" : n) } } }), /model's genes are not the space's searched genes/],
+      [v2({ confirmation: null, models: {} }), /no gpu model/],
+    ]
+    for (const [file, why] of cases) {
+      let n = 0
+      for (const id of ids(40, "genes")) n += check(inputOfFile(id, file), why)
+      expect(n).toBeGreaterThan(20)
+    }
+    // A model the parser would refuse (length scales for 11 of 12 genes), hand-built: modelPosterior is null → centre.
+    const parsed = parsePosterior(JSON.stringify(v2({ confirmation: null })))!
+    const broken: Posterior = { ...parsed, models: { gpu: { ...parsed.models.gpu!, hyper: { ...parsed.models.gpu!.hyper, lengthscales: parsed.models.gpu!.hyper.lengthscales.slice(1) } } } }
+    let n = 0
+    for (const id of ids(40, "nopost")) n += check(handBuilt(id, broken), /no GP posterior from the model/)
+    expect(n).toBeGreaterThan(20)
+  })
+
+  it("a confirmation genome outside the space → centre with a reason for that arm; the valid arm still confirms", () => {
+    const parsed = parsePosterior(JSON.stringify(v2()))!
+    const { lr: _lr, ...noLr } = parsed.confirmation!.candidate.values
+    void _lr
+    const bad: Posterior = { ...parsed, confirmation: { ...parsed.confirmation!, candidate: { ...parsed.confirmation!.candidate, values: noLr } } }
+    const seen = new Set<string>()
+    for (const id of ids(300, "badconf")) {
+      const i = handBuilt(id, bad)
+      const { rng, u0 } = streamOf(i)
+      if (u0 < UNIFORM_SHARE || u0 >= CONFIRM_SHARE_END) continue
+      const arm = ARM_OF_J[Math.floor(rng() * CONFIRM_SEEDS) % 4]!
+      const d = birthDraw(i)
+      seen.add(arm)
+      if (arm === "centre") { expect(d.method).toBe("confirm"); continue }
+      expect(d.method).toBe("centre")
+      expect(d.role).toBe("search")
+      expect(d.evalPanel).toBe(evalPanelOf(id))
+      expect(d.reason).toMatch(new RegExp(`confirmation 3's ${arm} genome is invalid: missing gene lr`))
+    }
+    expect(seen).toEqual(new Set(["candidate", "centre", "newborn"]))
+  })
+
+  it("20 ts/confirm draws equal fixtures/draws-05b.json", () => {
+    const plainFile = v2({ confirmation: null }), confFile = v2()
+    const cases: DrawInput[] = []
+    let ts = 0, tsConf = 0, conf = 0
+    for (let k = 0; cases.length < 20 && k < 5000; k++) {
+      const id = `lrn_05b_${k.toString(36)}`
+      const p = inputOfFile(id, plainFile), c = inputOfFile(id, confFile)
+      if (ts < 6 && streamOf(p).u0 >= UNIFORM_SHARE) { cases.push(p); ts++; continue }
+      const { u0 } = streamOf(c)
+      if (tsConf < 4 && u0 >= CONFIRM_SHARE_END) { cases.push(c); tsConf++; continue }
+      if (conf < 10 && u0 >= UNIFORM_SHARE && u0 < CONFIRM_SHARE_END) { cases.push(c); conf++ }
+    }
+    expect(cases).toHaveLength(20)
+    const draws = cases.map(c => birthDraw(c))
+    for (let i = 0; i < cases.length; i++) expect(birthDraw(cases[i]!)).toEqual(draws[i])
+    expect(draws.filter(d => d.method === "ts")).toHaveLength(10)
+    expect(draws.filter(d => d.method === "confirm")).toHaveLength(10)
+    expect(new Set(draws.flatMap(d => d.confirmation ? [d.confirmation.arm] : []))).toEqual(new Set(["candidate", "centre", "newborn"]))
+    if (process.env.DRAW_WRITE === "1") {
+      expect(process.env.CI, "never regenerate the golden draws in CI").toBeUndefined()
+      writeFileSync(FIXTURE_05B, JSON.stringify(draws, null, 2) + "\n")
+    }
+    expect(draws).toEqual(JSON.parse(readFileSync(FIXTURE_05B, "utf8")) as Draw[])
+  }, 120_000)
 })

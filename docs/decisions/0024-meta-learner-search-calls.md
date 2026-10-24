@@ -47,6 +47,27 @@ Built in `packages/meta/src/gp.ts` and `packages/meta/src/linalg.ts` (Task 2); t
   - a posterior schemaVersion bump. A schema change is a fresh fit anyway, so nothing is lost.
 - **Bit-identity across engines is claimed, not yet shown.** Every operation is + − × ÷, `Math.sqrt` or `@blanktab/detmath`, in fixed loop order. `packages/meta/test/fixtures/gp-golden.json` pins the outputs in Node bit for bit. The cross-browser check is Task 6.
 
+### The fit [agent; within spec §4.3]
+
+Built in `packages/meta/src/lbfgs.ts` and `packages/meta/src/fit.ts` (Task 3). It maximises log marginal likelihood + log prior by minimising its negative.
+
+- **Starts.** Start 0 is the prior mode. Starts 1–3 are mode + 1.5·sd·(2u − 1) for u in `sobolPoints(d + 3, 3, "gp-fit/1")`. More than 13 searched genes (d + 3 > 16 Sobol dimensions) throws: that needs a recorded decision that also adds direction numbers. A start whose objective is null at its θ0 is skipped and records 0 iterations. If all four are null the fit is "no model" (null).
+- **L-BFGS.** Memory 10, two-loop recursion with H₀ = γI (γ = sᵀy/yᵀy of the newest pair). Backtracking Armijo line search with c₁ = 1e-4. The first step is 1/max(1, ‖g‖∞) on the first iteration and 1 after that. It halves at most 30 times. A null objective counts as no decrease. A pair with sᵀy ≤ 1e-10 is skipped. If rounding makes the two-loop direction non-descending, the memory is cleared and the step is along −g [agent's guard, not in the plan text].
+- **Stopping.** |Δvalue| < 1e-6, ‖g‖∞ < 1e-8, a failed line search, or 100 iterations.
+- **The winner.** The lowest negative objective, compared with a strict `<`, so ties go to the earliest start.
+- **Determinism.** No randomness and fixed constants. `packages/meta/test/fixtures/fit-golden.json` pins two fits in Node bit for bit.
+
+### Fit cost [measured]
+
+`fitGp` on seeded, standardised rows with d = 12, Node v22.23.4, this machine (Apple silicon laptop), single run each:
+
+| Rows | Wall time | Iterations per start | Winning start |
+|---|---|---|---|
+| 300 | 6.9 s | 90, 58, 100, 78 | 2 |
+| 1,000 | 177 s | 80, 61, 100, 47 | 1 |
+
+Both are under the 120 s stop rule at 300 rows and well within the gate job's 30-minute limit at the 1,000-row cap. The spec's estimate (§8: ~10 s at 300, 1–3 min at 1,000) holds. One start in each run hit the 100-iteration cap.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

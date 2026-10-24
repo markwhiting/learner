@@ -32,6 +32,21 @@ Plan 05b builds the meta-learner's search: the GP fit in the gate, Thompson-samp
 3. **A tab refuses search state outside `search`.** `parsePosterior` returns null for a v2 posterior that carries a model, an incumbent or a confirmation while its mode is `calibrate`, `paused` or `flat`. The tab then draws `centre`. An incumbent also needs a model. So a hand-edited or mis-built posterior cannot switch a tab on. (Task 1; tested in `packages/meta/test/posterior.test.ts`.)
 4. **The draw reaches the new methods only in `search`.** `birthDraw` reaches `ts` and `confirm` only for mode `search` on `gpu`.
 
+### The GP model [agent]
+
+Built in `packages/meta/src/gp.ts` and `packages/meta/src/linalg.ts` (Task 2); the fit that uses it is Task 3.
+
+- **Noise has a smooth floor: σ_n² = 1e-3 + e^θ_n.** The spec says "a floor of 1e-3" and puts its prior on ln σ_n². A hard clamp would put a kink in the objective, which L-BFGS handles badly. So θ_n = ln(σ_n² − 1e-3) is the fitted parameter, and the spec's prior N(ln 0.5, 1) is placed on θ_n instead of ln σ_n². Above about 0.01 the two hardly differ.
+- **The prior box.** The objective is undefined (null) when any θ is more than 6 prior sd from the prior mode. This keeps the fit away from regions where e^θ overflows or K is numerically singular, and gives every start the same bounded box.
+- **Jitter is part of the model.** K is factored as K + jitter·I, with jitter = 1e-8·mean(diag)·10^k for the first k in 0..6 that factors (spec §4.3). The likelihood, α and every prediction use that same jittered K. The gradient includes the jitter's own dependence on σ_f² and σ_n², so it is the exact gradient of the computed objective. If no step factors, the result is "no model" (null), never a NaN.
+- **Predictions are of the latent f.** `predict` gives mean, variance and (jointly) the covariance of f, without noise. Variance is clamped at 0 against rounding. The joint covariance is symmetric bit for bit, and its diagonal is the same number as the variance.
+- **Malformed input is "no model".** Empty data, rows of the wrong length, or a non-finite x, y or hyperparameter gives null from `objective` and `conditionGp`, not an exception.
+- **The overlap kernel for categoricals is specified, not built (plan 05b, conflict 4).** Genome schema 1 searches no categorical, and `parseGenomeSpace` rejects a categorical gene owned by `gp`, so no model can meet one and 05b has no overlap-kernel code. The schema decision that activates the first GP categorical must add:
+  - the kernel factor exp(−Σ_c 1[x_c ≠ x'_c]/ℓ_c) on top of σ_f²·Matérn-5/2 of the continuous genes (spec §4.3), with ln ℓ_c ~ N(0, 1) [guess];
+  - uniform levels for uniform candidates, and the parent's level kept with probability 0.9 for local ones;
+  - a posterior schemaVersion bump. A schema change is a fresh fit anyway, so nothing is lost.
+- **Bit-identity across engines is claimed, not yet shown.** Every operation is + − × ÷, `Math.sqrt` or `@blanktab/detmath`, in fixed loop order. `packages/meta/test/fixtures/gp-golden.json` pins the outputs in Node bit for bit. The cross-browser check is Task 6.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

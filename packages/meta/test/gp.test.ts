@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { createRng } from "@blanktab/detmath"
 import { cholesky, cholInverse, solveLower, solveUpper } from "../src/linalg"
 import {
-  conditionGp, hyperOf, matern52, objective, predict, priorOf, thetaOf, FIT_JITTER_STEPS, NOISE_FLOOR, type GpData,
+  conditionGp, hyperOf, matern52, objective, predict, predictMean, priorOf, thetaOf, FIT_JITTER_STEPS, NOISE_FLOOR, type GpData,
 } from "../src/gp"
 import type { GpHyper } from "../src/posterior"
 
@@ -135,8 +135,8 @@ describe("the GP", () => {
       expect(Number.isFinite(o!.value)).toBe(true)
       expect(o!.grad.length).toBe(d + 3)
       for (let i = 0; i < d + 3; i++) {
-        const plus = theta.slice(); plus[i] += 1e-6
-        const minus = theta.slice(); minus[i] -= 1e-6
+        const plus = theta.slice(); plus[i] = plus[i]! + 1e-6
+        const minus = theta.slice(); minus[i] = minus[i]! - 1e-6
         const fd = (objective(plus, data)!.value - objective(minus, data)!.value) / 2e-6
         const g = o!.grad[i]!
         const rel = Math.abs(g - fd) / Math.max(Math.abs(g), Math.abs(fd), 1)
@@ -154,9 +154,9 @@ describe("the GP", () => {
     expect(objective(mode, data)).not.toBeNull()
     for (let i = 0; i < d + 3; i++) {
       for (const sign of [1, -1]) {
-        const far = mode.slice(); far[i] += sign * 7 * sd[i]!
+        const far = mode.slice(); far[i] = far[i]! + sign * 7 * sd[i]!
         expect(objective(far, data)).toBeNull()
-        const near = mode.slice(); near[i] += sign * 5.9 * sd[i]!
+        const near = mode.slice(); near[i] = near[i]! + sign * 5.9 * sd[i]!
         expect(objective(near, data)).not.toBeNull()
       }
     }
@@ -175,14 +175,14 @@ describe("the GP", () => {
     const hyper: GpHyper = { lengthscales: [0.6, 0.6], outputscale: 1, noise: NOISE_FLOOR, mean: 0 }
     const post = conditionGp({ x, y }, hyper)
     expect(post).not.toBeNull()
-    const at = predict(post!, x, false)
+    const at = predict(post!, x, false)!
     expect(at.cov).toBeNull()
     for (let i = 0; i < y.length; i++) expect(Math.abs(at.mean[i]! - y[i]!)).toBeLessThan(0.05)
     for (const v of at.variance) expect(v).toBeGreaterThanOrEqual(0)
 
     const xs = [[0.1, 0.2], [0.9, 0.9], [0.5, 0.5], [0.1, 0.2], [0.33, 0.71]]
-    const joint = predict(post!, xs, true)
-    const solo = predict(post!, xs, false)
+    const joint = predict(post!, xs, true)!
+    const solo = predict(post!, xs, false)!
     expect(joint.cov).not.toBeNull()
     const K = xs.length
     for (let a = 0; a < K; a++) {
@@ -192,9 +192,25 @@ describe("the GP", () => {
       for (let b = 0; b < K; b++) expect(joint.cov![a * K + b]).toBe(joint.cov![b * K + a])
     }
     // Far from the data the latent variance returns to the prior's σ_f² and the mean to m.
-    const far = predict(post!, [[40, -40]], false)
+    const far = predict(post!, [[40, -40]], false)!
     expect(far.variance[0]).toBeCloseTo(1, 10)
     expect(far.mean[0]).toBeCloseTo(0, 10)
+  })
+
+  it("predict validates xs: a row of the wrong length or with a non-finite entry → null; a NaN variance surfaces as NaN, never clamped to 0", () => {
+    const post = conditionGp({ x: [[0.2, 0.3], [0.7, 0.6]], y: [0.1, -0.2] }, { lengthscales: [0.5, 0.5], outputscale: 1, noise: 0.01, mean: 0 })!
+    for (const xs of [[[0.1]], [[0.1, 0.2, 0.3]], [[0.1, Number.NaN]], [[0.1, Infinity]], [[0.5, 0.5], [0.2]]])
+      for (const joint of [false, true]) expect(predict(post, xs, joint), JSON.stringify(xs)).toBeNull()
+    expect(predictMean(post, [[0.1, Number.NaN]])).toBeNull()
+    expect(predict(post, [], true)).toEqual({ mean: new Float64Array(0), cov: new Float64Array(0), variance: new Float64Array(0) })
+    // predictMean is predict's mean bit for bit.
+    const xs = [[0.1, 0.9], [0.5, 0.5], [0.33, 0.71]]
+    expect(Array.from(predictMean(post, xs)!)).toEqual(Array.from(predict(post, xs, false)!.mean))
+    // A corrupted factor gives a NaN variance and covariance: surfaced, so callers can refuse it.
+    const bad = { ...post, chol: { ...post.chol, L: new Float64Array([Number.NaN, 0, 0, 1]) } }
+    const p = predict(bad, xs, true)!
+    for (const v of p.variance) expect(Number.isNaN(v)).toBe(true)
+    expect(Number.isNaN(p.cov![1])).toBe(true)
   })
 
   it("two identical x rows and all-equal y: objective and conditionGp return finite values", () => {
@@ -209,7 +225,7 @@ describe("the GP", () => {
       const post = conditionGp(data, hyperOf(mode, d))
       expect(post).not.toBeNull()
       for (const a of post!.alpha) expect(Number.isFinite(a)).toBe(true)
-      const p = predict(post!, [row, [0.9, 0.1, 0.4].slice(0, d)], true)
+      const p = predict(post!, [row, [0.9, 0.1, 0.4].slice(0, d)], true)!
       for (const v of [...p.mean, ...p.variance, ...p.cov!]) expect(Number.isFinite(v)).toBe(true)
       // Exactly identical rows only (the kernel matrix is then singular but for the noise): still finite.
       const twin: GpData = { x: [row, row.slice()], y: [0.7, 0.7] }
@@ -233,7 +249,7 @@ describe("the GP", () => {
       const hyper = hyperOf(theta, d)
       const post = conditionGp(data, hyper)!
       const xs = dataset(500 + ci, d, 6).x
-      const p = predict(post, xs, true)
+      const p = predict(post, xs, true)!
       return {
         d, n, theta: hex(theta), priorMode: hex(prior.mode), priorSd: hex(prior.sd), thetaRoundTrip: hex(thetaOf(hyper)),
         objective: bits(o.value), grad: hex(o.grad), jitter: bits(post.chol.jitter), alpha: hex(post.alpha),

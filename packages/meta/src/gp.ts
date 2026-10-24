@@ -162,7 +162,7 @@ export function objective(theta: Float64Array, data: GpData): { value: number; g
       gSf += w * K[i * n + j]! // ∂K_ij/∂ln σ_f² = K_ij
       // ∂k/∂ln ℓ_l = σ_f²·(5/3)(1 + √5 r)e^(−√5 r)·u_l²
       const dl = w * (sf2 * (5 / 3) * (1 + s) * e)
-      for (let l = 0; l < d; l++) grad[l] += dl * u2[l]!
+      for (let l = 0; l < d; l++) grad[l] = grad[l]! + dl * u2[l]!
     }
   }
   grad[d] = gSf + 0.5 * wDiag * sf2 * (1 + jitterShare)
@@ -176,7 +176,7 @@ export function objective(theta: Float64Array, data: GpData): { value: number; g
     const s = sd[i]!
     const z = (theta[i]! - mode[i]!) / s
     value += -0.5 * z * z - dlog(s) - 0.5 * LN_2PI
-    grad[i] += -z / s
+    grad[i] = grad[i]! + -z / s
   }
   if (!Number.isFinite(value)) return null
   for (let i = 0; i < grad.length; i++) if (!Number.isFinite(grad[i]!)) return null
@@ -203,12 +203,46 @@ export function conditionGp(data: GpData, hyper: GpHyper): GpPosterior | null {
   return { data, hyper, chol: f.chol, alpha }
 }
 
+/** True when every row of xs has d finite entries. */
+function rowsOk(xs: readonly (readonly number[])[], d: number): boolean {
+  for (const row of xs) {
+    if (row.length !== d) return false
+    for (let j = 0; j < d; j++) if (!Number.isFinite(row[j]!)) return false
+  }
+  return true
+}
+
+/** kv_i = σ_f²·Matérn(xa, x_i) for every training row, written into kv; returns the posterior mean m + kvᵀα. */
+function crossRow(post: GpPosterior, xa: readonly number[], kv: Float64Array): number {
+  const { data, hyper, alpha } = post
+  const n = data.x.length
+  let m = 0
+  for (let i = 0; i < n; i++) {
+    kv[i] = hyper.outputscale * matern52(Math.sqrt(scaledSq(xa, data.x[i]!, hyper.lengthscales)))
+    m += kv[i]! * alpha[i]!
+  }
+  return hyper.mean + m
+}
+
+/** The posterior mean of f at xs, bit for bit predict's mean, without the variance's O(N²) solve per point.
+ * Null if a row of xs does not have d finite entries. */
+export function predictMean(post: GpPosterior, xs: readonly (readonly number[])[]): Float64Array | null {
+  if (!rowsOk(xs, post.hyper.lengthscales.length)) return null
+  const kv = new Float64Array(post.data.x.length)
+  const mean = new Float64Array(xs.length)
+  for (let a = 0; a < xs.length; a++) mean[a] = crossRow(post, xs[a]!, kv)
+  return mean
+}
+
 /**
  * The posterior of the latent f (no noise) at xs: mean, variance and, when joint, the K×K covariance (row-major;
- * symmetric bit for bit, its diagonal equal to variance). Variance is clamped at 0 against rounding.
+ * symmetric bit for bit, its diagonal equal to variance). A negative variance (rounding) is clamped to 0, but a NaN
+ * is kept, so a corrupted posterior shows as NaN and callers refuse it. Null if a row of xs does not have d finite
+ * entries (d = the number of length scales).
  */
-export function predict(post: GpPosterior, xs: readonly (readonly number[])[], joint: boolean): { mean: Float64Array; cov: Float64Array | null; variance: Float64Array } {
-  const { data, hyper, chol, alpha } = post
+export function predict(post: GpPosterior, xs: readonly (readonly number[])[], joint: boolean): { mean: Float64Array; cov: Float64Array | null; variance: Float64Array } | null {
+  const { data, hyper, chol } = post
+  if (!rowsOk(xs, hyper.lengthscales.length)) return null
   const n = data.x.length
   const K = xs.length
   const sf2 = hyper.outputscale
@@ -217,18 +251,12 @@ export function predict(post: GpPosterior, xs: readonly (readonly number[])[], j
   const V: Float64Array[] = []
   const kv = new Float64Array(n)
   for (let a = 0; a < K; a++) {
-    const xa = xs[a]!
-    let m = 0
-    for (let i = 0; i < n; i++) {
-      kv[i] = sf2 * matern52(Math.sqrt(scaledSq(xa, data.x[i]!, hyper.lengthscales)))
-      m += kv[i]! * alpha[i]!
-    }
-    mean[a] = hyper.mean + m
+    mean[a] = crossRow(post, xs[a]!, kv)
     const v = solveLower(chol, kv)
     let q = 0
     for (let i = 0; i < n; i++) q += v[i]! * v[i]!
     const s = sf2 - q
-    variance[a] = s > 0 ? s : 0
+    variance[a] = s > 0 || s !== s ? s : 0
     if (joint) V.push(v)
   }
   if (!joint) return { mean, cov: null, variance }

@@ -63,8 +63,8 @@ describe("parsePosterior: schemaVersion 2", () => {
     expect(p).toEqual(v2())
     expect(p!.schemaVersion).toBe(2)
     expect(p!.mode).toBe("search")
-    expect(p!.models.gpu!.genes).toHaveLength(3)
-    expect(p!.models.gpu!.rows).toHaveLength(4)
+    expect(p!.models.gpu!.genes).toHaveLength(12) // a real fit over the 12 searched genes (thompson.test.ts rebuilds it)
+    expect(p!.models.gpu!.rows).toHaveLength(40)
     expect(p!.incumbent).not.toBeNull()
     expect(p!.confirmation!.seedBase).toBe(10_000 + 1_000 * p!.confirmation!.id)
     // Its parts are each optional in search: no model, incumbent or confirmation also parses.
@@ -93,7 +93,7 @@ describe("parsePosterior: schemaVersion 2", () => {
       ["x outside [0,1]", withGpu(g => { g.rows[1].x[2] = 1.000001 })],
       ["x below 0", withGpu(g => { g.rows[0].x[0] = -0.1 })],
       ["1001 rows", withGpu(g => {
-        g.rows = Array.from({ length: 1001 }, (_, k) => ({ learnerId: id(k + 1), x: [0.5, 0.5, 0.5] }))
+        g.rows = Array.from({ length: 1001 }, (_, k) => ({ learnerId: id(k + 1), x: g.genes.map(() => 0.5) }))
         g.y = g.rows.map(() => 0)
       })],
       ["unsorted learnerIds", withGpu(g => { [g.rows[0], g.rows[1]] = [g.rows[1], g.rows[0]] })],

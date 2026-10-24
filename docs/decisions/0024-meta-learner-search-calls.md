@@ -39,7 +39,7 @@ Built in `packages/meta/src/gp.ts` and `packages/meta/src/linalg.ts` (Task 2); t
 - **Noise has a smooth floor: σ_n² = 1e-3 + e^θ_n.** The spec says "a floor of 1e-3" and puts its prior on ln σ_n². A hard clamp would put a kink in the objective, which L-BFGS handles badly. So θ_n = ln(σ_n² − 1e-3) is the fitted parameter, and the spec's prior N(ln 0.5, 1) is placed on θ_n instead of ln σ_n². Above about 0.01 the two hardly differ.
 - **The prior box.** The objective is undefined (null) when any θ is more than 6 prior sd from the prior mode. This keeps the fit away from regions where e^θ overflows or K is numerically singular, and gives every start the same bounded box.
 - **Jitter is part of the model.** K is factored as K + jitter·I, with jitter = 1e-8·mean(diag)·10^k for the first k in 0..6 that factors (spec §4.3). The likelihood, α and every prediction use that same jittered K. The gradient includes the jitter's own dependence on σ_f² and σ_n², so it is the exact gradient of the computed objective. If no step factors, the result is "no model" (null), never a NaN.
-- **Predictions are of the latent f.** `predict` gives mean, variance and (jointly) the covariance of f, without noise. Variance is clamped at 0 against rounding. The joint covariance is symmetric bit for bit, and its diagonal is the same number as the variance.
+- **Predictions are of the latent f.** `predict` gives mean, variance and (jointly) the covariance of f, without noise. A negative variance (rounding) is clamped at 0, but a NaN is kept, so a corrupted posterior shows as NaN and its callers refuse it (Task 4). `predict` returns null when a row of xs is not d finite numbers. The joint covariance is symmetric bit for bit, and its diagonal is the same number as the variance.
 - **Malformed input is "no model".** Empty data, rows of the wrong length, or a non-finite x, y or hyperparameter gives null from `objective` and `conditionGp`, not an exception.
 - **The overlap kernel for categoricals is specified, not built (plan 05b, conflict 4).** Genome schema 1 searches no categorical, and `parseGenomeSpace` rejects a categorical gene owned by `gp`, so no model can meet one and 05b has no overlap-kernel code. The schema decision that activates the first GP categorical must add:
   - the kernel factor exp(−Σ_c 1[x_c ≠ x'_c]/ℓ_c) on top of σ_f²·Matérn-5/2 of the continuous genes (spec §4.3), with ln ℓ_c ~ N(0, 1) [guess];
@@ -67,6 +67,30 @@ Built in `packages/meta/src/lbfgs.ts` and `packages/meta/src/fit.ts` (Task 3). I
 | 1,000 | 177 s | 80, 61, 100, 47 | 1 |
 
 Both are under the 120 s stop rule at 300 rows and well within the gate job's 30-minute limit at the 1,000-row cap. The spec's estimate (§8: ~10 s at 300, 1–3 min at 1,000) holds. One start in each run hit the 100-iteration cap.
+
+### Thompson sampling and the incumbent [agent; within spec §4.3–§4.4]
+
+Built in `packages/meta/src/thompson.ts` (Task 4).
+
+- **Candidate spread is capped: σ_j = min(0.1·ℓ_j, 0.1)** (ruling 4). The spec's 0.1·ℓ_j alone is about 1.4 at the prior's ℓ ≈ 14, so most children would land on the cube's faces.
+- **Fewer than 16 training rows: the parents cycle in rank order**, so the set is always 256 uniform + 256 local = 512 candidates. Not in the spec.
+- **Draw order.** 256·d uniform draws (row by row), then 256·d child draws (parent by parent, child by child, gene by gene), then, only if Σ + jitter factors, 512 draws for z. One draw u becomes a normal as normInv(u + 2^-33), which is finite for every rng() value.
+- **The sample's jitter is absolute**: 1e-6·I, ×10 up to 5 steps (1e-6 … 1e-2), not scaled by σ_f². No step factoring gives null (the tab draws centre).
+- **No NaN reaches a draw.** `thompsonPick` returns null, never a NaN or out-of-cube x, when a candidate is not d numbers in [0, 1], the prediction is null or not finite, or no jitter step factors.
+- **The incumbent's x is rounded to 6 decimals before its mean and P(beats centre) are computed**, so the numbers the gate writes describe the x it writes. The argmax itself is taken on the unrounded candidates.
+- **Seed.** The gate seeds the incumbent's candidate set with hashSeed(0, "incumbent/" + modelSha), modelSha = sha256 of the serialised model block (ruling 4; the spec's posteriorSha is circular).
+- **Test fixture.** `packages/meta/test/fixtures/posterior-v2-search.json` is now a real fit (40 seeded rows over the 12 searched genes) with its incumbent from `incumbentOf`; `thompson.test.ts` rebuilds it and checks it byte for byte.
+
+### Birth cost [measured]
+
+One tab birth = `conditionGp` + `candidateSet` + `thompsonPick` (512 candidates, d = 12), Node v22.23.4, this machine, best of 3 runs; `incumbentOf` (gate only) separately:
+
+| Rows | conditionGp | candidateSet | thompsonPick | Birth total | incumbentOf |
+|---|---|---|---|---|---|
+| 300 | 7 ms | 3 ms | 71 ms | 83 ms | 9 ms |
+| 1,000 | 167 ms | 37 ms | 302 ms | 507 ms | 56 ms |
+
+That is under the spec's estimate (§4.3: 1–3 s at birth in a worker). Browsers are not measured here (Task 6).
 
 ## Alternatives considered
 

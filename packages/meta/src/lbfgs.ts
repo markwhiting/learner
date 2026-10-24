@@ -39,17 +39,17 @@ function direction(g: Float64Array, S: Float64Array[], Y: Float64Array[], rho: n
     const ai = rho[i]! * dot(S[i]!, q)
     a[i] = ai
     const y = Y[i]!
-    for (let j = 0; j < q.length; j++) q[j] -= ai * y[j]!
+    for (let j = 0; j < q.length; j++) q[j] = q[j]! - ai * y[j]!
   }
   if (k > 0) {
     const y = Y[k - 1]!
     const gamma = dot(S[k - 1]!, y) / dot(y, y)
-    for (let j = 0; j < q.length; j++) q[j] *= gamma
+    for (let j = 0; j < q.length; j++) q[j] = q[j]! * gamma
   }
   for (let i = 0; i < k; i++) {
     const b = rho[i]! * dot(Y[i]!, q)
     const s = S[i]!
-    for (let j = 0; j < q.length; j++) q[j] += s[j]! * (a[i]! - b)
+    for (let j = 0; j < q.length; j++) q[j] = q[j]! + s[j]! * (a[i]! - b)
   }
   for (let j = 0; j < q.length; j++) q[j] = -q[j]!
   return q

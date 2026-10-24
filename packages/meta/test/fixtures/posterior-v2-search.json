@@ -1,0 +1,153 @@
+{
+ "calibration": {
+  "genomes": [
+   {
+    "genomeSha": "fa25baee7bacec5c8ca24faa2ff579d51a0243bafd4aef18b911dbd67cbd9ad0",
+    "values": {
+     "gamma": 0.9,
+     "lr": 0.0005,
+     "sleepSeqLen": "1"
+    }
+   }
+  ],
+  "need": [
+   0
+  ]
+ },
+ "centre": {
+  "genomeSha": "fa25baee7bacec5c8ca24faa2ff579d51a0243bafd4aef18b911dbd67cbd9ad0",
+  "values": {
+   "gamma": 0.9,
+   "lr": 0.0005,
+   "sleepSeqLen": "1"
+  }
+ },
+ "confirmation": {
+  "candidate": {
+   "genomeSha": "dda18a0e21ae47c53b4309434cbc02ae8bf764fa83a6defbb719431242722aa7",
+   "values": {
+    "gamma": 0.95,
+    "lr": 0.0011,
+    "sleepSeqLen": "1"
+   }
+  },
+  "centre": {
+   "genomeSha": "fa25baee7bacec5c8ca24faa2ff579d51a0243bafd4aef18b911dbd67cbd9ad0",
+   "values": {
+    "gamma": 0.9,
+    "lr": 0.0005,
+    "sleepSeqLen": "1"
+   }
+  },
+  "counted": {
+   "candidate": 17,
+   "centre": 15,
+   "newborn": 38
+  },
+  "id": 3,
+  "need": {
+   "candidate": 7,
+   "centre": 9,
+   "newborn": 22
+  },
+  "seedBase": 13000,
+  "target": {
+   "candidate": 24,
+   "centre": 24,
+   "newborn": 60
+  }
+ },
+ "diagnostics": {},
+ "evaluator": "search-composite@1",
+ "genomeSchema": 1,
+ "incumbent": {
+  "genomeSha": "dda18a0e21ae47c53b4309434cbc02ae8bf764fa83a6defbb719431242722aa7",
+  "mean": 0.4,
+  "pBeatsCentre": 0.96,
+  "x": [
+   0.9,
+   0.2,
+   0.333333
+  ]
+ },
+ "mode": "search",
+ "models": {
+  "gpu": {
+   "fit": {
+    "iterations": [
+     17,
+     23,
+     9,
+     41
+    ],
+    "objective": -5.4321,
+    "start": 2
+   },
+   "genes": [
+    "lr",
+    "gamma",
+    "headLrScale"
+   ],
+   "hyper": {
+    "lengthscales": [
+     0.8,
+     1.2,
+     2.5
+    ],
+    "mean": 0.02,
+    "noise": 0.6,
+    "outputscale": 1.1
+   },
+   "rows": [
+    {
+     "learnerId": "lrn_0000000000000a01",
+     "x": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    {
+     "learnerId": "lrn_0000000000000b02",
+     "x": [
+      0.25,
+      0.75,
+      0.1
+     ]
+    },
+    {
+     "learnerId": "lrn_00000000000c0003",
+     "x": [
+      0.9,
+      0.2,
+      0.333333
+     ]
+    },
+    {
+     "learnerId": "lrn_1000000000000004",
+     "x": [
+      0,
+      1,
+      0.666667
+     ]
+    }
+   ],
+   "y": [
+    0.12,
+    -0.4,
+    1.3,
+    -0.05
+   ]
+  }
+ },
+ "page": {
+  "calibrationLives": 30,
+  "calibrationTarget": 30,
+  "eligibleLives": 214,
+  "lastPromotion": null,
+  "looks": 1,
+  "rowsSinceDeclaration": 4
+ },
+ "schemaVersion": 2,
+ "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}

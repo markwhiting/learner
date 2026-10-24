@@ -21,7 +21,9 @@ const CALIB: Genome[] = [centre, ...Array.from({ length: 9 }, (_, k) => fromUnit
 const centreSha = await genomeSha(space.schemaVersion, centre)
 const CALIB_SHAS = await Promise.all(CALIB.map(g => genomeSha(space.schemaVersion, g)))
 
-function posterior(mode: Mode, need: number[] = CALIB.map(() => 3), genomes: Genome[] = CALIB): Posterior {
+/** A 05a (schemaVersion 1) posterior file: its page has no rowsSinceDeclaration. Its bytes pin fixtures/draws.json. */
+type V1File = Omit<Posterior, "schemaVersion" | "page"> & { schemaVersion: 1; page: Omit<Posterior["page"], "rowsSinceDeclaration"> }
+function posterior(mode: Mode, need: number[] = CALIB.map(() => 3), genomes: Genome[] = CALIB): V1File {
   return {
     schemaVersion: 1, genomeSchema: 1, evaluator: "search-composite@1", sourceCommit: "a".repeat(40), mode,
     centre: { genomeSha: centreSha, values: centre },
@@ -32,7 +34,7 @@ function posterior(mode: Mode, need: number[] = CALIB.map(() => 3), genomes: Gen
 }
 
 /** The input a tab would build: the posterior is parsed from its own bytes, and posteriorSha is their sha256. */
-function input(learnerId: string, p: Posterior | null, widthsClass: "gpu" | "cpu" = "gpu"): DrawInput {
+function input(learnerId: string, p: V1File | null, widthsClass: "gpu" | "cpu" = "gpu"): DrawInput {
   if (p === null) return { learnerId, space, centre, centreSha, widthsClass, posterior: null, posteriorSha: null }
   const text = JSON.stringify(p)
   const parsed = parsePosterior(text)
@@ -81,7 +83,7 @@ describe("birthDraw", () => {
   })
 
   it("programming errors throw: posterior and posteriorSha half-null, a sha that is not 64 lowercase hex", () => {
-    const p = posterior("flat")
+    const p = parsePosterior(JSON.stringify(posterior("flat")))!
     const at = { learnerId: "lrn_x", space, centre, centreSha, widthsClass: "gpu" as const }
     expect(() => birthDraw({ ...at, posterior: p, posteriorSha: null })).toThrow(/null together/)
     expect(() => birthDraw({ ...at, posterior: null, posteriorSha: HEX("x") })).toThrow(/null together/)
@@ -91,7 +93,7 @@ describe("birthDraw", () => {
   })
 
   it("a posterior that does not fit the tab's knowledge → centre with a reason, drawSeed and posteriorSha kept", () => {
-    const check = (p: Posterior, why: RegExp, w: "gpu" | "cpu" = "gpu") => {
+    const check = (p: V1File, why: RegExp, w: "gpu" | "cpu" = "gpu") => {
       const i = input("lrn_mismatch", p, w)
       const d = birthDraw(i)
       expect(d.method).toBe("centre")
@@ -111,26 +113,6 @@ describe("birthDraw", () => {
     check(posterior("calibrate", only1, CALIB.map((g, i) => i === 1 ? { ...g, lr: 1 } : g)), /calibration genome 1 is invalid: lr 1 is outside/)
     // A valid draw carries no reason.
     expect(birthDraw(input("lrn_ok", posterior("calibrate"))).reason).toBeUndefined()
-  })
-
-  it("parsePosterior: garbage, wrong schemaVersion, a need/genomes length mismatch → null", () => {
-    const good = posterior("calibrate")
-    expect(parsePosterior(JSON.stringify(good))).toEqual(good)
-    const bad: [string, string][] = [
-      ["garbage", "{not json"],
-      ["empty", ""],
-      ["an array", "[]"],
-      ["null", "null"],
-      ["wrong schemaVersion", JSON.stringify({ ...good, schemaVersion: 2 })],
-      ["need/genomes length mismatch", JSON.stringify({ ...good, calibration: { ...good.calibration, need: [1, 2] } })],
-      ["unknown mode", JSON.stringify({ ...good, mode: "ts" })],
-      ["negative need", JSON.stringify({ ...good, calibration: { ...good.calibration, need: good.calibration.need.map(() => -1) } })],
-      ["calibrate with no genomes", JSON.stringify({ ...good, calibration: { genomes: [], need: [] } })],
-      ["a bad genomeSha", JSON.stringify({ ...good, centre: { ...good.centre, genomeSha: "xyz" } })],
-      ["an unknown top-level key", JSON.stringify({ ...good, extra: 1 })],
-      ["a missing key", JSON.stringify({ ...good, page: undefined })],
-    ]
-    for (const [why, text] of bad) expect(parsePosterior(text), why).toBeNull()
   })
 
   it("calibrate on gpu: every draw is calibrate; over 2,000 learnerIds the genome frequencies follow need [3,0,…] (only index 0) and [1,1,…] (uniform, χ² p > 0.001)", () => {

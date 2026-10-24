@@ -139,7 +139,8 @@ describe("buildMeta (spec §4.6, §7.2, §7.4)", () => {
     expect(p.calibration.genomes[0]!.genomeSha).toBe(centreSha)
     expect(p.calibration.need).toEqual(Array(10).fill(3))
     expect(p).toMatchObject({ models: {}, incumbent: null, confirmation: null })
-    expect(p.page).toEqual({ eligibleLives: 0, lastPromotion: null, calibrationLives: 0, calibrationTarget: SIGNAL_LOOKS[0], looks: 0 })
+    // A v1 file reads with rowsSinceDeclaration 0 (packages/meta posterior.ts; plan 05b Task 1).
+    expect(p.page).toEqual({ eligibleLives: 0, lastPromotion: null, calibrationLives: 0, calibrationTarget: SIGNAL_LOOKS[0], looks: 0, rowsSinceDeclaration: 0 })
     const c = calibrationOf(out)
     expect(c).toMatchObject({ schemaVersion: 1, genomeSchema: 1, evaluator: CONFIG.search, signal: CONFIG.signal, seed: "calib/1", repeats: 3, looks: [], outcome: "pending" })
     expect(c.genomes).toEqual(p.calibration.genomes)

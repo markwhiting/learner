@@ -217,6 +217,30 @@ On a pass, the same build does four things:
 - **Contributors can steer confirmation lives** (a known v1 limit; dishonest contributors are a non-goal, spec §7.4). A tab can draw learnerIds offline until it gets an arm and seed it likes, run them, and submit only the lives it wants. One more effect follows. A low-learnerId life on a seed, abandoned on purpose, displaces an honest complete life on the same seed, because only the lowest learnerId per (arm, evalSeed) counts. No ordering rule fixes this: every input to the draw is public. A real fix needs seeds the contributor cannot predict before committing to a life (for example, a gate-issued nonce). That is a later decision.
 - **Repeated confirmations of one incumbent multiply the false-promotion risk.** Each attempt is a fresh test at α 0.05. A candidate that fails or runs out of time can be declared again once 100 more rows arrive, so k attempts give a chance of a false pass of up to about 1 − 0.95^k. **Proposed default for later (not built):** at most 3 confirmations per candidate genomeSha. A 4th trigger on the same genome would be recorded but not declared. An alternative is alpha spending across attempts (for example α/2, α/4, …). Either needs a recorded decision; the cap is simpler to audit.
 
+### Gate commits in 05b [agent; within decision 0019]
+
+- **What the gate commits** (`tools/gate/commit-meta.ts` `META_PATH_RE`). Exactly the files `meta-cli` computes:
+  - `data/meta/`: `posterior.json`, `posterior-index.jsonl`, `calibration.json`, `diagnostics.json`, `verified.json`, `promotions.jsonl`, `confirmations/<c>.json` (c written as meta-cli names it, at most 6 digits);
+  - `knowledge/genome.json`, which decision 0019 lets the gate promote.
+
+  Nothing else. `knowledge/genome-space.json`, `config/` and every other path are still refused. It stages exactly `data/meta` and `knowledge/genome.json`.
+- **05a's guards all stay.** Only regular `100644` files, added or modified (no deletion, rename, symlink or mode change). `knowledge/genome.json` may only be modified, never added. No other change in the tree. HEAD must equal origin/main. The lockfile blob is checked before every build and commit. No force. At most 3 tries, each rebuilt from scratch on the new main: the hard reset also restores `genome.json`.
+- **The record only grows** [agent's call]:
+  - A confirmation file is written twice. It is added with `result: null` under its own id, then only `result` changes, from null to a result. A file with a result never changes again.
+  - `promotions.jsonl` and `posterior-index.jsonl` only gain whole lines at their end.
+- **`knowledge/genome.json` only as one promotion** (`promotionErrors`, a second check behind `meta-cli`). If it is staged:
+  - exactly one confirmation file is staged, and its result is a pass;
+  - the genome reads through `parseCentre` (against main's space) as that confirmation's candidate, with `provenance { source: "promotion", confirmation: <id> }`;
+  - main's `genome.json` is the confirmation's centre;
+  - `promotions.jsonl` gains exactly one line, naming that id and the candidate's genomeSha.
+
+  The check also runs the other way [agent's call]. A staged pass without `genome.json` is refused, because its promotion would be lost. So is a `promotions.jsonl` change without a promotion. Any failure throws, and nothing is committed.
+- **The message.** `meta: <mode>, <n> eligible lives, posterior <sha8>`, plus `; declare confirmation <c>`, `; confirmation <c> <outcome>` and `; promote <genomeSha8>` where they apply.
+- **Deploy.** The gate calls deploy on `meta == 'committed'`, which covers a promotion. `deploy.yml` copies `knowledge/*.json`. A promotion therefore changes `knowledgeSha` by design (0019), and open tabs reload onto the new centre (0014).
+- **The checks that follow the centre.**
+  - `tools/genome-centre.test.ts` pins the space's centres, not `genome.json`, to the code's defaults. `genome.json` must be the space's centres while its provenance is `initial`. After a promotion it must be the candidate of the passing confirmation it names.
+  - `newborn-reference --check` accepts newborns of any centre `genome.json` has had in git history, as long as all of them share one centre [agent's call: one reference per centre, as one per codeSha]. So the pinned reference (0023) stays valid after a promotion. It now needs a git checkout.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

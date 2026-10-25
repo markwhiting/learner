@@ -1,0 +1,12 @@
+{
+ "lives": {
+  "lrn_0adb1fb0fabb8f49": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "a55026dc3378a2b48e2d84e95e79e96d2ca1b064bb6510b4806a8c3ce196aa93",
+   "reason": null
+  }
+ },
+ "schemaVersion": 1,
+ "verifier": 2
+}

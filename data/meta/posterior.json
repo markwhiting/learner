@@ -459,8 +459,9 @@
   "calibrationTarget": 30,
   "eligibleLives": 0,
   "lastPromotion": null,
-  "looks": 0
+  "looks": 0,
+  "rowsSinceDeclaration": 0
  },
- "schemaVersion": 1,
- "sourceCommit": "fa510df87490df32e44d5581c63b74ec5d77e422"
+ "schemaVersion": 2,
+ "sourceCommit": "f3f82b737e4f2b6a7b28bc853fae4c04f24b3fab"
 }

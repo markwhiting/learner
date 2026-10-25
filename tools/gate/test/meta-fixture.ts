@@ -11,8 +11,9 @@ import { createRng } from "@blanktab/detmath"
 import type { LogFile, LogFileV2, MetaBlock } from "@blanktab/harness/log"
 import { birthDraw, genomeSha, parseCentre, parseGenomeSpace, parsePosterior, sha256Hex, type Genome } from "@blanktab/meta"
 import { parseNewbornReference, type NewbornReference } from "@blanktab/evaluators"
-import { lid, scoredLife, typicalLife } from "../../../packages/evaluators/test/fixtures/build.ts"
+import { lid, scoredLife, typicalLife, type ScoredLifeSpec } from "../../../packages/evaluators/test/fixtures/build.ts"
 import { loadEvalConfig } from "../../eval/config.ts"
+import { parseConfirmation } from "../confirm.ts"
 import { buildMeta, parseCalibration, parseVerified, type MetaFiles, type MetaInput } from "../meta.ts"
 
 export const REPO = fileURLToPath(new URL("../../..", import.meta.url))
@@ -48,7 +49,7 @@ export const put = (f: LogFile) => {
 /** The gate's state between builds, as main's data/meta and its history would hold it. */
 export interface World { previous: MetaInput["previous"]; history: Map<string, string>; centres: Map<string, Genome>; last: MetaFiles | null; built: number }
 export const world = async (): Promise<World> => ({
-  previous: { calibration: null, posteriorText: null, verified: null }, history: new Map(),
+  previous: { calibration: null, posteriorText: null, verified: null, confirmations: [] }, history: new Map(),
   centres: new Map([[await shaOfGenome(CENTRE), CENTRE]]), last: null, built: 0,
 })
 
@@ -58,14 +59,17 @@ export async function build(w: World, over: Partial<MetaInput> = {}): Promise<Me
     runsDir: runs, config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(++w.built), builtAt: BUILT_AT,
     previous: w.previous, posteriorsBySha: w.history, centres: w.centres, ...over,
   })
-  w.previous = { calibration: parseCalibration(out[CALIBRATION]), posteriorText: out[POSTERIOR], verified: parseVerified(out[VERIFIED]) }
+  // The confirmation files this build declared or decided replace main's copies (ids 0..n−1).
+  const confirmations = [...(over.previous ?? w.previous).confirmations]
+  for (const text of Object.values(out.confirmations)) { const c = parseConfirmation(text); confirmations[c.id] = c }
+  w.previous = { calibration: parseCalibration(out[CALIBRATION]), posteriorText: out[POSTERIOR], verified: parseVerified(out[VERIFIED]), confirmations }
   w.history.set(await shaOf(out[POSTERIOR]), out[POSTERIOR])
   w.last = out
   return out
 }
 
 /** How a test life scores: its M2 measure and held-out ratio. */
-export type Effect = (k: number, calibrationIndex: number | undefined) => { m2: number; ratio: number }
+export type Effect = (k: number, calibrationIndex: number | undefined, genome: Genome) => { m2: number; ratio: number }
 /** A genome effect far above the repeat noise (as signal-check's own test plants it). */
 export const planted: Effect = (k, i) => ({ m2: 0.3 + 0.4 * (i ?? 0) + 0.01 * (k % 3), ratio: 0.98 - 0.01 * (i ?? 0) + 0.001 * (k % 3) })
 /** Scores that depend on the learner alone, never on its genome. */
@@ -85,6 +89,8 @@ export interface Born { learnerId: string; draw: ReturnType<typeof birthDraw>; m
  */
 export async function bornLife(text: string | null, opts: {
   effect?: Effect; widths?: LogFileV2["widths"]; alter?: (m: MetaBlock) => MetaBlock | Promise<MetaBlock>; k?: number; centre?: Genome
+  /** Milestones passed at 512, 1024 and 2048 CU (default none). */
+  passed?: ScoredLifeSpec["passed"]
 } = {}): Promise<Born> {
   const k = opts.k ?? nextK++
   const learnerId = lid(0x10000 + k)
@@ -98,10 +104,10 @@ export async function bornLife(text: string | null, opts: {
     inheritance: { filters: "none" },
   }
   if (opts.alter) meta = await opts.alter(meta)
-  const e = (opts.effect ?? noise)(k, d.calibrationIndex)
+  const e = (opts.effect ?? noise)(k, d.calibrationIndex, meta.genome)
   const files = opts.widths
     ? typicalLife(learnerId, { meta, widths: opts.widths })
-    : scoredLife(learnerId, { ms: { M1: 0.9, M2: e.m2, M3: 0.2, M4: 0.3, M5: 0.8, M6: 0 }, ratio: e.ratio, meta })
+    : scoredLife(learnerId, { ms: { M1: 0.9, M2: e.m2, M3: 0.2, M4: 0.3, M5: 0.8, M6: 0 }, ratio: e.ratio, meta, ...(opts.passed ? { passed: opts.passed } : {}) })
   for (const f of files) put(f)
   return { learnerId, draw: d, meta, files }
 }

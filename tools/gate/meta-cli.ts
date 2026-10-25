@@ -1,14 +1,16 @@
 // Usage: tsx tools/gate/meta-cli.ts   (run from the root of a full-history checkout of main, after the gate's merges)
-// Builds data/meta/** (posterior, calibration, diagnostics, verified) from main's merged logs and pinned config (buildMeta),
-// writes the files that changed, appends the index line when the posterior's bytes changed, and prints
-// `changed=true|false`. It reads config/ and knowledge/ (and their history) and never writes them; committing is
+// Builds data/meta/** (posterior, calibration, diagnostics, verified, confirmations) from main's merged logs and pinned
+// config (buildMeta), writes the files that changed, appends the index line when the posterior's bytes changed and the
+// promotion line on a pass, and prints `changed=true|false`. It reads config/ and never writes it. knowledge/genome.json
+// it writes only on a confirmation's pass, with the gate-computed content buildMeta returns (spec §4.5); committing is
 // commit-meta.ts's. It prints the build's time on stderr, so a slow fit shows in the gate's log.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { genomeSha, parseCentre } from "@blanktab/meta"
 import { loadEvalConfig, loadReferences } from "../eval/config.ts"
 import { loadGenomeSpace, mainSpaces } from "./gate.ts"
 import { git, isShallow } from "./github.ts"
+import { confirmationPath, GENOME_PATH, parseConfirmation, PROMOTIONS_PATH, type ConfirmationFile } from "./confirm.ts"
 import { centresBySha } from "./history.ts"
 import {
   buildMeta, CALIBRATION_PATH, DIAGNOSTICS_PATH, parseCalibration, parseVerified, POSTERIOR_INDEX_PATH, POSTERIOR_PATH, posteriorHistory,
@@ -26,6 +28,17 @@ const centre = parseCentre(JSON.parse(readFileSync(join(root, "knowledge/genome.
 const calibrationText = read(CALIBRATION_PATH)
 const posteriorText = read(POSTERIOR_PATH)
 const verifiedText = read(VERIFIED_PATH)
+// data/meta/confirmations/<c>.json: exactly 0.json .. (n−1).json, each its own id, or the gate stops (writing nothing).
+const confirmationsDir = join(root, dirname(confirmationPath(0)))
+const names = existsSync(confirmationsDir) ? readdirSync(confirmationsDir).sort() : []
+const confirmations: ConfirmationFile[] = names.map((_, i) => {
+  const rel = confirmationPath(i)
+  const text = read(rel)
+  if (text === null) throw new Error(`${dirname(rel)}: holds ${names.join(", ")}; ids must be 0..${names.length - 1} with no gaps (${rel} is missing)`)
+  const c = parseConfirmation(text)
+  if (c.id !== i) throw new Error(`${rel}: id ${c.id}, expected ${i}`)
+  return c
+})
 // A malformed cache is no cache: every life is verified again (the cache saves work, it never decides).
 const verified = verifiedText === null ? null : parseVerified(verifiedText)
 if (verifiedText !== null && verified === null) console.error(`::warning::${VERIFIED_PATH} does not parse: verifying every life again`)
@@ -39,7 +52,7 @@ const files = await buildMeta({
   runsDir, config, refs: loadReferences(root, config), space, centre,
   sourceCommit: git(["rev-parse", "HEAD"]).trim(),
   builtAt: new Date().toISOString(), // the one clock read that reaches a file: it goes into the index line only
-  previous: { calibration: calibrationText === null ? null : parseCalibration(calibrationText), posteriorText, verified },
+  previous: { calibration: calibrationText === null ? null : parseCalibration(calibrationText), posteriorText, verified, confirmations },
   // Only the versions some not-yet-verified life was born under.
   posteriorsBySha: posteriorHistory(git, wantedPosteriors(runsDir, space.schemaVersion, verified)),
   centres,
@@ -47,12 +60,16 @@ const files = await buildMeta({
 console.error(`buildMeta took ${((Date.now() - started) / 1000).toFixed(1)} s`)
 
 let changed = false
-for (const rel of [POSTERIOR_PATH, CALIBRATION_PATH, DIAGNOSTICS_PATH, VERIFIED_PATH] as const) {
-  const text = files[rel]
-  if (read(rel) === text) continue
+const write = (rel: string, text: string) => {
+  if (read(rel) === text) return
   mkdirSync(dirname(join(root, rel)), { recursive: true })
   writeFileSync(join(root, rel), text)
   changed = true
 }
+for (const rel of [POSTERIOR_PATH, CALIBRATION_PATH, DIAGNOSTICS_PATH, VERIFIED_PATH] as const) write(rel, files[rel])
+for (const [rel, text] of Object.entries(files.confirmations)) write(rel, text)
+// Only a passing confirmation's result brings these, in the same build (and so the same gate commit) as that result.
+if (files[GENOME_PATH] !== null) write(GENOME_PATH, files[GENOME_PATH])
+if (files.promotionLine !== null) { mkdirSync(dirname(join(root, PROMOTIONS_PATH)), { recursive: true }); appendFileSync(join(root, PROMOTIONS_PATH), files.promotionLine + "\n"); changed = true }
 if (files.indexLine !== null) { appendFileSync(join(root, POSTERIOR_INDEX_PATH), files.indexLine + "\n"); changed = true }
 console.log(`changed=${changed}`)

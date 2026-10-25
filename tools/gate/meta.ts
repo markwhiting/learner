@@ -1,9 +1,12 @@
 // The gate's meta-learner files, data/meta/** (spec §4.3, §4.6, §7.2, §7.4; decision 0019): computed from main's
 // merged logs and pinned config only, never from PR content. 05a builds the calibration design, the noise check's
-// looks and the re-verification of every draw; 05b adds the GP (models, incumbent, confirmation), in mode search only.
+// looks and the re-verification of every draw; 05b adds the GP (models, incumbent) and the confirmations (declaration,
+// serving, decision, promotion: confirm.ts), in mode search only.
 //
 // Every byte is a pure function of the input: rows in learnerId order, fixed seeds, keys sorted at every level, and no
-// clock. The one time, `builtAt`, is passed in and goes only into the index line, never into a file whose sha matters.
+// clock. The one time, `builtAt`, is passed in. It is written into the index line and the confirmation files (their
+// declaration, deadline and decision), never into posterior.json. It decides a confirmation's deadline and which
+// running confirmation lives hold a slot, so the posterior's `need` may move with it.
 import { createHash } from "node:crypto"
 import { sobolPoints } from "@blanktab/detmath"
 import { lifeBudget, type LogFile, type LogFileV2, type MetaBlock } from "@blanktab/harness/log"
@@ -16,6 +19,7 @@ import {
 } from "@blanktab/evaluators"
 import type { EvalConfig } from "../eval/config.ts"
 import { collectLives } from "../eval/lives.ts"
+import { confirmStep, GENOME_PATH, type ConfirmationFile, type VerifiedConfirmLife } from "./confirm.ts"
 import { buildModel, incumbentFor, rowSubset, ROW_METHODS, type ModelRun } from "./search.ts"
 import { serialise } from "./serialise.ts"
 
@@ -57,9 +61,16 @@ export interface Verdict { posteriorSha: string | null; posteriorMode: Mode | nu
 export interface VerifiedCache { schemaVersion: 1; verifier: 2; lives: Record<string, Verdict> }
 export interface MetaInput {
   runsDir: string; config: EvalConfig; refs: References; space: GenomeSpace; centre: Genome; sourceCommit: string
-  /** When this build ran (ISO 8601): written only into the index line. The caller reads the clock; buildMeta never does. */
+  /**
+   * When this build ran (ISO 8601): written into the index line and the confirmation files only, never posterior.json.
+   * It decides confirmation deadlines and in-flight slots. The caller reads the clock; buildMeta never does.
+   */
   builtAt: string
-  previous: { calibration: CalibrationState | null; posteriorText: string | null; verified: VerifiedCache | null }
+  previous: {
+    calibration: CalibrationState | null; posteriorText: string | null; verified: VerifiedCache | null
+    /** data/meta/confirmations/<c>.json, parsed, in id order (ids 0..n−1). */
+    confirmations: ConfirmationFile[]
+  }
   /** posterior.json versions from main's history, by sha256 of their bytes: at least every one an unverified life names. */
   posteriorsBySha: ReadonlyMap<string, string>
   /** Every centre main has had (knowledge/genome.json's history, history.ts centresBySha), by genomeSha. */
@@ -70,6 +81,12 @@ export interface MetaFiles {
   "data/meta/verified.json": string
   /** One JSON line (no newline) for posterior-index.jsonl when the posterior's bytes changed, else null. */
   indexLine: string | null
+  /** The confirmation files this build declared or decided, by path (data/meta/confirmations/<c>.json); others unchanged. */
+  confirmations: Record<string, string>
+  /** One JSON line (no newline) for promotions.jsonl on a pass, else null. */
+  promotionLine: string | null
+  /** The new knowledge/genome.json on a pass (in the same commit as the result), else null. */
+  "knowledge/genome.json": string | null
 }
 
 const isV2 = (f: LogFile): f is LogFileV2 => f.schemaVersion === 2
@@ -310,8 +327,8 @@ async function verify(learnerId: string, meta: MetaBlock, widthsClass: "gpu" | "
 interface Lives {
   /** searchEra: born under a posterior of mode search (the rows rowsSinceDeclaration counts). */
   rows: { life: LifeInput; meta: MetaBlock; out: EvalOutput; searchEra: boolean }[]
-  /** Verified confirmation lives (role confirm): never rows (spec §4.3); Task 9 groups them by arm. */
-  confirmLives: { life: LifeInput; meta: MetaBlock }[]
+  /** Verified confirmation lives (role confirm): never rows (spec §4.3); confirm.ts groups them by arm. */
+  confirmLives: VerifiedConfirmLife[]
   checked: number; flagged: { learnerId: string; reason: string }[]
   /** Verified lives whose logged genome differs from the recomputed one, and those of them that are rows. */
   mismatched: string[]; mismatchedRows: string[]
@@ -424,7 +441,7 @@ const mismatch = (learnerIds: string[], of: number) => ({ count: learnerIds.leng
 const modeOf = (c: CalibrationState): Mode => (c.outcome === "signal" ? "search" : c.outcome === "flat" ? "flat" : "calibrate")
 
 /** The search's state (spec §4.3–§4.4), built only in mode search. */
-interface SearchState { model: GpModel | null; reason: string | null; run: ModelRun; incumbent: Incumbent | null; rowsSinceDeclaration: number }
+interface SearchState { model: GpModel | null; reason: string | null; run: ModelRun; incumbent: Incumbent | null; searchEraRows: number }
 
 /**
  * The model on the rows and the incumbent. y is the search evaluator's targets over every row, then rowSubset keeps at
@@ -440,8 +457,8 @@ async function searchState(input: MetaInput, lives: Lives): Promise<SearchState>
   const built = buildModel(kept.map(({ learnerId, genome }) => ({ learnerId, genome })), kept.map(k => k.y), input.space, prev?.models.gpu ?? null)
   const incumbent = built.model === null ? null : await incumbentFor(built.model, input.space, input.centre)
   // Rows born under a search posterior: none before the signal look (plan conflict 5; controller ruling, Task 8
-  // review). Task 9 counts from the last declaration's rowsAtDeclaration.
-  return { ...built, incumbent, rowsSinceDeclaration: lives.rows.filter(r => r.searchEra).length }
+  // review). confirmStep counts from the last declaration's rowsAtDeclaration.
+  return { ...built, incumbent, searchEraRows: lives.rows.filter(r => r.searchEra).length }
 }
 
 /**
@@ -463,13 +480,18 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
   const mode = modeOf(calibration)
   // The mode guard (the user's "inert until signal"): nothing of the search is computed in any other mode.
   const s = mode === "search" ? await searchState(input, lives) : null
+  // Declaration, serving, decision and promotion: in mode search only, as the fit.
+  const step = s ? await confirmStep(input, lives.confirmLives, s.searchEraRows, s.model, s.incumbent, { genomeSha: centreSha, values: centre }) : null
+  // A pass moves the centre in this build: the posterior is built for the new centre, its incumbent against it.
+  const promoted = step !== null && step.genomeFile !== null
+  const incumbent = s && promoted && s.model ? await incumbentFor(s.model, space, step.centre.values) : s?.incumbent ?? null
   const calibRows = lives.rows.filter(r => r.meta.method === "calibrate").length
   const n = calibration.looks.length
   const posterior = {
     schemaVersion: POSTERIOR_SCHEMA, genomeSchema: space.schemaVersion, evaluator: config.search, sourceCommit: input.sourceCommit, mode,
-    centre: { genomeSha: centreSha, values: centre },
+    centre: step?.centre ?? { genomeSha: centreSha, values: centre },
     calibration: { genomes: calibration.genomes, need: lives.perGenome.map(g => Math.max(0, calibration.repeats - g.rows)) },
-    models: s?.model ? { gpu: s.model } : {}, incumbent: s?.incumbent ?? null, confirmation: null,
+    models: s?.model ? { gpu: s.model } : {}, incumbent, confirmation: step?.served ?? null,
     diagnostics: {
       perGenome: lives.perGenome.map(g => ({ genomeSha: g.genomeSha, rows: g.rows, failed: g.failedRows })),
       // Rows kept on a logged genome that differs from the recomputed draw (spec §7.4).
@@ -478,10 +500,10 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
       ...(s && s.reason !== null ? { model: { reason: s.reason } } : {}),
     },
     page: {
-      eligibleLives: lives.rows.length, lastPromotion: null, calibrationLives: calibRows,
+      eligibleLives: lives.rows.length, lastPromotion: step?.lastPromotion ?? null, calibrationLives: calibRows,
       // The next look's size while calibrating; the deciding look's once decided.
       calibrationTarget: SIGNAL_LOOKS[calibration.outcome === "pending" ? Math.min(n, SIGNAL_LOOKS.length - 1) : n - 1]!, looks: n,
-      rowsSinceDeclaration: s?.rowsSinceDeclaration ?? 0,
+      rowsSinceDeclaration: step?.rowsSinceDeclaration ?? 0,
     },
   }
   let posteriorText = serialise(posterior)
@@ -507,10 +529,13 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
     unscored: lives.unscored,
     // What the fit did this build (search only): it moves with every build, so it stays out of posterior.json.
     ...(s ? { model: { ...s.run, reason: s.reason } } : {}),
+    // The open confirmation's counts, with the running lives holding a slot (they move with time).
+    ...(step?.diagnostics ? { confirmation: step.diagnostics } : {}),
   }
   const verified: VerifiedCache = { schemaVersion: 1, verifier: VERIFIER, lives: lives.verdicts }
   return {
     [POSTERIOR_PATH]: posteriorText, [CALIBRATION_PATH]: serialise(calibration), [DIAGNOSTICS_PATH]: serialise(diagnostics),
     [VERIFIED_PATH]: serialise(verified), indexLine,
+    confirmations: step?.files ?? {}, promotionLine: step?.promotionLine ?? null, [GENOME_PATH]: step?.genomeFile ?? null,
   } as MetaFiles
 }

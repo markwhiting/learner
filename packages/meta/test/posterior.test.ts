@@ -118,6 +118,9 @@ describe("parsePosterior: schemaVersion 2", () => {
       ["need > target", withConf(c => { c.need.newborn = 61 })],
       ["a missing arm", withConf(c => { delete c.counted.newborn })],
       ["candidate = centre", withConf(c => { c.candidate.genomeSha = c.centre.genomeSha })],
+      // The centre arm runs the confirmation's centre: it must be the centre the posterior was built for (Task 9).
+      ["a confirmation centre sha other than the posterior's", withConf(c => { c.centre.genomeSha = "9".repeat(64) })],
+      ["confirmation centre values other than the posterior's", withConf(c => { c.centre.values = { ...c.centre.values, lr: 1e-3 } })],
       ["incumbent without a model", (() => { const o = v2(); o.models = {}; return text(o) })()],
       ["incumbent x of the wrong length", (() => { const o = v2(); o.incumbent.x.pop(); return text(o) })()],
       ["incumbent pBeatsCentre > 1", (() => { const o = v2(); o.incumbent.pBeatsCentre = 1.5; return text(o) })()],

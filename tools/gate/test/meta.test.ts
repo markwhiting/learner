@@ -17,6 +17,7 @@ import { collectLives } from "../../eval/lives.ts"
 import { FIXTURE_ENV, makeFixture, type Fixture } from "./git-fixture.ts"
 import { serialise } from "../serialise.ts"
 import { triggered } from "../search.ts"
+import { parseConfirmation } from "../confirm.ts"
 import {
   buildMeta, parseCalibration, parseVerified, posteriorHistory, VERIFIER, wantedPosteriors, type CalibrationState, type MetaFiles, type MetaInput, type VerifiedCache,
 } from "../meta.ts"
@@ -446,10 +447,10 @@ describe("buildMeta (spec §4.6, §7.2, §7.4)", () => {
     await build(w)
     const c = w.previous.calibration!
     for (const bad of [{ ...c, evaluator: "search-composite@2" }, { ...c, signal: "signal-check@2" }, { ...c, genomeSchema: 2 }]) {
-      await expect(build(await world(), { previous: { calibration: bad, posteriorText: null, verified: null } })).rejects.toThrow(/calibration/)
+      await expect(build(await world(), { previous: { calibration: bad, posteriorText: null, verified: null, confirmations: [] } })).rejects.toThrow(/calibration/)
     }
     const tampered = { ...c, genomes: c.genomes.map((g, i) => (i === 1 ? { ...g, values: { ...g.values, lr: 1e-3 } } : g)) }
-    await expect(build(await world(), { previous: { calibration: tampered, posteriorText: null, verified: null } })).rejects.toThrow(/genomeSha/)
+    await expect(build(await world(), { previous: { calibration: tampered, posteriorText: null, verified: null, confirmations: [] } })).rejects.toThrow(/genomeSha/)
     expect(() => parseCalibration("{}")).toThrow()
     expect(() => parseCalibration(JSON.stringify({ ...c, extra: 1 }))).toThrow()
   })
@@ -516,7 +517,7 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     await build(w)
     const c = w.previous.calibration!
     expect(c.looks.map(l => l.output.score)).toEqual([0])
-    const again = async (calibration: CalibrationState) => build(await world(), { previous: { calibration, posteriorText: null, verified: null } })
+    const again = async (calibration: CalibrationState) => build(await world(), { previous: { calibration, posteriorText: null, verified: null, confirmations: [] } })
     await expect(again({ ...c, outcome: "signal" })).rejects.toThrow(/outcome signal needs a last look scored 1/)
     await expect(again({ ...c, outcome: "flat" })).rejects.toThrow(/outcome flat needs 3 looks/)
     const scored1 = { ...c.looks[0]!, output: { ...c.looks[0]!.output, score: 1 } }
@@ -742,10 +743,16 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     let p = posteriorOf(await build(w))
     expect(p.page).toMatchObject({ eligibleLives: 144, rowsSinceDeclaration: 99 })
     expect(triggered(p.incumbent && { ...p.incumbent, pBeatsCentre: 1 }, p.centre.genomeSha, p.page.rowsSinceDeclaration, false)).toBe(false)
+    expect(Object.keys(w.last!.confirmations)).toEqual([]) // 99 rows: no declaration
     await grow(w, 1, planted)
-    p = posteriorOf(await build(w))
-    expect(p.page).toMatchObject({ eligibleLives: 145, rowsSinceDeclaration: 100 })
-    expect(triggered(p.incumbent && { ...p.incumbent, pBeatsCentre: 1 }, p.centre.genomeSha, p.page.rowsSinceDeclaration, false)).toBe(p.incumbent!.genomeSha !== p.centre.genomeSha)
+    const out = await build(w)
+    p = posteriorOf(out)
+    // The 100th search-era row: this incumbent triggers, so the build declares confirmation 0 at 100 rows (Task 9),
+    // and rows since the declaration start again from 0.
+    expect(p.incumbent!.pBeatsCentre).toBeGreaterThanOrEqual(0.95)
+    expect(Object.keys(out.confirmations)).toEqual(["data/meta/confirmations/0.json"])
+    expect(parseConfirmation(out.confirmations["data/meta/confirmations/0.json"]!).trigger.rowsAtDeclaration).toBe(100)
+    expect(p.page).toMatchObject({ eligibleLives: 145, rowsSinceDeclaration: 0 })
   }, 240_000)
 
   it("a calibration restart with another design flags old calibrate lives the same way with and without the cache", async () => {
@@ -885,5 +892,15 @@ describe("meta-cli (a checkout of main in a temp git repo)", () => {
     expect(Object.keys(parseVerified(inWork(VERIFIED))!.lives)).toEqual([offline.learnerId, calib.learnerId].sort())
     expect(inWork("data/meta/posterior-index.jsonl").split("\n").filter(Boolean)).toHaveLength(1)
     expect(cli()).toBe("changed=false")
+  }, 60_000)
+
+  it("refuses confirmation files with a gap in their ids (1.json without 0.json), writing nothing", () => {
+    fx.commitMain({
+      "config/evaluation.json": readFileSync(join(REPO, "config/evaluation.json"), "utf8"),
+      "knowledge/genome.json": readFileSync(join(REPO, "knowledge/genome.json"), "utf8"),
+      "data/meta/confirmations/1.json": "{}\n",
+    })
+    expect(cli).toThrow(/ids must be 0\.\.0 with no gaps \(data\/meta\/confirmations\/0\.json is missing\)/)
+    expect(existsSync(join(fx.work, POSTERIOR))).toBe(false)
   }, 60_000)
 })

@@ -172,6 +172,46 @@ Built in `tools/gate/search.ts` and `tools/gate/meta.ts` (Task 8).
 
 `keptCalibration` refuses a `calibration.json` whose outcome is not the one its looks give, so a hand-edited "signal" cannot switch the search on. Every look must be an eligible output of the pinned `config.signal`, scored 0 or 1. `signal` needs the last look scored 1 and every earlier one 0; `flat` needs all 3 looks, all 0; `pending` needs fewer than 3 looks, all 0. The gate then stops and writes nothing.
 
+### Confirmation timing [agent; within spec §4.5; the 48 h is a guess]
+
+Built in `tools/gate/confirm.ts` (Task 9), called by `buildMeta` in mode `search` only.
+
+- **Declaration.** On `triggered`, with no confirmation open and none decided in the same build, the gate writes `data/meta/confirmations/<c>.json` (c = the number of earlier files, from 0): the incumbent's genome as the candidate, the current centre, `seedBase` 10,000 + 1,000c, targets 24/24/60, the pinned `confirm` and `search` ids, and the trigger's inputs (pBeatsCentre, the incumbent's mean, `rowsAtDeclaration`, the model's sha). The same build serves it in the posterior, so the declaration and its first serving land in one gate commit.
+- **Rows since declaration** are the search-era rows (Rows and the fit) minus the last declaration's `rowsAtDeclaration`. The next trigger needs 100 more.
+- **No declaration in a deciding build** [agent's call]. A build that appends a result declares nothing, so a promotion and the next declaration never share a commit; the next build may declare.
+- **The deadline** is `declaredAt` + 21 days [guess, spec §4.5], both the build's `builtAt`. A confirmation is decided at the deadline only when `builtAt` is strictly later. These times live only in the confirmation files (and the index line), never in `posterior.json`.
+- **The clock.** `builtAt` is meta-cli's one clock read, passed in. It also decides which running lives hold a slot, so a posterior's `need` can change with time alone.
+- **Serving `need`.** need = max(0, target − counted − inFlight) per arm:
+  - **counted** is the counted lives (complete or failed, as `confirm-fisher@1` counts them) among the lives `armGroups` keeps;
+  - **inFlight** is the arm's lives, one per evalSeed, that are not final, have no budget checkup, and whose newest file was written within 48 h of `builtAt` [guess].
+
+  This bounds overshoot when many tabs are born at once; extras beyond the target are still dropped by rule.
+- **The centre in force.** `parsePosterior` refuses a v2 file whose `confirmation.centre` is not its `centre` (sha and values). A tab's centre-arm life therefore always runs the tab's centre. Suppose `knowledge/genome.json` changes by hand while a confirmation is open. The gate then decides that confirmation at once as `incomplete` (the output is still recorded) and never promotes it, because its comparison was against a centre no longer in force [agent's call].
+- **The files' checks.** `meta-cli` reads `data/meta/confirmations/` as exactly `0.json` … `(n−1).json`, each with its own id, or it stops. `parseConfirmation` is strict, and only the last file may be open. An open confirmation must match the pins, the space's schema and its genomes' shas, or the gate stops: a pin or schema change is a recorded decision.
+
+### Decision outcomes [agent; within spec §4.5, decision 0018]
+
+- **The groups** (`armGroups`). First, per (arm, evalSeed), the lowest learnerId (the arm is `armOfSeed`'s). Then, per arm in learnerId order, the lives up to and including the target-th counted one. Lives among those that are not counted (abandoned, or still running) are passed too [agent's call]. `confirm-fisher@1` excludes them, and reports their abandonment rates, which it flags when the arms differ (spec §2.5).
+- **When.** Once counted reaches the target in every arm, or once `builtAt` is past the deadline. The gate runs `getEvaluator(config.confirm).evaluateCohort(groups, refs, cohortContext(config))`, resolved through the registry (never imported), and appends `result` once:
+  - full arms, score 1 → `pass`;
+  - full arms, score 0 → `fail`;
+  - full arms, output not eligible → `ineligible`;
+  - the deadline first → `incomplete`, with the output still recorded.
+- **What is recorded.** `result` = { outcome, decidedAt (`builtAt`), sourceCommit, the evaluator's output, the learnerIds passed per arm }.
+- **Never changed again.** A file with a result is never rewritten. Fail, incomplete and ineligible change nothing else, and they stay on the record (invariant 7).
+- **Lives never mix.** Confirmation lives are never rows, and rows are never confirmation lives.
+
+### Promotion record [agent; within spec §4.5]
+
+On a pass, the same build does four things:
+
+- **`knowledge/genome.json`.** It returns the new file: `serialise({ schemaVersion: 1, genomeSchema, values: candidate, provenance: { source: "promotion", confirmation, decision: 0018, promotedAt, fisher, mannWhitneyP, lives } })`. The file must read back through `parseCentre` as the candidate, or the build throws.
+- **`promotions.jsonl`.** One line: `{ confirmation, genomeSha, previous, promotedAt, sourceCommit }`.
+- **The posterior.** It is built for the new centre, with its incumbent recomputed against it. `page.lastPromotion` is the last pass's `decidedAt`, kept by every later build.
+- **Running lives** keep their birth genome, and their rows stay eligible: they verify against the centre in force at their birth.
+
+`meta-cli` writes the files and appends the line. Committing them is Task 10's (`commit-meta.ts`). `knowledge/genome.json` is non-null only in the build that appends a passing result, so the two always share a commit.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

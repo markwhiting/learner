@@ -144,6 +144,11 @@ const isIncumbent = (v: unknown, d: number): v is Incumbent =>
 
 const isArmCounts = (v: unknown): v is Record<ArmName, number> => isObj(v) && exactKeys(v, ARMS) && ARMS.every(a => isCount(v[a]))
 
+const sameShaGenome = (a: { genomeSha: string; values: Genome }, b: { genomeSha: string; values: Genome }): boolean => {
+  const ka = Object.keys(a.values), kb = Object.keys(b.values)
+  return a.genomeSha === b.genomeSha && ka.length === kb.length && ka.every(k => Object.hasOwn(b.values, k) && a.values[k] === b.values[k])
+}
+
 function isServedConfirmation(v: unknown): v is ServedConfirmation {
   if (!isObj(v) || !exactKeys(v, ["id", "seedBase", "candidate", "centre", "target", "counted", "need"])) return false
   if (!isCount(v.id) || !Number.isSafeInteger(v.seedBase) || v.seedBase !== 10_000 + 1_000 * v.id) return false
@@ -164,6 +169,9 @@ function parseV2(v: Obj): Posterior | null {
   const gpu = models.gpu as GpModel | undefined
   if (v.incumbent !== null && (gpu === undefined || !isIncumbent(v.incumbent, gpu.genes.length))) return null
   if (v.confirmation !== null && !isServedConfirmation(v.confirmation)) return null
+  // The centre arm runs the confirmation's centre: it must be the centre this posterior was built for (the gate serves
+  // a confirmation only while its centre is in force), so a tab's centre-arm life always runs the tab's centre.
+  if (v.confirmation !== null && !sameShaGenome(v.confirmation.centre, v.centre as { genomeSha: string; values: Genome })) return null
 
   // The mode guard: the search's state exists only in mode search.
   if (v.mode !== "search" && (gpu !== undefined || v.incumbent !== null || v.confirmation !== null)) return null

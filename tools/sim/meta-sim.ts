@@ -32,10 +32,15 @@ import { bornLife, noise, planted, sessionSettings, useRunsDir, type Born, type 
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url))
 const TSX = join(REPO, "node_modules/.bin/tsx")
-/** Searched genes in the quick run's reduced space. */
+/**
+ * Searched genes in the quick run's reduced space. It keeps main's genome schemaVersion: the sim relies on the gate
+ * not guarding "space content changed without a schemaVersion bump" (the real repo would record a new schema).
+ */
 export const QUICK_D = 3
 /** Rows per search batch (one merge, one gate run), and the most search rows before a declaration must have come. */
 const SEARCH_BATCH = 50, SEARCH_CAP = 400
+/** Search births merged with each confirmation batch (the rest of the non-confirm births are not merged). */
+const OTHERS_PER_BATCH = 20
 /** The most calibration lives before the signal check must have answered (its looks are at 30, 45 and 60). */
 const CALIBRATION_CAP = 60
 const BOT = "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
@@ -238,7 +243,7 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
   }
 
   // 4. Confirm: confirmation lives of all three arms, as tabs served the confirmation draw them (each birth in
-  // learnerId order, kept while its arm wants more, one per evalSeed; other births are not merged). The candidate's
+  // learnerId order, kept while its arm wants more, one per evalSeed; the first OTHERS_PER_BATCH search births drawn alongside are merged too, the rest not). The candidate's
   // lives sustain M2 above the centre's (a planted advantage); a newborn-arm life is one frozen file.
   const c0 = parseConfirmation(mainText("data/meta/confirmations/0.json"))
   const centreBefore = centreNow()
@@ -248,12 +253,19 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
     const sha = await sha256Hex(new TextEncoder().encode(text))
     const centreSha = await genomeSha(space.schemaVersion, centreBefore)
     const made: Record<ArmName, LogFileV2[][]> = { candidate: [], centre: [], newborn: [] }
+    const others: LogFileV2[][] = []
+    const rowsBefore = p.page.eligibleLives
     const left = () => (["candidate", "centre", "newborn"] as const).some(a => made[a].length < want[a])
     for (let tries = 0; left(); tries++) {
       if (tries > 20_000) fail(`${name}: 20,000 births did not fill the arms`)
       const k = nextK++
       const d = birthDraw({ learnerId: lid(0x10000 + k), space, centre: centreBefore, centreSha, widthsClass: "gpu", posterior: p, posteriorSha: sha, conditioned: conditionedFor(sha, p) })
-      if (d.method !== "confirm") continue
+      if (d.method !== "confirm") {
+        // A search birth under the confirmation-bearing posterior (ts through the served model, or uniform): an
+        // ordinary life, merged with the arms, so it is verified and becomes a row like any other.
+        if (others.length < OTHERS_PER_BATCH) others.push((await birth(text, byGenome(space), { k, centre: centreBefore })).files)
+        continue
+      }
       const arm = d.confirmation!.arm
       if (made[arm].length >= want[arm] || seeds.has(d.evalSeed!)) continue
       seeds.add(d.evalSeed!)
@@ -270,8 +282,14 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
       }
       made.newborn.push([frozen])
     }
-    await merge(name, [...made.candidate, ...made.centre, ...made.newborn])
-    return gate(name)
+    const kinds = new Set(others.map(f => f[0]!.meta?.method))
+    if (others.length === 0 || [...kinds].some(m => m !== "ts" && m !== "uniform")) fail(`${name}: search births alongside the arms: ${[...kinds].join(", ") || "none"}`)
+    await merge(name, [...made.candidate, ...made.centre, ...made.newborn, ...others])
+    const stage = await gate(name)
+    // Confirmation lives are never rows; the search births alongside them are.
+    const rows = posteriorNow().p.page.eligibleLives
+    if (rows !== rowsBefore + others.length) fail(`${name}: ${rows} rows, expected ${rowsBefore} + ${others.length} search births`)
+    return stage
   }
   const half = (n: number) => Math.floor(n / 2)
   const first = await confirmBatch("confirm 1", { candidate: half(CONFIRM_TARGET.candidate), centre: half(CONFIRM_TARGET.centre), newborn: half(CONFIRM_TARGET.newborn) })

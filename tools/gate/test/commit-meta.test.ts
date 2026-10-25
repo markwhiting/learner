@@ -102,7 +102,8 @@ describe("metaPathErrors", () => {
   })
 })
 
-describe("commitMeta", () => {
+// Real git against a bare origin (each commitMain also syncs the author clone): room for a loaded parallel suite.
+describe("commitMeta", { timeout: 30_000 }, () => {
   it("only data/meta files staged → committed and pushed", async () => {
     const t = setup()
     const before = t.origin("rev-parse", "main")

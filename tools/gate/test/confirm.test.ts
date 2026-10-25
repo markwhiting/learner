@@ -5,7 +5,7 @@ import { NEWBORN_LEVELS, type LogFileV2 } from "@blanktab/harness/log"
 import { birthDraw, parseCentre, parsePosterior, toUnit, type ArmName, type Genome, type Posterior } from "@blanktab/meta"
 import { checkup, confirmMeta, endedLife, lid, scoredLife } from "../../../packages/evaluators/test/fixtures/build.ts"
 import {
-  armGroups, CONFIRM_TARGET, confirmationPath, DEADLINE_DAYS, deadlineOf, IN_FLIGHT_HOURS, parseConfirmation, type ConfirmationFile, type VerifiedConfirmLife,
+  armGroups, CONFIRM_TARGET, confirmationPath, DEADLINE_DAYS, deadlineOf, FORWARD_SKEW_MINUTES, IN_FLIGHT_HOURS, parseConfirmation, type ConfirmationFile, type VerifiedConfirmLife,
 } from "../confirm.ts"
 import { buildMeta, type MetaFiles, type MetaInput } from "../meta.ts"
 import { incumbentFor } from "../search.ts"
@@ -184,6 +184,52 @@ describe("confirmations (spec §4.5; plan 05b Task 9)", () => {
     const f1 = JSON.parse(readFileSync(join(runsDir(), running.candidate[0]!, "1.json"), "utf8")) as LogFileV2
     put({ ...f1, writtenAt: at(48 * HOUR) })
     expect(posteriorOf(await build(w, { builtAt: at(49 * HOUR) })).confirmation!.need.candidate).toBe(22)
+  }, 240_000)
+
+  it("a running life written more than 10 min after builtAt holds no slot (a fast clock cannot keep one); 10 min ahead still does", async () => {
+    const { w, Q } = await declaredWorld()
+    expect(FORWARD_SKEW_MINUTES).toBe(10)
+    const ahead = await confirmLives(Q, { candidate: 1 }, { advantage: true, shape: () => "running", writtenAt: at(10 * 60_000 + 1) })
+    const out = await build(w)
+    expect(diagOf(out).confirmation!.inFlight.candidate).toBe(0)
+    expect(posteriorOf(out).confirmation!.need.candidate).toBe(24)
+    const f1 = JSON.parse(readFileSync(join(runsDir(), ahead.candidate[0]!, "1.json"), "utf8")) as LogFileV2
+    put({ ...f1, writtenAt: at(10 * 60_000) })
+    const skewed = await build(w)
+    expect(diagOf(skewed).confirmation!.inFlight.candidate).toBe(1)
+    expect(posteriorOf(skewed).confirmation!.need.candidate).toBe(23)
+  }, 240_000)
+
+  it("the centre moved by hand (a gp gene) while confirmation 0 is open → decided at once: incomplete, no genome file, no confirmation served", async () => {
+    const { w, Q } = await declaredWorld()
+    await confirmLives(Q, FULL, { advantage: true }) // full arms that would pass under the declared centre
+    const moved = { ...CENTRE, lr: 1e-3 }
+    w.centres.set(await shaOfGenome(moved), moved)
+    const out = await build(w, { centre: moved })
+    const r = parseConfirmation(out.confirmations[C0]!).result!
+    expect(r).toMatchObject({ outcome: "incomplete", decidedAt: BUILT_AT, output: { evaluator: "confirm-fisher", score: 1 } }) // it would have passed
+    expect(out["knowledge/genome.json"]).toBeNull()
+    expect(out.promotionLine).toBeNull()
+    const p = posteriorOf(out)
+    expect(p.confirmation).toBeNull()
+    expect(p.centre).toEqual({ genomeSha: await shaOfGenome(moved), values: moved })
+    expect(p.page.lastPromotion).toBeNull()
+  }, 240_000)
+
+  it("the gate refuses tampered confirmation files: a pin or genome-schema change, a genomeSha mismatch, an open file before a later one, an id out of place", async () => {
+    const { w } = await declaredWorld()
+    const c0 = w.previous.confirmations[0]!
+    const tried = (confirmations: ConfirmationFile[]) => build(w, { previous: { ...w.previous, confirmations } })
+    await expect(tried([{ ...c0, confirm: "confirm-fisher@2" }])).rejects.toThrow("data/meta/confirmations/0.json: was declared for confirm-fisher@2, but confirm-fisher@1 is pinned")
+    await expect(tried([{ ...c0, search: "search-composite@2" }])).rejects.toThrow("data/meta/confirmations/0.json: was declared for search evaluator search-composite@2, but search-composite@1 is pinned")
+    await expect(tried([{ ...c0, genomeSchema: 2 }])).rejects.toThrow("data/meta/confirmations/0.json: was declared for genome schema 2, but the space is 1")
+    await expect(tried([{ ...c0, candidate: { ...c0.candidate, genomeSha: "9".repeat(64) } }])).rejects.toThrow("data/meta/confirmations/0.json: the candidate's genomeSha does not match its values")
+    await expect(tried([{ ...c0, centre: { ...c0.centre, values: { ...c0.centre.values, lr: 1e-3 } } }])).rejects.toThrow("data/meta/confirmations/0.json: the centre's genomeSha does not match its values")
+    const c1 = { ...c0, id: 1, seedBase: 11_000 }
+    await expect(tried([c0, c1])).rejects.toThrow("data/meta/confirmations/0.json: open while a later confirmation exists")
+    await expect(tried([c1])).rejects.toThrow("data/meta/confirmations/0.json: id 1, expected 0 (ids are 0..n-1 with no gaps)")
+    // The untampered history still builds.
+    expect((await tried([c0])).confirmations).toEqual({})
   }, 240_000)
 
   it("full arms with a planted candidate advantage → pass: genome.json is the candidate (parseCentre ok), promotions.jsonl has one line, the posterior's centre is the candidate and lastPromotion is set", async () => {

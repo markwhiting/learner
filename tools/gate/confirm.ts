@@ -18,6 +18,11 @@ import { serialise } from "./serialise.ts"
 export const CONFIRM_TARGET = { candidate: 24, centre: 24, newborn: 60 } as const
 /** Days from declaration to the deadline [guess, spec §4.5]; the hours a silent running life keeps its slot [guess]. */
 export const DEADLINE_DAYS = 21, IN_FLIGHT_HOURS = 48
+/**
+ * The most a running life's newest file may be written after builtAt and still hold a slot [guess]: tolerated clock
+ * skew. A file "written" further ahead (a fast or forged clock) holds none, so it cannot keep a slot until the deadline.
+ */
+export const FORWARD_SKEW_MINUTES = 10
 export const confirmationPath = (c: number): string => `data/meta/confirmations/${c}.json`
 export const PROMOTIONS_PATH = "data/meta/promotions.jsonl", GENOME_PATH = "knowledge/genome.json"
 /** The decision a promotion cites. */
@@ -43,7 +48,7 @@ const OUTCOMES: readonly unknown[] = ["pass", "fail", "incomplete", "ineligible"
 const HEX64 = /^[0-9a-f]{64}$/
 /** The form Date#toISOString writes (meta-cli's builtAt). */
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
-const DAY_MS = 86_400_000, HOUR_MS = 3_600_000
+const DAY_MS = 86_400_000, HOUR_MS = 3_600_000, MINUTE_MS = 60_000
 const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v)
 const exactKeys = (v: Record<string, unknown>, keys: readonly string[]) => {
@@ -155,7 +160,10 @@ export function armGroups(lives: readonly VerifiedConfirmLife[], c: Confirmation
   return { candidate: k.candidate.kept.map(l => l.life), centre: k.centre.kept.map(l => l.life), newborn: k.newborn.kept.map(l => l.life) }
 }
 
-/** Per arm, the counted lives armGroups keeps, and the running lives (never counted) that hold a slot: newest file written within IN_FLIGHT_HOURS of builtAt. */
+/**
+ * Per arm, the counted lives armGroups keeps, and the running lives (never counted) that hold a slot: newest file
+ * written at most IN_FLIGHT_HOURS before builtAt and at most FORWARD_SKEW_MINUTES after it.
+ */
 function armCounts(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, builtAt: string): { counted: Record<ArmName, number>; inFlight: Record<ArmName, number> } {
   const k = keptByArm(lives, c), arms = byArm(lives, c)
   const now = Date.parse(builtAt)
@@ -165,7 +173,8 @@ function armCounts(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, b
     for (const l of arms[arm]) {
       if (standing(l) !== "running") continue
       const newest = l.life.files[l.life.files.length - 1]!
-      if (now - Date.parse(newest.writtenAt) <= IN_FLIGHT_HOURS * HOUR_MS) inFlight[arm]++
+      const age = now - Date.parse(newest.writtenAt)
+      if (age >= -FORWARD_SKEW_MINUTES * MINUTE_MS && age <= IN_FLIGHT_HOURS * HOUR_MS) inFlight[arm]++
     }
   }
   return { counted, inFlight }

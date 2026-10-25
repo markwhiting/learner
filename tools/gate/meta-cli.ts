@@ -29,12 +29,15 @@ const calibrationText = read(CALIBRATION_PATH)
 const posteriorText = read(POSTERIOR_PATH)
 const verifiedText = read(VERIFIED_PATH)
 // data/meta/confirmations/<c>.json: exactly 0.json .. (n−1).json, each its own id, or the gate stops (writing nothing).
-const confirmationsDir = join(root, dirname(confirmationPath(0)))
-const names = existsSync(confirmationsDir) ? readdirSync(confirmationsDir).sort() : []
-const confirmations: ConfirmationFile[] = names.map((_, i) => {
+// Nothing else belongs in that directory: a stray entry is named in the error, never skipped silently.
+const confirmationsDir = dirname(confirmationPath(0))
+const entries = existsSync(join(root, confirmationsDir)) ? readdirSync(join(root, confirmationsDir)).sort() : []
+const stray = entries.filter(n => !/^(0|[1-9][0-9]*)\.json$/.test(n))
+if (stray.length > 0) throw new Error(`${confirmationsDir}: stray entries ${stray.map(n => JSON.stringify(n)).join(", ")} (only <c>.json confirmation files belong there)`)
+const confirmations: ConfirmationFile[] = entries.map((_, i) => {
   const rel = confirmationPath(i)
   const text = read(rel)
-  if (text === null) throw new Error(`${dirname(rel)}: holds ${names.join(", ")}; ids must be 0..${names.length - 1} with no gaps (${rel} is missing)`)
+  if (text === null) throw new Error(`${confirmationsDir}: holds ${entries.join(", ")}; ids must be 0..${entries.length - 1} with no gaps (${rel} is missing)`)
   const c = parseConfirmation(text)
   if (c.id !== i) throw new Error(`${rel}: id ${c.id}, expected ${i}`)
   return c

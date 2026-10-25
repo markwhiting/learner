@@ -183,11 +183,11 @@ Built in `tools/gate/confirm.ts` (Task 9), called by `buildMeta` in mode `search
 - **The clock.** `builtAt` is meta-cli's one clock read, passed in. It also decides which running lives hold a slot, so a posterior's `need` can change with time alone.
 - **Serving `need`.** need = max(0, target − counted − inFlight) per arm:
   - **counted** is the counted lives (complete or failed, as `confirm-fisher@1` counts them) among the lives `armGroups` keeps;
-  - **inFlight** is the arm's lives, one per evalSeed, that are not final, have no budget checkup, and whose newest file was written within 48 h of `builtAt` [guess].
+  - **inFlight** is the arm's lives, one per evalSeed, that are not final, have no budget checkup, and whose newest file was written at most 48 h before `builtAt` [guess] and at most 10 minutes after it (`FORWARD_SKEW_MINUTES`, tolerated clock skew [guess]). A file stamped further ahead, from a fast or forged clock, holds no slot, so it cannot keep one until the deadline.
 
   This bounds overshoot when many tabs are born at once; extras beyond the target are still dropped by rule.
 - **The centre in force.** `parsePosterior` refuses a v2 file whose `confirmation.centre` is not its `centre` (sha and values). A tab's centre-arm life therefore always runs the tab's centre. Suppose `knowledge/genome.json` changes by hand while a confirmation is open. The gate then decides that confirmation at once as `incomplete` (the output is still recorded) and never promotes it, because its comparison was against a centre no longer in force [agent's call].
-- **The files' checks.** `meta-cli` reads `data/meta/confirmations/` as exactly `0.json` … `(n−1).json`, each with its own id, or it stops. `parseConfirmation` is strict, and only the last file may be open. An open confirmation must match the pins, the space's schema and its genomes' shas, or the gate stops: a pin or schema change is a recorded decision.
+- **The files' checks.** `meta-cli` reads `data/meta/confirmations/` as exactly `0.json` … `(n−1).json`, each with its own id, or it stops. Any other entry in that directory is refused by name, never skipped. `parseConfirmation` is strict, and only the last file may be open. An open confirmation must match the pins, the space's schema and its genomes' shas, or the gate stops: a pin or schema change is a recorded decision.
 
 ### Decision outcomes [agent; within spec §4.5, decision 0018]
 
@@ -211,6 +211,11 @@ On a pass, the same build does four things:
 - **Running lives** keep their birth genome, and their rows stay eligible: they verify against the centre in force at their birth.
 
 `meta-cli` writes the files and appends the line. Committing them is Task 10's (`commit-meta.ts`). `knowledge/genome.json` is non-null only in the build that appends a passing result, so the two always share a commit.
+
+### Open items from Task 9 [agent's notes; nothing built]
+
+- **Contributors can steer confirmation lives** (a known v1 limit; dishonest contributors are a non-goal, spec §7.4). A tab can draw learnerIds offline until it gets an arm and seed it likes, run them, and submit only the lives it wants. One more effect follows. A low-learnerId life on a seed, abandoned on purpose, displaces an honest complete life on the same seed, because only the lowest learnerId per (arm, evalSeed) counts. No ordering rule fixes this: every input to the draw is public. A real fix needs seeds the contributor cannot predict before committing to a life (for example, a gate-issued nonce). That is a later decision.
+- **Repeated confirmations of one incumbent multiply the false-promotion risk.** Each attempt is a fresh test at α 0.05. A candidate that fails or runs out of time can be declared again once 100 more rows arrive, so k attempts give a chance of a false pass of up to about 1 − 0.95^k. **Proposed default for later (not built):** at most 3 confirmations per candidate genomeSha. A 4th trigger on the same genome would be recorded but not declared. An alternative is alpha spending across attempts (for example α/2, α/4, …). Either needs a recorded decision; the cap is simpler to audit.
 
 ## Alternatives considered
 

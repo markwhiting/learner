@@ -903,4 +903,15 @@ describe("meta-cli (a checkout of main in a temp git repo)", () => {
     expect(cli).toThrow(/ids must be 0\.\.0 with no gaps \(data\/meta\/confirmations\/0\.json is missing\)/)
     expect(existsSync(join(fx.work, POSTERIOR))).toBe(false)
   }, 60_000)
+
+  it("refuses a stray entry in data/meta/confirmations (anything but <c>.json), naming it", () => {
+    fx.commitMain({
+      "config/evaluation.json": readFileSync(join(REPO, "config/evaluation.json"), "utf8"),
+      "knowledge/genome.json": readFileSync(join(REPO, "knowledge/genome.json"), "utf8"),
+      "data/meta/confirmations/notes.txt": "x\n",
+      "data/meta/confirmations/01.json": "{}\n",
+    })
+    expect(cli).toThrow('data/meta/confirmations: stray entries "01.json", "notes.txt" (only <c>.json confirmation files belong there)')
+    expect(existsSync(join(fx.work, POSTERIOR))).toBe(false)
+  }, 60_000)
 })

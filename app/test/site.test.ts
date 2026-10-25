@@ -67,7 +67,7 @@ describe("historyRows recipe and score (plan 05b, Task 11)", () => {
     expect(at({ recipe: { role: "search", method: "uniform" }, evals }, "missing@1")).toEqual(["random", "—"])
     expect(at({ recipe: { role: "search", method: "uniform" }, evals })).toEqual(["random", "—"])
     const words = (["centre", "calibrate", "uniform", "ts", "confirm", "newborn", "legacy"] as const).map(method => at({ recipe: { role: "search", method } })[0])
-    expect(words).toEqual(["current", "calibration", "random", "meta-learner", "confirmation", "newborn", "legacy"])
+    expect(words).toEqual(["centre", "calibration", "random", "meta-learner", "confirmation", "newborn", "legacy"])
     expect(at({})).toEqual(["—", "—"])
   })
 })

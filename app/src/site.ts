@@ -34,9 +34,12 @@ export interface HistoryRow {
   score: string
 }
 
-/** The HISTORY table's word for each draw method (agent's call: short, plain words; the full line is the LEARNER tab's). */
+/**
+ * The HISTORY table's word for each draw method (agent's call: short, plain words; the full line is the LEARNER tab's).
+ * A centre life ran the centre of its own time, which a promotion may since have replaced: "centre", never "current".
+ */
 export const RECIPE_WORDS: Readonly<Record<MetaMethod, string>> = {
-  centre: "current", calibrate: "calibration", uniform: "random", ts: "meta-learner", confirm: "confirmation", newborn: "newborn", legacy: "legacy",
+  centre: "centre", calibrate: "calibration", uniform: "random", ts: "meta-learner", confirm: "confirmation", newborn: "newborn", legacy: "legacy",
 }
 
 /** The HISTORY table's columns in order (the <th> texts of index.html); the numeric ones are right-aligned. Milestones is text. */

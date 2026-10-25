@@ -11,6 +11,8 @@ import { NEWBORN_LEVELS, parseLogFile } from "@blanktab/harness/log"
 import { spacesOf, validateSessionPr } from "../../tools/gate/validate"
 import { CENTRE, CENTRE_SHA, GENOME_JSON, SPACE, SPACE_JSON, V2_SEARCH_TEXT, posteriorText, v2SearchText } from "../../app/test/posteriors"
 import { fmt } from "../../app/src/site"
+import { recipeText } from "../../app/src/recipe"
+import type { MetaBlock } from "@blanktab/harness/log"
 
 const ID_RE = /lrn_[0-9a-f]{16}/
 const sha = (s: string) => createHash("sha256").update(s).digest("hex")
@@ -426,10 +428,34 @@ test("a confirmation in the posterior and a learnerId whose draw is the newborn 
     const req = indexedDB.open("blanktab")
     req.onsuccess = () => { const g = req.result.transaction("contribution").objectStore("contribution").get(i); g.onsuccess = () => res(g.result ?? null) }
   }), learnerId)
-  expect((contribution as { localOnly?: boolean } | null)?.localOnly ?? false).toBe(false)
-  await expect(page.getByTestId("learner-id")).toHaveText(ID_RE)
-  await expect(page.getByTestId("recipe-text")).not.toHaveText("drawing…", { timeout: 30_000 })
+  // No contribution record at all: the queue's default for a learner, { localOnly: false }, so the contributor sends it
+  // (a reference newborn's is written localOnly: true before its file, as the ?newborns test checks).
+  expect(contribution).toBeNull()
+  // The page's next life: its own draw under the same posterior, in the LEARNER tab's words.
+  const next = await learnerIdOf(page)
+  expect(next).not.toBe(learnerId)
+  const nd = gpuDraw(next, V2_SEARCH_TEXT)
+  await expect(page.getByTestId("recipe-text")).toHaveText(recipeText(nd as unknown as MetaBlock, parsePosterior(V2_SEARCH_TEXT)), { timeout: 30_000 })
   expect(errors).toEqual([])
+})
+
+test("new code while a confirmation newborn runs: the forced checkpoint is answered at once (not saved) and the page reloads within seconds, not CHECKPOINT_WAIT_MS", async ({ page }) => {
+  test.setTimeout(120_000)
+  const learnerId = POOL.find(i => gpuDraw(i, V2_SEARCH_TEXT).confirmation?.arm === "newborn")!
+  const { files } = await serve(page, { "posterior.json": V2_SEARCH_TEXT })
+  await pin(page, learnerId)
+  await page.goto(`${GPU_CLASS}&testPollMs=500&testReloadJitterMs=300`)
+  await expect(page.getByTestId("status")).toHaveText(/^checking a confirmation newborn \(seed [\d,]+\) on its fresh worlds$/, { timeout: 30_000 })
+  let navigated = false
+  page.on("framenavigated", f => { if (f === page.mainFrame()) navigated = true })
+  files["manifest.json"] = { ...(files["manifest.json"] as object), codeSha: "b".repeat(40) }
+  const t0 = Date.now()
+  await expect.poll(() => navigated, { timeout: 20_000 }).toBe(true)
+  expect(Date.now() - t0).toBeLessThan(20_000) // the page's own wait is 60 s
+  await page.waitForLoadState("load")
+  // Nothing of the newborn was queued: it runs again from its start on the reloaded page.
+  expect(await filesOf(page, learnerId)).toEqual([])
+  await expect(page.getByTestId("learner-id")).toHaveText(learnerId)
 })
 
 test("the committed calibrate posterior: the page shows 'Calibrating: …' and the first file's method is calibrate, uniform or centre", async ({ page }) => {

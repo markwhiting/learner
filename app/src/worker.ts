@@ -16,6 +16,7 @@ import {
 } from "@blanktab/harness/session"
 import { hasCheckpoint } from "@blanktab/harness/checkpoint"
 import { chooseBackend, type Chosen } from "./backend"
+import { checkpointAnswers } from "./checkpoints"
 import { birthFromDraw, drawContextOf, sessionMetaOf, withoutPosterior, type Birth, type DrawContext } from "./birth"
 import { frameGate } from "./frames"
 import { isRecoverable, liveOnBestBackend, resumeStatus, seedsOf, type Restore, type RunLife } from "./life"
@@ -35,6 +36,8 @@ const frames = frameGate(FRAME_MS)
 const RATE_WINDOW_MS = 3000
 /** The page's refreshed knowledge and forced checkpoints, for whichever run of the life is current (it outlives GPU restores). */
 const inbox = new SessionInbox()
+/** Forced checkpoints: through the inbox while a life runs, answered at once (not saved) while a confirmation newborn does. */
+const checkpoints = checkpointAnswers(inbox, m => post(m))
 /** The short-lives switch as the session gets it: a life resumed past its budget needs the page's confirm (shortlives.ts). */
 let shortLives: ReturnType<typeof shortLivesGate> | undefined
 
@@ -310,6 +313,7 @@ async function start(m: StartMessage): Promise<void> {
     post({ type: "confirmNewborn", learnerId: id, evalSeed, done: false })
     post({ type: "meta", meta, lastLevel: 0 })
     post({ type: "status", message: `checking a confirmation newborn (seed ${evalSeed.toLocaleString("en-US")}) on its fresh worlds` })
+    checkpoints.frozenStarts()
     const file = await runNewborn({
       learnerId: id, who: { kind: "confirm", evalSeed, confirmationId: confirmation.id, drawSeed, posteriorSha },
       codeSha: cfg.codeSha, knowledgeSha: cfg.knowledgeSha, hostSig: { ...cfg.hostSig, webgpu: chosen.kind === "webgpu" },
@@ -321,7 +325,7 @@ async function start(m: StartMessage): Promise<void> {
         return l
       },
       checkupCanvas: () => new OffscreenCanvas(WORLD.width, WORLD.height), idb: indexedDB, now: () => new Date(),
-    })
+    }).finally(() => checkpoints.frozenEnds())
     post({ type: "checkups", results: file.checkups ?? [], reset: true })
     post({ type: "queued", seq: file.seq, steps: 0, cu: 0, final: true })
     post({ type: "confirmNewborn", learnerId: id, evalSeed, done: true })
@@ -373,7 +377,7 @@ scope.onmessage = e => {
   const m = e.data
   if (m.type === "visibility") { frames.setHidden(m.hidden); return }
   if (m.type === "knowledge") { inbox.setKnowledge(m.manifest); return }
-  if (m.type === "checkpointNow") { void inbox.checkpointNow({ halt: m.halt }).then(saved => post({ type: "checkpointed", id: m.id, saved })); return }
+  if (m.type === "checkpointNow") { checkpoints.request(m); return }
   if (m.type === "shortLives") { shortLives?.switched(m.on, m.consent ?? false); return }
   if (m.type !== "start" || started) return
   started = true

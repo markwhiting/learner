@@ -562,8 +562,12 @@ export async function runSession(cfg: SessionConfig, deps: SessionDeps): Promise
     // file. Its checkpoints keep it, so a later run whose settings agree writes it again.
     const meta: MetaBlock | undefined = block && cp?.meta && cfg.meta ? resumedBlockOrNone(cfg.meta.space, block, flatSettings()) : block
     if (block && !meta) metaOff = true
-    /** The checkup variants (variantSeedOf): a confirmation life's confirmSeed, a panel's panelSeed, else checkupSeed. */
-    const variantSeed = variantSeedOf(meta)
+    /**
+     * The checkup variants (variantSeedOf): a confirmation life's confirmSeed, a panel's panelSeed, else checkupSeed.
+     * From the life's block, not what this run writes: a run whose files go without the block (above) is still that
+     * life, on its own worlds.
+     */
+    const variantSeed = variantSeedOf(block)
     /** The room the previous frame was seen in (undefined: no previous frame this run, or a restore since). */
     let prevRoom: string | undefined
     /**

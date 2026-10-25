@@ -2081,6 +2081,35 @@ describe("session v2", { timeout: 60_000 }, () => {
         await expect(growM(new IDBFactory(), { cfg: { seed: 10_006, lifetimeCU: 140, meta: await metaOf({ birth: nb }) } })).rejects.toThrow(/arm newborn/)
       })
 
+      it("final review: a resumed confirm life whose run goes without its block (metaOff) still meets its confirmSeed variants", async () => {
+        const evalSeed = 10_004
+        const birth: MetaBlock = {
+          ...(await birthBlock(ID)), role: "confirm", method: "confirm", drawSeed: 99, posteriorSha: "cd".repeat(32),
+          evalPanel: null, evalSeed, confirmation: { id: 0, arm: "candidate" },
+        }
+        const a = await metaOf({ birth })
+        const idb = new IDBFactory()
+        const first: number[] = []
+        await expect(growM(idb, { cfg: { seed: evalSeed, lifetimeCU: 140, sleepInterval: 10, meta: a }, stub: { frozenSeeds: first }, deps: reload(s => s.cu >= 40) })).rejects.toThrow("reload")
+        const before = levelsOf(await logsOf(idb))
+        expect(before.length).toBeGreaterThan(0)
+        const resumed: number[] = []
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+        try {
+          // The page's resumedHarness throws: the config's speed cap (999, not the block's) runs, so this run's files go without the block.
+          await growM(idb, { cfg: { seed: evalSeed, lifetimeCU: 140, sleepInterval: 10, maxStepsPerSec: 999, meta: { ...a, resumedHarness: () => { throw new Error("page bug") } } }, stub: { frozenSeeds: resumed } })
+          expect(warn.mock.calls.some(c => String(c[0]).includes("this run's log files go without it"))).toBe(true)
+        } finally {
+          warn.mockRestore()
+        }
+        const logs = await logsOf(idb)
+        const after = levelsOf(logs).filter(l => !before.includes(l))
+        expect(after.length).toBeGreaterThan(0)
+        expect(logs.some(f => !("meta" in f))).toBe(true) // the resumed run's files have no block
+        expect(resumed).toEqual(after.flatMap(l => seedsAt(l, (lv, m) => confirmSeed(evalSeed, lv, m))))
+        expect(resumed).not.toContain(seedsAt(after[0]!, (lv, m) => checkupSeed(ID, lv, m))[0])
+      })
+
       it("crossing files at 512, 1024 and 2048 carry filters of 104·conv1 floats; the 8–256 and 3072 files do not", async () => {
         const idb = new IDBFactory()
         const meta = await metaOf()

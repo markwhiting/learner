@@ -2,18 +2,29 @@ import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { parsePosterior, POSTERIOR_SCHEMA } from "@blanktab/meta"
 
+// 05a's v1 file as the gate committed it (fede863). The live data/meta/posterior.json is the gate's to rewrite, so it
+// is never a fixture: it is only checked to parse, whatever schemaVersion the gate wrote.
+const V1_TEXT = readFileSync(new URL("./fixtures/posterior-v1-05a.json", import.meta.url), "utf8")
 const COMMITTED = readFileSync(new URL("../../../data/meta/posterior.json", import.meta.url), "utf8")
 const V2_TEXT = readFileSync(new URL("./fixtures/posterior-v2-search.json", import.meta.url), "utf8")
 type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
-const v1 = (): Json => JSON.parse(COMMITTED) as Json
+const v1 = (): Json => JSON.parse(V1_TEXT) as Json
 const v2 = (): Json => JSON.parse(V2_TEXT) as Json
 const text = (o: unknown) => JSON.stringify(o)
 
+describe("parsePosterior: the committed file", () => {
+  it("data/meta/posterior.json, as the gate last wrote it, parses at the schemaVersion it declares", () => {
+    const p = parsePosterior(COMMITTED)
+    expect(p).not.toBeNull()
+    expect(p!.schemaVersion).toBe((JSON.parse(COMMITTED) as Json).schemaVersion)
+  })
+})
+
 describe("parsePosterior: schemaVersion 1 (05a's files)", () => {
-  it("the committed data/meta/posterior.json (v1) parses, as models {}, incumbent null, confirmation null, rowsSinceDeclaration 0", () => {
+  it("05a's committed v1 file parses, as models {}, incumbent null, confirmation null, rowsSinceDeclaration 0", () => {
     const raw = v1()
     expect(raw.schemaVersion).toBe(1)
-    const p = parsePosterior(COMMITTED)
+    const p = parsePosterior(V1_TEXT)
     expect(p).not.toBeNull()
     expect(p!.models).toEqual({})
     expect(p!.incumbent).toBeNull()

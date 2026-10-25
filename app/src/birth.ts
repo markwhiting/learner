@@ -7,8 +7,8 @@ import { CONFIG_BUDGET, type EvalBudget, type MetaBlock } from "@blanktab/harnes
 import type { Knowledge } from "@blanktab/harness/knowledge"
 import type { SessionMeta } from "@blanktab/harness/session"
 import {
-  birthDraw, decodeGenome, genomeSha, legacyGenome, parseCentre, parseGenomeSpace, parsePosterior, sha256Hex,
-  type Genome, type GenomeSpace, type Posterior,
+  birthDraw, decodeGenome, genomeSha, legacyGenome, modelPosterior, parseCentre, parseGenomeSpace, parsePosterior, sha256Hex,
+  type Genome, type GenomeSpace, type GpPosterior, type Posterior,
 } from "@blanktab/meta"
 
 /** What a birth draw needs from the knowledge: the space, the centre and its sha, and the posterior with the sha of its bytes. */
@@ -40,9 +40,16 @@ export async function drawContextOf(k: Pick<Knowledge, "meta">): Promise<DrawCon
   return { space, centre, centreSha, posterior, posteriorText: text, posteriorSha: await sha256Hex(new TextEncoder().encode(text)) }
 }
 
-/** What a newborn of a drawn genome runs, and the block its logs carry. `reason`: why a present posterior gave centre. */
+/**
+ * What a newborn of a drawn genome runs, and the block its logs carry. `reason`: why a present posterior gave centre.
+ * `kind`: "life" (a life, run by the session), or "confirmNewborn" (a confirmation's newborn arm: one frozen file,
+ * runNewborn, in place of a life). `seed`: the learner seed the draw sets (role confirm: its evalSeed); absent, the
+ * learnerId's (seedsOf).
+ */
 export interface Birth {
+  kind: "life" | "confirmNewborn"
   meta: MetaBlock; learnerSettings: LearnerSettings; caregiver: CaregiverSettings; maxStepsPerSec: number; sleepInterval: number
+  seed?: number
   reason?: string
 }
 
@@ -56,31 +63,58 @@ function overlay<T extends object>(defaults: T, decoded: Record<string, number>,
   return out as T
 }
 
-/** The meta block of a draw: its genome and sha at the space's schema, born under `budget` (decision 0020; none: legacy). */
-async function block(space: GenomeSpace, d: Pick<MetaBlock, "role" | "method" | "drawSeed" | "posteriorSha" | "evalPanel" | "genome">, budget: EvalBudget | null): Promise<MetaBlock> {
+/**
+ * The meta block of a draw: its genome and sha at the space's schema, born under `budget` (decision 0020; none:
+ * legacy). The draw's panel, evalSeed and confirmation pass through as drawn (role confirm: no panel, its evalSeed and
+ * confirmation { id, arm }; every other role: a panel and both null).
+ */
+type BlockDraw = Pick<MetaBlock, "role" | "method" | "drawSeed" | "posteriorSha" | "evalPanel" | "evalSeed" | "confirmation" | "genome">
+async function block(space: GenomeSpace, d: BlockDraw, budget: EvalBudget | null): Promise<MetaBlock> {
   return {
     v: 1, role: d.role, method: d.method, genomeSchema: space.schemaVersion, genome: { ...d.genome }, genomeSha: await genomeSha(space.schemaVersion, d.genome),
-    drawSeed: d.drawSeed, posteriorSha: d.posteriorSha, evalPanel: d.evalPanel, evalSeed: null, confirmation: null, inheritance: { filters: "none" },
+    drawSeed: d.drawSeed, posteriorSha: d.posteriorSha, evalPanel: d.evalPanel, evalSeed: d.evalSeed,
+    confirmation: d.confirmation === null ? null : { id: d.confirmation.id, arm: d.confirmation.arm }, inheritance: { filters: "none" },
     ...(budget ? { budget: { budgetCU: budget.budgetCU, levels: [...budget.levels] } } : {}),
+  }
+}
+
+/**
+ * The gpu model's GP posterior, conditioned once per posteriorSha (the latest one only: a tab draws under one
+ * posterior at a time). birthDraw calls it only when it reaches the ts branch, which has checked the model first.
+ */
+let conditioned: { posteriorSha: string; post: GpPosterior | null } | null = null
+function conditionedOf(ctx: DrawContext): (() => GpPosterior | null) | undefined {
+  const { posterior, posteriorSha } = ctx
+  const model = posterior?.models.gpu
+  if (model === undefined || posteriorSha === null) return undefined
+  return () => {
+    if (conditioned?.posteriorSha !== posteriorSha) conditioned = { posteriorSha, post: modelPosterior(model) }
+    return conditioned.post
   }
 }
 
 /**
  * A newborn's birth: birthDraw for `learnerId` in `ctx` at `widthsClass` (the gate's recomputation, spec §7.4), decoded
  * (decodeGenome): the learner and caregiver genes over DEFAULT_SETTINGS and CAREGIVER_DEFAULTS, the harness genes as the
- * speed cap and the sleep interval. The block carries `budget` (default the config's). Throws if the genome does not
- * decode to settings the components have (the worker then falls back to a centre draw).
+ * speed cap and the sleep interval. The block carries `budget` (default the config's). A ts draw's GP conditioning is
+ * memoised per posteriorSha. A confirm draw sets the learner seed to its evalSeed; its newborn arm is kind
+ * "confirmNewborn" (a frozen file, not a life). Throws if the genome does not decode to settings the components have
+ * (the worker then falls back to a centre draw).
  */
 export async function birthFromDraw(ctx: DrawContext, learnerId: string, widthsClass: "gpu" | "cpu", budget: EvalBudget = CONFIG_BUDGET): Promise<Birth> {
+  const memo = conditionedOf(ctx)
   const d = birthDraw({
     learnerId, space: ctx.space, centre: ctx.centre, centreSha: ctx.centreSha, widthsClass, posterior: ctx.posterior, posteriorSha: ctx.posteriorSha,
+    ...(memo ? { conditioned: memo } : {}),
   })
   const dec = decodeGenome(d.genome, ctx.space)
   return {
+    kind: d.role === "confirm" && d.confirmation?.arm === "newborn" ? "confirmNewborn" : "life",
     meta: await block(ctx.space, d, budget),
     learnerSettings: overlay(DEFAULT_SETTINGS, dec.learner, "learner"),
     caregiver: overlay(CAREGIVER_DEFAULTS, dec.caregiver, "caregiver"),
     maxStepsPerSec: dec.harness.maxStepsPerSec, sleepInterval: dec.harness.sleepInterval,
+    ...(d.role === "confirm" && d.evalSeed !== null ? { seed: d.evalSeed } : {}),
     ...(d.reason !== undefined ? { reason: d.reason } : {}),
   }
 }
@@ -120,7 +154,7 @@ export function sessionMetaOf(ctx: DrawContext, birth: MetaBlock, budget: EvalBu
     async legacy(flat) {
       const { genome, missing } = legacyGenome(flat, ctx.space)
       // No budget: a legacy life runs under the v1 budget (lifeBudget), and the parser refuses one on it.
-      const b = await block(ctx.space, { role: "legacy", method: "legacy", drawSeed: null, posteriorSha: null, evalPanel: null, genome }, null)
+      const b = await block(ctx.space, { role: "legacy", method: "legacy", drawSeed: null, posteriorSha: null, evalPanel: null, evalSeed: null, confirmation: null, genome }, null)
       return { ...b, ...(missing.length > 0 ? { missing } : {}) }
     },
   }

@@ -45,6 +45,7 @@ describe("production build", { timeout: 120_000 }, () => {
   it("ships no detmath probe page (the e2e build's only)", () => {
     expect(files(out).filter(f => f.endsWith(".html")).map(f => f.slice(out.length + 1))).toEqual(["index.html"])
     expect(js).not.toContain("__detmath")
+    expect(js).not.toContain("__gpProbe") // nor the GP determinism probe (plan 05b, Task 6)
   })
   it("the worker carries the real learner on WebGPU (its WGSL kernels), not the flailer", () => {
     const worker = files(out).filter(f => /worker.*\.js$/.test(f)).map(f => readFileSync(f, "utf8")).join("\n")

@@ -6,7 +6,7 @@ import {
   type Evaluator, type LifeInput, type NewbornReference,
 } from "@blanktab/evaluators"
 import { fisherOneSided } from "../src/stats"
-import { checkup, confirmMeta, endedLife, file, lid, scoredLife, type Mid } from "./fixtures/build"
+import { checkup, confirmMeta, CPU, endedLife, file, lid, scoredLife, type Mid } from "./fixtures/build"
 
 const REF = parseNewbornReference(JSON.parse(readFileSync(new URL("./fixtures/reference.json", import.meta.url), "utf8"))) as NewbornReference
 const refs = { newborn: REF }
@@ -35,7 +35,7 @@ function ended(arm: Exclude<Arm, "newborn">, sha: string, end: "failed" | "orpha
 }
 /**
  * A confirmation newborn: one final file at cu 0 with its three frozen checkups (as a reference newborn's); M3 passed
- * at `m3Levels` of them. Its log shape is not settled until 05b wires confirmations (see the parse note below).
+ * at `m3Levels` of them. The frozen confirmation-newborn file (decision 0024; plan 05b Task 7).
  */
 function newborn(sha: string, m3Levels: number): LifeInput {
   const k = fresh(), learnerId = lid(0x5000 + k)
@@ -87,9 +87,9 @@ describe("confirm-fisher@1 (spec §2.5)", () => {
 
   it("a candidate that sustains M3 in 20/24 against 6/60 newborns and beats centre on a → 1; failed lives count as non-passes; abandoned excluded and counted; an abandonment ratio > 2× is flagged", () => {
     const groups = design()
-    // The search arms' fixtures are logs the gate accepts. A confirmation newborn's file (cu 0, frozen checkups) is not
-    // accepted by today's parser, which allows frozen checkups only for role newborn: its log shape is 05b's.
-    for (const arm of ["candidate", "centre"] as const) expect(groups[arm].every(l => parses(l.files)), arm).toBe(true)
+    // Every arm's fixtures are logs the parser accepts, the confirmation newborns' frozen files (cu 0, frozen checkups;
+    // decision 0024) included.
+    for (const arm of ["candidate", "centre", "newborn"] as const) expect(groups[arm].every(l => parses(l.files)), arm).toBe(true)
     const out = run(groups)
     expect(out).toMatchObject({ evaluator: "confirm-fisher", version: 1, eligible: true, score: 1, components: { behaviour: 1, better: 1 } })
     const d = out.diagnostics as unknown as Diag
@@ -193,5 +193,31 @@ describe("confirm-fisher@1 (spec §2.5)", () => {
     // A life listed in two arms counts once.
     const dup = run({ ...g, centre: [...g.centre, g.candidate[0]!] })
     expect((dup.diagnostics as unknown as Diag).counts.centre).toMatchObject({ duplicates: 1, counted: 24 })
+  })
+
+  it("standing() is the classification evaluateCohort counts by, on every fixture life (the gate decides full arms from it)", () => {
+    const g = design()
+    const k = fresh(), id = lid(0x5000 + k)
+    // Lives the gate's own classifier once counted but this evaluator ignores or excludes: CPU widths, a logged arm
+    // other than the group, and one still running (not final) before its budget checkup.
+    const cpu: LifeInput = { learnerId: id, files: scoredLife(id, { ms: { M2: 1 }, ratio: 1, meta: confirmMeta("candidate", k, { genomeSha: CANDIDATE }) }).map(f => ({ ...f, widths: CPU })) }
+    const k2 = fresh(), id2 = lid(0x5000 + k2)
+    const running: LifeInput = { learnerId: id2, files: endedLife(id2, "orphan", confirmMeta("candidate", k2, { genomeSha: CANDIDATE })).slice(0, 1) }
+    const lives: [Arm, LifeInput][] = [
+      ...(["candidate", "centre", "newborn"] as const).flatMap(arm => g[arm].map(l => [arm, l] as [Arm, LifeInput])),
+      ["candidate", cpu], ["candidate", running], ["centre", g.candidate[0]!], ["newborn", g.centre[0]!],
+    ]
+    const seen = new Set<string>()
+    for (const [arm, life] of lives) {
+      const s = confirmFisher.standing!(life, arm)
+      const counts = (run({ [arm]: [life] }).diagnostics as unknown as Diag).counts[arm]!
+      seen.add(s)
+      expect({ learnerId: life.learnerId, arm, s }).toEqual({
+        learnerId: life.learnerId, arm, s: counts.counted === 1 ? "counted" : counts.pending === 1 ? "pending" : "excluded",
+      })
+    }
+    expect([...seen].sort()).toEqual(["counted", "excluded", "pending"])
+    expect(confirmFisher.standing!(cpu, "candidate")).toBe("excluded")
+    expect(confirmFisher.standing!(g.candidate[0]!, "elsewhere")).toBe("excluded")
   })
 })

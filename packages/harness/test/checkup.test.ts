@@ -5,9 +5,9 @@ import { DEFAULT_SETTINGS, createLearner, type FrozenRun, type FrozenRunOptions,
 import { createCpuBackend, createRng } from "@blanktab/tensor"
 import { createWorld, hashSeed, type World } from "@blanktab/world"
 import { uniformAction } from "../src/heldout"
-import { ERROR_REASON_RE, MILESTONE_IDS, MILESTONE_SUITE_VERSION } from "../src/log"
+import { ERROR_REASON_RE, MAX_EVAL_PANEL, MILESTONE_IDS, MILESTONE_SUITE_VERSION, NEWBORN_LEVELS } from "../src/log"
 import { MILESTONES_V1, YIELD_EVERY, type Milestone } from "../src/milestones"
-import { checkupSeed, errorReason, panelSeed, runCheckup, type CheckupDeps } from "../src/checkup"
+import { checkupSeed, confirmSeed, errorReason, panelSeed, runCheckup, variantSeedOf, type CheckupDeps } from "../src/checkup"
 
 const TINY: Widths = { conv1: 4, conv2: 4, enc: 16, hidden: 16 }
 const canvas = () => createCanvas(WORLD.width, WORLD.height)
@@ -110,6 +110,32 @@ describe("checkups (decision 0016)", { timeout: 60_000 }, () => {
     const c = await seen("lrn_aaaaaaaaaaaaaaaa")
     expect(c.seeds).toEqual(SUITE_IDS.map(id => [id, checkupSeed("lrn_aaaaaaaaaaaaaaaa", 512, id)]))
     expect((await seen("lrn_bbbbbbbbbbbbbbbb")).seeds).not.toEqual(c.seeds)
+  })
+
+  it("with variantSeed confirmSeed(e, …), two learners with evalSeed e meet identical variants, disjoint from every panelSeed(p, …) on the fixture levels", async () => {
+    const e = 13_006
+    expect(confirmSeed(e, 512, "M1")).toBe(hashSeed(0, `confirm/${e}/512/M1`))
+    const seen = async (learnerId: string, evalSeed: number) => {
+      const seeds: number[] = []
+      const suite = small(5).map(m => ({ ...m, makeVariant(seed: number, c: Parameters<Milestone["makeVariant"]>[1]) { seeds.push(seed); return m.makeVariant(seed, c) } }))
+      const { learner } = stubLearner()
+      // The session's and the newborn runner's rule for a confirmation life's block (variantSeedOf).
+      const variantSeed = variantSeedOf({ evalSeed, evalPanel: null })!
+      for (const level of NEWBORN_LEVELS) expect((await runCheckup(base({ learnerId, level, learner, suite, variantSeed }))).status).toBe("done")
+      return seeds
+    }
+    const a = await seen("lrn_aaaaaaaaaaaaaaaa", e), b = await seen("lrn_bbbbbbbbbbbbbbbb", e)
+    expect(a).toEqual(NEWBORN_LEVELS.flatMap(l => SUITE_IDS.map(id => confirmSeed(e, l, id))))
+    expect(b).toEqual(a)
+    expect(await seen("lrn_aaaaaaaaaaaaaaaa", e + 1)).not.toEqual(a)
+    // Disjoint from every shared panel's variants at the fixture levels: a confirmation life never meets a search world.
+    const panels = new Set<number>()
+    for (let p = 1; p <= MAX_EVAL_PANEL; p++) for (const l of NEWBORN_LEVELS) for (const id of SUITE_IDS) panels.add(panelSeed(p, l, id))
+    for (const s of a) expect(panels.has(s)).toBe(false)
+    // variantSeedOf: confirmSeed for a confirm block, panelSeed for a panel, checkupSeed (undefined) otherwise.
+    expect(variantSeedOf({ evalSeed: null, evalPanel: 3 })!(512, "M2")).toBe(panelSeed(3, 512, "M2"))
+    expect(variantSeedOf({ evalSeed: null, evalPanel: null })).toBeUndefined()
+    expect(variantSeedOf(undefined)).toBeUndefined()
   })
 
   it("a dispose() that throws marks that milestone not passed, measure null, error true; the rest still run", async () => {

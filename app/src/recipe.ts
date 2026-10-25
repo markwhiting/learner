@@ -13,7 +13,13 @@ export const GENE_LABELS: Readonly<Record<string, string>> = Object.freeze({
 })
 const label = (name: string) => GENE_LABELS[name] ?? name
 
-/** How this life's genome was chosen, in words. `posterior`: the one the page has (for a calibration life's recipe number). */
+/** A confirmation arm in words (spec §6): the centre arm runs the current recipe. */
+const ARM_WORDS: Readonly<Record<string, string>> = { candidate: "candidate arm", centre: "current-recipe arm", newborn: "newborn arm" }
+
+/**
+ * How this life's genome was chosen, in words. `posterior`: the one the page has (for a calibration life's recipe
+ * number, and a ts life's model size: pass the posterior it was drawn from, or null if the page no longer has it).
+ */
 export function recipeText(meta: MetaBlock, posterior: Posterior | null): string {
   switch (meta.method) {
     case "calibrate": {
@@ -25,8 +31,14 @@ export function recipeText(meta: MetaBlock, posterior: Posterior | null): string
     case "centre": return "the current recipe"
     case "legacy": return "born before the meta-learner (its old settings)"
     case "newborn": return `a newborn reference (panel ${meta.evalPanel})`
-    case "ts": return "drawn by the meta-learner"
-    case "confirm": return "a confirmation life"
+    case "ts": {
+      const n = posterior?.models.gpu?.rows.length
+      return n === undefined ? "drawn by the meta-learner" : `drawn by the meta-learner (a Thompson sample from ${n} lives)`
+    }
+    case "confirm": {
+      const arm = meta.confirmation ? ARM_WORDS[meta.confirmation.arm] : undefined
+      return arm === undefined || meta.evalSeed === null ? "a confirmation life" : `a confirmation life (${arm}, fresh world ${meta.evalSeed.toLocaleString("en-US")})`
+    }
   }
 }
 
@@ -61,8 +73,49 @@ export function metaStateText(posterior: Posterior | null): string {
     case "calibrate": return `Calibrating: ${calibrationLives} of ${calibrationTarget} lives measured, to learn whether the score can tell recipes apart.`
     case "paused": return `Paused: the score can't yet tell recipes apart; measuring more (${calibrationLives} of ${calibrationTarget}).`
     case "flat": return `Flat: after ${calibrationTarget} lives the score could not tell recipes apart. Recipes are the current one, with 1 in 5 random.`
-    case "search": return "Signal found: the search can start. (Recipes are the current one or random until it does.)"
+    case "search": return searchText(posterior)
   }
+}
+
+const sum = (r: Readonly<Record<string, number>>) => Object.values(r).reduce((a, b) => a + b, 0)
+
+/**
+ * Mode search (spec §6): a confirmation's progress while one is in flight (its candidate's genomeSha, its lives counted
+ * of its target); else the lives scored so far, and the model's best guess (the incumbent's chance to beat the current
+ * recipe) once there is a model. The last promotion's date follows, once there is one.
+ */
+function searchText(p: Posterior): string {
+  const { eligibleLives, lastPromotion } = p.page
+  const c = p.confirmation
+  const inc = p.incumbent
+  const state = c !== null
+    ? `Confirming recipe ${c.candidate.genomeSha.slice(0, 8)} on fresh worlds: ${sum(c.counted)} of ${sum(c.target)} lives.`
+    : p.models.gpu === undefined
+      ? `Searching: ${eligibleLives} lives, not yet enough for the model.`
+      : inc === null
+        // A model with no incumbent (incumbentFor found none): agent's call, the plan gives no words for it.
+        ? `Searching: ${eligibleLives} lives; the model has no best guess yet.`
+        : `Searching: ${eligibleLives} lives; its best guess is predicted to beat the current recipe with ${Math.round(inc.pBeatsCentre * 100)} % confidence.`
+  return lastPromotion === null ? state : `${state} Last promotion: ${lastPromotion.slice(0, 10)}.`
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v)
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}/
+
+/**
+ * The HISTORY tab's "Current recipe" line, from knowledge/genome.json's provenance: the initial one, or a promotion's
+ * date and the confirmation that justified it (decision 0024; the gate writes it only on a passed confirmation). Null
+ * for a file whose provenance says neither (the line is then hidden).
+ */
+export function currentRecipeText(genomeJson: unknown): string | null {
+  const prov = isObj(genomeJson) ? genomeJson.provenance : undefined
+  if (!isObj(prov)) return null
+  if (prov.source === "initial") return "Current recipe: the initial one"
+  if (prov.source === "promotion" && Number.isSafeInteger(prov.confirmation) && (prov.confirmation as number) >= 0
+    && typeof prov.promotedAt === "string" && ISO_DATE.test(prov.promotedAt)) {
+    return `Current recipe: promoted ${prov.promotedAt.slice(0, 10)} (confirmation ${prov.confirmation as number})`
+  }
+  return null
 }
 
 /** The meta-learner's line without readable genome files (Review Focus 5: the page says which case applies). */

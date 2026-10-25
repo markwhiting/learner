@@ -1,12 +1,15 @@
-// A newborn reference life (spec §2.3; plan 05a Task 9): an untrained learner of the centre genome, scored once on its
-// held-out set and checked frozen at NEWBORN_LEVELS on the shared panel a search life would meet. One log file, cu 0.
-// What the reference reads is harness instrumentation: the learner never sees its genome, panel or scores.
+// A newborn life: an untrained learner, scored once on its held-out set and checked frozen at NEWBORN_LEVELS. One log
+// file, cu 0. Two kinds (decision 0024 "Confirmation-newborn files"):
+// - a reference newborn (spec §2.3; plan 05a Task 9): the centre genome, on the shared panel a search life would meet;
+// - a confirmation newborn (spec §4.5; plan 05b Task 7): the newborn arm of a confirmation, of the candidate's genome,
+//   seeded by its evalSeed and checked on that seed's own variants (confirmSeed), as its other arms' lives are.
+// What a newborn reads is harness instrumentation: the learner never sees its genome, panel, arm or scores.
 import { clampSettings, type LearnerSettings, type Widths } from "@blanktab/learner"
 import type { CanvasLike } from "@blanktab/world"
 import { checkGenome, decodeGenome, genomeSha, settingsMismatch, type GenomeSpace } from "@blanktab/meta"
-import { panelSeed, runCheckup } from "./checkup"
+import { runCheckup, variantSeedOf } from "./checkup"
 import {
-  CONFIG_BUDGET, MAX_EVAL_PANEL, MILESTONE_SUITE_VERSION, NEWBORN_LEVELS, isCurveLoss, parseLogFile,
+  CONFIG_BUDGET, MAX_EVAL_PANEL, MILESTONE_SUITE_VERSION, NEWBORN_LEVELS, isCurveLoss, parseLogFile, parseMeta,
   type CheckupResult, type LogFileV2, type MetaBlock,
 } from "./log"
 import { openQueue } from "./queue"
@@ -17,17 +20,28 @@ export const NEWBORN_SEED_BASE = 1000
 /** The newborns of one reference: k = 0 … NEWBORN_COUNT − 1, 4 per panel × 16 panels (spec §2.3). */
 export const NEWBORN_COUNT = 64
 
+/**
+ * Which newborn:
+ * - `reference`: newborn k of the reference, 0 ≤ k < NEWBORN_COUNT; its seed is NEWBORN_SEED_BASE + k and its panel
+ *   1 + (k mod 16);
+ * - `confirm`: the newborn-arm life of confirmation `confirmationId` drawn with seed `evalSeed` (the draw's drawSeed and
+ *   posteriorSha, as birthDraw gave them); its learner seed is evalSeed, it has no panel, and evalSeed's arm must be
+ *   "newborn" (the parser's rule).
+ */
+export type NewbornWho =
+  | { kind: "reference"; k: number }
+  | { kind: "confirm"; evalSeed: number; confirmationId: number; drawSeed: number; posteriorSha: string }
+
 export interface NewbornConfig {
   learnerId: string
-  /** Which newborn: 0 ≤ k < NEWBORN_COUNT. Its seed is NEWBORN_SEED_BASE + k and its panel 1 + (k mod 16). */
-  k: number
+  who: NewbornWho
   codeSha: string
   knowledgeSha: string
   hostSig: LogFileV2["hostSig"]
   widths: Widths
-  /** The centre genome's learner settings (decoded by the page); they must be what `genome` decodes to. */
+  /** The genome's learner settings (decoded by the page); they must be what `genome` decodes to. */
   settings: LearnerSettings
-  /** The genome it runs (the centre): its schema, values and genomeSha. */
+  /** The genome it runs (a reference: the centre; a confirmation newborn: the candidate): its schema, values and genomeSha. */
   genome: { schema: number; values: Record<string, number | string>; sha: string }
   /**
    * The genome space `genome` is of (main's knowledge/genome-space.json, as the page loads it). Not in the plan's
@@ -48,12 +62,22 @@ export interface NewbornDeps {
   yieldNow?: () => Promise<void>
 }
 
+/** The learner seed of newborn `who` (RangeError for a reference k outside 0 … NEWBORN_COUNT − 1). */
+function seedOf(who: NewbornWho): number {
+  if (who.kind === "confirm") return who.evalSeed
+  const { k } = who
+  if (!(Number.isInteger(k) && k >= 0 && k < NEWBORN_COUNT)) throw new RangeError(`newborn k must be an integer in [0, ${NEWBORN_COUNT}), got ${k}`)
+  return NEWBORN_SEED_BASE + k
+}
+
 /**
- * The meta block and logged settings newborn `cfg` would write, checked: the genome lies in the space, its sha
+ * The meta block and logged settings newborn `cfg` would write, checked: the block is one the parser accepts in a
+ * frozen file (for a confirmation newborn: its seed's arm is "newborn"), the genome lies in the space, its sha
  * recomputes, and it decodes to `cfg.settings` (clamped). BadMetaBlockError otherwise, before any learner exists.
  */
-async function birthOf(cfg: NewbornConfig, seed: number, evalPanel: number): Promise<{ meta: MetaBlock; settings: Record<string, number> }> {
+async function birthOf(cfg: NewbornConfig, seed: number): Promise<{ meta: MetaBlock; settings: Record<string, number> }> {
   const bad = (why: string): never => { throw new BadMetaBlockError(cfg.learnerId, why) }
+  const { who } = cfg
   const { schema, values, sha } = cfg.genome
   if (schema !== cfg.space.schemaVersion) bad(`a newborn's genome schema ${schema} is not the space's ${cfg.space.schemaVersion}`)
   const outside = checkGenome(cfg.space, values)
@@ -71,34 +95,43 @@ async function birthOf(cfg: NewbornConfig, seed: number, evalPanel: number): Pro
   }
   const off = settingsMismatch(cfg.space, values, settings)
   if (off !== null) bad(`a newborn's genome is not what it runs: ${off}`)
-  const meta: MetaBlock = {
-    v: 1, role: "newborn", method: "newborn", genomeSchema: schema, genome: { ...values }, genomeSha: sha,
-    drawSeed: null, posteriorSha: null, evalPanel, evalSeed: null, confirmation: null, inheritance: { filters: "none" },
+  const common = {
+    v: 1 as const, genomeSchema: schema, genome: { ...values }, genomeSha: sha, inheritance: { filters: "none" as const },
     budget: { budgetCU: CONFIG_BUDGET.budgetCU, levels: [...CONFIG_BUDGET.levels] },
   }
+  const meta: MetaBlock = who.kind === "reference"
+    ? { ...common, role: "newborn", method: "newborn", drawSeed: null, posteriorSha: null, evalPanel: 1 + (who.k % MAX_EVAL_PANEL), evalSeed: null, confirmation: null }
+    : {
+      ...common, role: "confirm", method: "confirm", drawSeed: who.drawSeed, posteriorSha: who.posteriorSha, evalPanel: null,
+      evalSeed: who.evalSeed, confirmation: { id: who.confirmationId, arm: "newborn" },
+    }
+  const parsed = parseMeta(meta, { cu: 0, stepsTotal: 0, final: true })
+  if (typeof parsed === "string") bad(parsed)
   return { meta, settings }
 }
 
 /**
- * Runs newborn `cfg.k` and queues its one log file (spec §2.3; "how a newborn runs" was left to the builder):
- * - its learner: seed NEWBORN_SEED_BASE + k, untrained (createLearner with the config's widths and settings);
+ * Runs newborn `cfg.who` and queues its one log file (spec §2.3; "how a newborn runs" was left to the builder):
+ * - its learner: seed NEWBORN_SEED_BASE + k (a reference) or evalSeed (a confirmation newborn), untrained (createLearner
+ *   with the config's widths and settings);
  * - its held-out score: one sleep() on an empty buffer, which makes no update and only scores the held-out set,
  *   recorded as meta.heldOut (left out, with a warning, if the score is not finite: the file stays on the record);
- * - its checkups: runCheckup at each of NEWBORN_LEVELS on panel 1 + (k mod 16), variantSeed panelSeed(panel, level, m);
- * - its file: seq 0, final, cu 0, stepsTotal 0, role and method "newborn", born under the config's budget; the
- *   held-out score and checkups are billed to evalCU. Queued with queue.put (no checkpoint: there is nothing to resume).
+ * - its checkups: runCheckup at each of NEWBORN_LEVELS, on variantSeedOf(its block): a reference's panel 1 + (k mod 16)
+ *   (panelSeed), a confirmation newborn's evalSeed (confirmSeed);
+ * - its file: seq 0, final, cu 0, stepsTotal 0, born under the config's budget; role and method "newborn" (a reference),
+ *   or role and method "confirm" with confirmation { id, arm: "newborn" }, evalSeed and evalPanel null (a confirmation
+ *   newborn). The held-out score and checkups are billed to evalCU. Queued with queue.put (no checkpoint: there is
+ *   nothing to resume). A confirmation newborn's file is gate data, contributed like any other.
  * The file is checked with parseLogFile before it is queued, so the outbox never holds one the gate would refuse to parse.
  */
 export async function runNewborn(cfg: NewbornConfig, deps: NewbornDeps): Promise<LogFileV2> {
-  const { k } = cfg
-  if (!(Number.isInteger(k) && k >= 0 && k < NEWBORN_COUNT)) throw new RangeError(`newborn k must be an integer in [0, ${NEWBORN_COUNT}), got ${k}`)
-  const seed = NEWBORN_SEED_BASE + k
-  const evalPanel = 1 + (k % MAX_EVAL_PANEL)
-  const birth = await birthOf(cfg, seed, evalPanel)
+  const seed = seedOf(cfg.who)
+  const birth = await birthOf(cfg, seed)
+  const variantSeed = variantSeedOf(birth.meta)!
   const learner = await deps.createLearner({ seed, widths: { ...cfg.widths }, settings: clampSettings(cfg.settings) })
   let file: LogFileV2
   try {
-    if (!learner.frozenRun) throw new Error(`learner ${cfg.learnerId}: a newborn reference needs a learner with frozenRun (checkups)`)
+    if (!learner.frozenRun) throw new Error(`learner ${cfg.learnerId}: a newborn needs a learner with frozenRun (checkups)`)
     await learner.sleep()
     const st = learner.stats()
     if (st.cu !== 0 || st.steps !== 0) throw new Error(`learner ${cfg.learnerId}: a newborn's sleep must make no update (cu ${st.cu}, steps ${st.steps})`)
@@ -109,7 +142,7 @@ export async function runNewborn(cfg: NewbornConfig, deps: NewbornDeps): Promise
     for (const level of NEWBORN_LEVELS) {
       const out = await runCheckup({
         learnerId: cfg.learnerId, level, steps: 0, learner: { frozenRun: o => frozen(o), stats: () => learner.stats() },
-        canvas: () => deps.checkupCanvas(), variantSeed: (lv, m) => panelSeed(evalPanel, lv, m),
+        canvas: () => deps.checkupCanvas(), variantSeed,
         ...(deps.yieldNow ? { yieldNow: deps.yieldNow } : {}),
       })
       // Nothing can stop it (no shouldStop), so a checkup always finishes.

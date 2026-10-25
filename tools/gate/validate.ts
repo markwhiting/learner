@@ -8,14 +8,22 @@ const MAX_BYTES = 1_048_576
 const PATH_RE = /^data\/runs\/(lrn_[0-9a-f]{16})\/(\d+\.json)$/
 
 export interface ValidateOptions {
-  /** Main's knowledge/genome-space.json: the bounds a non-legacy meta.genome must lie in. Without it such a file is rejected. */
-  space?: GenomeSpace
+  /**
+   * Every genome space main has had, by schemaVersion (history.ts spacesBySchema): a non-legacy meta.genome is checked
+   * against the space of its own genomeSchema. Without it (or empty) such a file is rejected.
+   */
+  spaces?: ReadonlyMap<number, GenomeSpace>
   /**
    * The current config's evaluation budget (default CONFIG_BUDGET, config/evaluation.json): a new life's (seq 0) block
    * must be born under it. Every other check reads the file's own budget (lifeBudget), so a config change never
    * invalidates a life already running (decision 0020).
    */
   budget?: EvalBudget
+}
+
+/** A spaces map (ValidateOptions.spaces) of the given spaces, by schemaVersion (a later one wins a tie). */
+export function spacesOf(...spaces: GenomeSpace[]): Map<number, GenomeSpace> {
+  return new Map(spaces.map(s => [s.schemaVersion, s]))
 }
 
 /**
@@ -132,7 +140,7 @@ export async function validateSessionPr(files: PrFile[], previous: LogFile[], op
   if (finals.length > 1) errors.push(`at most one final file allowed (found ${finals.length})`)
   else if (finals.length === 1 && finals[0] !== sorted[sorted.length - 1]) errors.push(`${finals[0]!.path}: final file must have the highest seq`)
 
-  errors.push(...await metaErrors(sorted, prevSorted, opts.space, opts.budget ?? CONFIG_BUDGET))
+  errors.push(...await metaErrors(sorted, prevSorted, opts.spaces ?? new Map(), opts.budget ?? CONFIG_BUDGET))
   return { ok: errors.length === 0, errors, kind }
 }
 
@@ -146,28 +154,32 @@ const canonical = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) =>
 /**
  * The gate's meta checks (spec §7.3; plan 05a Task 5), over the PR's files (`pr`) after the learner's files on main
  * (`previous`), both in seq order:
- * - schema: never newer than `space`'s;
- * - bounds: a non-legacy genome lies in `space` when it is of the space's schema (an older schema: structure only);
- *   legacy lives keep their pre-05a values (plan gap 4);
+ * - schema: never newer than the newest of `spaces`; a non-legacy block's schema must be one of `spaces`;
+ * - bounds: a non-legacy genome lies in the space of its own schema (decision 0024 "Every schema checked against its
+ *   own space": an older schema is no bypass); legacy lives keep their pre-05a values (plan gap 4);
  * - what ran: such a genome decodes (settingsMismatch) to the file's logged settings;
+ * - seed: a confirmation life's learner seed (settings.seed) is its evalSeed (spec §4.5);
  * - integrity: genomeSha recomputes, for every role;
  * - constancy: every field but filters, heldOut and end equals the learner's first file with meta (absence allowed);
  * - budget: a new life's (seq 0) block is born under `budget`, the current config's (absent reads as V1_BUDGET);
  *   constancy keeps it for the rest of the life;
  * - filters: at most one file per level of the life's own budget carries them.
  */
-async function metaErrors(pr: { path: string; log: LogFile }[], previous: LogFile[], space: GenomeSpace | undefined, budget: EvalBudget): Promise<string[]> {
+async function metaErrors(pr: { path: string; log: LogFile }[], previous: LogFile[], spaces: ReadonlyMap<number, GenomeSpace>, budget: EvalBudget): Promise<string[]> {
   const errors: string[] = []
   const metaOf = (l: LogFile): MetaBlock | undefined => (l.schemaVersion === 2 ? l.meta : undefined)
+  const newest = spaces.size > 0 ? Math.max(...spaces.keys()) : null
   for (const { path, log } of pr) {
     const m = metaOf(log)
     if (!m) continue
-    // A tab is served from main, so its genome schema cannot be ahead of main's space (any role). An older one is
-    // checked for structure only: its bounds are not this space's.
-    if (space && m.genomeSchema > space.schemaVersion) errors.push(`${path}: meta.genomeSchema ${m.genomeSchema} is newer than main's genome space (${space.schemaVersion})`)
+    // A tab is served from main, so its genome schema cannot be ahead of main's space (any role). Every other
+    // non-legacy block is checked against the space of its own schema: bounds, what ran and (below) its sha.
+    if (newest !== null && m.genomeSchema > newest) errors.push(`${path}: meta.genomeSchema ${m.genomeSchema} is newer than main's genome space (${newest})`)
     else if (m.role !== "legacy") {
-      if (!space) errors.push(`${path}: no genome space to check meta.genome against`)
-      else if (m.genomeSchema === space.schemaVersion) {
+      const space = spaces.get(m.genomeSchema)
+      if (newest === null) errors.push(`${path}: no genome space to check meta.genome against`)
+      else if (!space) errors.push(`${path}: unknown genome schema ${m.genomeSchema}`)
+      else {
         const bad = checkGenome(space, m.genome)
         if (bad !== null) errors.push(`${path}: meta.genome is outside the genome space: ${bad}`)
         else {
@@ -176,6 +188,10 @@ async function metaErrors(pr: { path: string; log: LogFile }[], previous: LogFil
           if (off !== null) errors.push(`${path}: meta.genome is not what ran: ${off}`)
         }
       }
+    }
+    // A confirmation life's learner seed is its evalSeed (spec §4.5); its world seed stays its learnerId's.
+    if (m.role === "confirm" && log.schemaVersion === 2 && log.settings.seed !== m.evalSeed) {
+      errors.push(`${path}: a confirmation life's settings.seed (${String(log.settings.seed)}) is not its meta.evalSeed (${m.evalSeed})`)
     }
     if (await genomeSha(m.genomeSchema, m.genome) !== m.genomeSha) errors.push(`${path}: meta.genomeSha does not match its genome`)
     if (log.seq === 0 && m.role !== "legacy" && !sameBudget(lifeBudget(m), budget)) {

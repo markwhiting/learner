@@ -254,7 +254,7 @@ Plan 05a gave the meta-learner everything except its brain. Every new tab draws 
 
 - [ ] **Step 1: Write the failing tests** (`thompson.test.ts`)
   - `"candidateSet has 512 points in [0,1]^d; the first 256 consume exactly 256·d rng draws; children stay within 4·σ_j of their parent unless clipped"`
-  - `"thompsonPick over 2,000 seeds on a 1-d model with a clear peak at 0.7: ≥ 80 % of picks within 0.1 of 0.7, and some outside (exploration)"`
+  - `"thompsonPick over 400 seeds on a 1-d model with a clear peak at 0.7: ≥ 80 % of picks within 0.1 of 0.7, and some outside (exploration)"`
   - `"thompsonPick is a pure function of (model, seed): same seed → same index; 20 picks equal fixtures/ts-picks.json"`
   - `"incumbentOf on a model peaked away from the centre gives pBeatsCentre > 0.95; on a flat model ≈ 0.5 ± 0.1"`
   - `"a Σ that fails every jitter step → thompsonPick null"` (Review Focus 5)

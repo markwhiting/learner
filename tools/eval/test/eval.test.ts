@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { execFileSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -14,6 +15,8 @@ import { budgetWindow } from "../../../packages/evaluators/src/life.ts"
 import { rescore } from "../rescore.ts"
 import { newbornReference } from "../newborn-reference.ts"
 import { rangeOf, writeCollected } from "../collect-newborns.ts"
+import { serialise } from "../../gate/serialise.ts"
+import { FIXTURE_ENV } from "../../gate/test/git-fixture.ts"
 
 const REPO = fileURLToPath(new URL("../../..", import.meta.url))
 const SPACE = parseGenomeSpace(JSON.parse(readFileSync(join(REPO, "knowledge/genome-space.json"), "utf8")))
@@ -23,13 +26,19 @@ const CODE = "c".repeat(40)
 
 let root: string
 let runs: string
+/** git in the fixture checkout (isolated from the user's and the system's git config). */
+const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8", env: { ...process.env, ...FIXTURE_ENV }, stdio: ["ignore", "pipe", "pipe"] })
 beforeEach(() => {
-  // A checkout with the pinned config and the genome files, and nothing else.
+  // A checkout (a git repository: newborn-reference reads knowledge/genome.json's history) with the pinned config and
+  // the genome files committed, and nothing else.
   root = mkdtempSync(join(tmpdir(), "eval-"))
   for (const rel of ["config/evaluation.json", "knowledge/genome-space.json", "knowledge/genome.json"]) {
     mkdirSync(join(root, rel, ".."), { recursive: true })
     copyFileSync(join(REPO, rel), join(root, rel))
   }
+  git("init", "-q", "-b", "main")
+  git("add", "--", "config", "knowledge")
+  git("commit", "-q", "-m", "initial")
   runs = join(root, "runs")
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
@@ -166,6 +175,47 @@ describe("newborn-reference (spec §2.3; controller ruling B)", () => {
     expect(dup.ok).toBe(false)
     expect(dup.messages.join("\n")).toMatch(/seed 1000/)
     expect(parseNewbornReference(JSON.parse(readFileSync(refPath(), "utf8")))).not.toBeNull() // the last good write stands
+  })
+
+  it("newborn-reference --check passes when genome.json has been promoted (fixture)", async () => {
+    // The reference was measured under the initial centre; then a confirmation passed and the gate promoted a candidate.
+    const src = join(root, "newborns")
+    for (let k = 0; k < 4; k++) put(src, await newbornFile(k, k % 2 === 0 ? 1 : 2))
+    expect((await newbornReference({ root, runsDir: src, ...W })).ok).toBe(true)
+    const promote = (values: Record<string, number | string>) => {
+      writeFileSync(join(root, "knowledge/genome.json"), serialise({ schemaVersion: 1, genomeSchema: SPACE.schemaVersion, values, provenance: { source: "promotion", confirmation: 0 } }))
+      git("commit", "-q", "-am", "meta: promote")
+    }
+    promote({ ...CENTRE, lr: 1e-3 })
+    const r = await newbornReference({ root, runsDir: src, check: true })
+    expect(r.messages.join("\n")).not.toMatch(/error/)
+    expect(r.ok).toBe(true)
+    promote({ ...CENTRE, lr: 1.5e-3 }) // a second promotion: the newborns' centre is two genomes back, still in the history
+    expect((await newbornReference({ root, runsDir: src, check: true })).ok).toBe(true)
+  })
+
+  it("refuses newborns of a genome knowledge/genome.json never was, and newborns of two different centres", async () => {
+    const src = join(root, "newborns")
+    const other = { ...CENTRE, lr: 1e-3 }
+    const of = async (k: number, values: typeof CENTRE) => {
+      const f = await newbornFile(k, 1)
+      const d = decodeGenome(values, SPACE)
+      f.settings = { ...f.settings, ...d.learner }
+      f.meta = { ...f.meta!, genome: { ...values }, genomeSha: await genomeSha(SPACE.schemaVersion, values) }
+      return f
+    }
+    put(src, await of(0, other))
+    const never = await newbornReference({ root, runsDir: src, ...W })
+    expect(never.ok).toBe(false)
+    expect(never.messages.join("\n")).toMatch(/not a centre knowledge\/genome\.json has had/)
+    // Promoted later, that genome is a centre; but a reference is one centre's newborns.
+    writeFileSync(join(root, "knowledge/genome.json"), serialise({ schemaVersion: 1, genomeSchema: SPACE.schemaVersion, values: other, provenance: { source: "promotion", confirmation: 0 } }))
+    git("commit", "-q", "-am", "meta: promote")
+    expect((await newbornReference({ root, runsDir: src, ...W })).ok).toBe(true)
+    put(src, await of(1, CENTRE))
+    const mixed = await newbornReference({ root, runsDir: src, ...W })
+    expect(mixed.ok).toBe(false)
+    expect(mixed.messages.join("\n")).toMatch(/2 centres/)
   })
 
   it("never throws: a stray file named like a learner, a runsDir that is a file, a committed file that is not JSON, a broken config", async () => {

@@ -5,7 +5,7 @@ import { createContributor, type ContributorStatus } from "../src/contributor"
 import { setToken } from "../src/token"
 import { parseLogFile } from "../src/log"
 import { GENOME_SPACE, stubStorage, mkFile } from "./helpers"
-import { validateSessionPr } from "../../../tools/gate/validate"
+import { spacesOf, validateSessionPr } from "../../../tools/gate/validate"
 import { fakeGithub } from "./fakeGithub"
 
 const TOKEN = "ghp_SECRET_token_1234567890"
@@ -678,7 +678,7 @@ describe("contributor: PRs the gate closes (decision 0014: seq gaps, local-only)
     const pr = t.gh.pulls[i]!
     const files = t.gh.prFiles(pr).map(path => ({ path, content: JSON.stringify(t.gh.file(t.gh.repos.has("ann/learner") ? "ann/learner" : UP, BR, path)) }))
     const previous = t.gh.paths(UP, "main").map(path => parseLogFile(t.gh.file(UP, "main", path))).flatMap(p => (p.ok ? [p.value] : []))
-    return validateSessionPr(files, previous, { space: GENOME_SPACE })
+    return validateSessionPr(files, previous, { spaces: spacesOf(GENOME_SPACE) })
   }
 
   for (const deleteBranch of [false, true]) {

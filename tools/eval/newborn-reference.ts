@@ -11,10 +11,13 @@ import { dirname, join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { LEARNER_ID_RE, MAX_EVAL_PANEL, type LogFileV2 } from "@blanktab/harness/log"
 import { NEWBORN_COUNT, NEWBORN_SEED_BASE } from "@blanktab/harness/newborn"
+import { isDeepStrictEqual } from "node:util"
 import { genomeSha, parseCentre } from "@blanktab/meta"
 import { PROVENANCE_TEXT_RE, getEvaluator, parseNewbornReference, type NewbornProvenance, type NewbornReference } from "@blanktab/evaluators"
-import { loadGenomeSpace } from "../gate/gate.ts"
-import { validateSessionPr } from "../gate/validate.ts"
+import { loadGenomeSpace, mainSpaces } from "../gate/gate.ts"
+import { gitRunner } from "../gate/github.ts"
+import { centresBySha } from "../gate/history.ts"
+import { spacesOf, validateSessionPr } from "../gate/validate.ts"
 import { loadEvalConfig } from "./config.ts"
 import { collectLives } from "./lives.ts"
 
@@ -41,34 +44,52 @@ export interface NewbornReferenceResult { ok: boolean; path: string; messages: s
 export const referenceBytes = (r: NewbornReference): string => JSON.stringify(r, null, 2) + "\n"
 
 /**
+ * Every centre the checkout has had, by genomeSha: knowledge/genome.json's git history (centresBySha, each against the
+ * space of its own schema) and the checkout's own. Newborns were run under the centre in force then, which a promotion
+ * (spec §4.5) may since have replaced. Throws when `root` is not a git checkout.
+ */
+async function centresOf(root: string): Promise<Map<string, Record<string, number | string>>> {
+  const git = gitRunner({ cwd: root })
+  const run = (args: string[]) => String(git(args))
+  const space = loadGenomeSpace(root)
+  const centres = centresBySha(run, mainSpaces(root, run))
+  const current = parseCentre(JSON.parse(readFileSync(join(root, GENOME_PATH), "utf8")), space)
+  centres.set(await genomeSha(space.schemaVersion, current), current)
+  return centres
+}
+
+/**
  * Every collected file, checked as the gate would check it as one learner's PR (validateSessionPr with main's genome
  * space; a heartbeat or other non-log name is skipped), and every life checked to be a newborn run as runNewborn
- * runs one: role newborn, the centre genome (knowledge/genome.json), seed NEWBORN_SEED_BASE + k for a k in
- * [0, NEWBORN_COUNT) that no other life has, and panel 1 + (k mod 16). The gate never sees these files, so these checks
- * stand in for its newborn checks. Errors, one per problem.
+ * runs one: role newborn, a centre genome (one knowledge/genome.json has had, the same for every newborn: a reference
+ * is one centre's newborns), seed NEWBORN_SEED_BASE + k for a k in [0, NEWBORN_COUNT) that no other life has, and
+ * panel 1 + (k mod 16). The gate never sees these files, so these checks stand in for its newborn checks. Errors, one
+ * per problem.
  */
 async function checkCollected(root: string, runsDir: string): Promise<string[]> {
   const errors: string[] = []
   if (!existsSync(runsDir) || !statSync(runsDir).isDirectory()) return [`${runsDir}: no such directory`]
   const space = loadGenomeSpace(root)
-  const centre = parseCentre(JSON.parse(readFileSync(join(root, GENOME_PATH), "utf8")), space)
-  const centreSha = await genomeSha(space.schemaVersion, centre)
+  const centres = await centresOf(root)
   for (const id of readdirSync(runsDir).sort()) {
     if (!LEARNER_ID_RE.test(id)) continue
     if (!statSync(join(runsDir, id)).isDirectory()) { errors.push(`${id}: not a directory (a learner's files go in <runsDir>/<learnerId>/<seq>.json)`); continue }
     const names = readdirSync(join(runsDir, id)).filter(n => /^\d+\.json$/.test(n)).sort()
     const files = names.map(n => ({ path: `data/runs/${id}/${n}`, content: readFileSync(join(runsDir, id, n), "utf8") }))
     if (files.length === 0) continue
-    const v = await validateSessionPr(files, [], { space })
+    const v = await validateSessionPr(files, [], { spaces: spacesOf(space) })
     for (const e of v.errors) errors.push(`${id}: ${e}`)
   }
   if (errors.length > 0) return errors
   const byK = new Map<number, string>()
+  const ran = new Set<string>()
   for (const life of collectLives(runsDir)) {
     const at = (why: string) => errors.push(`${life.learnerId}: ${why}`)
     const f = life.files[0] as LogFileV2
     if (life.files.length !== 1 || f.schemaVersion !== 2 || f.meta?.role !== "newborn") { at("not a newborn reference file (one file, meta.role newborn)"); continue }
-    if (f.meta.genomeSha !== centreSha) at(`its genome (${f.meta.genomeSha}) is not the centre's (${centreSha}, ${GENOME_PATH})`)
+    const centre = centres.get(f.meta.genomeSha)
+    if (centre === undefined || !isDeepStrictEqual(f.meta.genome, centre)) at(`its genome (${f.meta.genomeSha}) is not a centre ${GENOME_PATH} has had`)
+    else ran.add(f.meta.genomeSha)
     const k = (f.settings.seed as number) - NEWBORN_SEED_BASE
     if (!(Number.isInteger(k) && k >= 0 && k < NEWBORN_COUNT)) { at(`its seed ${String(f.settings.seed)} is not a newborn's (${NEWBORN_SEED_BASE}…${NEWBORN_SEED_BASE + NEWBORN_COUNT - 1})`); continue }
     if (f.meta.evalPanel !== 1 + (k % MAX_EVAL_PANEL)) at(`its panel ${String(f.meta.evalPanel)} is not newborn ${k}'s (${1 + (k % MAX_EVAL_PANEL)})`)
@@ -76,6 +97,7 @@ async function checkCollected(root: string, runsDir: string): Promise<string[]> 
     if (other !== undefined) at(`seed ${NEWBORN_SEED_BASE + k} is also ${other}'s: one life per newborn`)
     else byK.set(k, life.learnerId)
   }
+  if (ran.size > 1) errors.push(`the newborns ran ${ran.size} centres (${[...ran].sort().join(", ")}): build one reference per centre`)
   return errors
 }
 

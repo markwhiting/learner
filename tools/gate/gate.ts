@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url"
 import { parseLogFile, type LogFile } from "@blanktab/harness/log"
 import { parseGenomeSpace, type GenomeSpace } from "@blanktab/meta"
 import { validateSessionPr, type PrFile } from "./validate.ts"
+import { GENOME_SPACE_FILE, spacesBySchema } from "./history.ts"
 import { readLearnerLogs } from "./summary.ts"
 import { boundAuthor, closePr, FetchBoundError, gh, ghCalls, git, gitBuf, isShallow, labelNeedsHuman, listOpenPrs, loadPrViaGit, mergePr, type Git } from "./github.ts"
 
@@ -44,7 +45,7 @@ function logsIn(files: PrFile[]): LogFile[] {
 }
 
 /** Where a checkout keeps the genome space the gate checks meta.genome against (spec §3.1, §7.3). */
-export const GENOME_SPACE_PATH = "knowledge/genome-space.json"
+export const GENOME_SPACE_PATH = GENOME_SPACE_FILE
 
 /**
  * The genome space in the checkout at `root` (main's). Throws when it is missing or invalid: the gate and the
@@ -58,18 +59,30 @@ export function loadGenomeSpace(root: string): GenomeSpace {
 }
 
 /**
+ * Every genome space main has had, by schemaVersion (history.ts spacesBySchema over `git`'s full history), with the
+ * checkout's current one (loadGenomeSpace at `root`) for its schema. Throws, as loadGenomeSpace does, when the current
+ * space is missing or invalid: the gate and the validator stop before deciding anything.
+ */
+export function mainSpaces(root: string, git: (args: string[]) => string): Map<number, GenomeSpace> {
+  const current = loadGenomeSpace(root)
+  const spaces = spacesBySchema(git)
+  spaces.set(current.schemaVersion, current)
+  return spaces
+}
+
+/**
  * Learners live as long as their tab (decision 0014), so there is no "final" or "gone quiet" signal to wait for:
  * every valid session PR is merged each run. A tab that pushes after validation makes the head-pinned merge fail;
- * the PR stays open and is validated again next run. `space` is main's genome space (loadGenomeSpace).
+ * the PR stays open and is validated again next run. `spaces` is every genome space main has had (mainSpaces).
  */
-export async function decide(prs: OpenPr[], space: GenomeSpace): Promise<GateDecision[]> {
+export async function decide(prs: OpenPr[], spaces: ReadonlyMap<number, GenomeSpace>): Promise<GateDecision[]> {
   // Oldest PR first, whatever order they come in: an unbound learner's first merge goes to the earliest PR, never a later copy.
   const out: GateDecision[] = []
-  for (const pr of [...prs].sort((a, b) => a.number - b.number)) out.push(await decideOne(pr, space))
+  for (const pr of [...prs].sort((a, b) => a.number - b.number)) out.push(await decideOne(pr, spaces))
   return out
 }
 
-async function decideOne(pr: OpenPr, space: GenomeSpace): Promise<GateDecision> {
+async function decideOne(pr: OpenPr, spaces: ReadonlyMap<number, GenomeSpace>): Promise<GateDecision> {
   if (pr.baseRef !== "main") return { pr: pr.number, action: "close", reason: "Session PRs must target main." }
   if (pr.loadErrors && pr.loadErrors.length > 0) return { pr: pr.number, action: "close", reason: pr.loadErrors.join("\n") }
   const ids = learnersIn(pr.files)
@@ -80,7 +93,7 @@ async function decideOne(pr: OpenPr, space: GenomeSpace): Promise<GateDecision> 
     const owner = pr.boundAuthor
     if (owner && pr.author?.toLowerCase() !== owner.toLowerCase()) return { pr: pr.number, action: "close", reason: `Learner ${id} belongs to @${owner}.` }
   }
-  const v = await validateSessionPr(pr.files, pr.previous, { space })
+  const v = await validateSessionPr(pr.files, pr.previous, { spaces })
   if (!v.ok) {
     return v.kind === "needs-human"
       ? { pr: pr.number, action: "label-needs-human", reason: v.errors.join("\n") }
@@ -154,15 +167,15 @@ export interface GateDeps {
 
 /**
  * One gate run over the open `run: ` PRs; resolves to the number merged. Aborts before deciding anything if the
- * checkout of main is shallow (who owns a learner needs main's full history), or if its genome space is missing or
- * invalid (meta genomes are never accepted unchecked). A PR that cannot be decided safely
+ * checkout of main is shallow (who owns a learner and every genome space main has had need main's full history), or
+ * if its genome space is missing or invalid (meta genomes are never accepted unchecked). A PR that cannot be decided safely
  * (no head commit or author, a head that moved since it was read, a base newer than the checkout, an owner lookup or
  * a load that failed or timed out) is logged and left open for the next run. The checkout (HEAD) is the one main the
  * whole run uses: merge bases, earlier logs (its working tree) and owners (its history).
  */
 export async function runGate(repo: string, runsDir: string, deps: GateDeps): Promise<number> {
   if (isShallow(deps.git)) throw new Error("the checkout of main is shallow: who owns a learner cannot be told (gate.yml needs fetch-depth 0)")
-  const space = loadGenomeSpace(deps.git(["rev-parse", "--show-toplevel"]).trim())
+  const spaces = mainSpaces(deps.git(["rev-parse", "--show-toplevel"]).trim(), deps.git)
   let calls = 0
   const ghFn = (args: string[]) => { calls++; return deps.gh(args) }
   const prs: (OpenPr & { learnerId: string | null })[] = []
@@ -206,7 +219,7 @@ export async function runGate(repo: string, runsDir: string, deps: GateDeps): Pr
       deps.log(`PR #${listed.number}: ${calls - before} gh calls`)
     }
   }
-  return act(await decide(prs, space), prs, {
+  return act(await decide(prs, spaces), prs, {
     close: (n, reason) => closePr(repo, n, reason, ghFn),
     label: n => labelNeedsHuman(repo, n, ghFn),
     merge: (n, sha) => mergePr(repo, n, sha, ghFn),

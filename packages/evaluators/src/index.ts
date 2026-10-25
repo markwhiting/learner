@@ -8,7 +8,7 @@ import { signalCheck } from "./signal-check.ts"
 import type { CohortContext, Evaluator } from "./types.ts"
 
 export type {
-  CohortContext, EvalBudget, EvalOutput, Evaluator, LifeInput, LifeOptions, LifeRole, MilestoneKey, NewbornProvenance, NewbornReference, ReferenceParser, References,
+  CohortContext, EvalBudget, EvalOutput, Evaluator, LifeInput, LifeOptions, LifeRole, LifeStanding, MilestoneKey, NewbornProvenance, NewbornReference, ReferenceParser, References,
 } from "./types.ts"
 export { GPU_WIDTHS_CLASS } from "./types.ts"
 export { parseNewbornReference, PROVENANCE_TEXT_RE, REFERENCE_PARSERS } from "./reference.ts"

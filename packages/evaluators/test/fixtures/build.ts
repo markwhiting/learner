@@ -71,8 +71,12 @@ export function typicalLife(learnerId: string, over: { meta?: MetaBlock; widths?
 }
 
 /** A confirmation life's meta block (spec §4.5): role confirm, its confirmation and arm, a seed from its block, no panel. */
+/**
+ * A confirmation 0 life of `arm`, its `seed`-th: evalSeed 10,000 + j with j of the arm's (j mod 4: candidate 0, centre
+ * 1, newborn 2; the parser recomputes the arm from the seed). Seeds wrap within the block of 1,000.
+ */
 export const confirmMeta = (arm: "candidate" | "centre" | "newborn", seed: number, over: Partial<MetaBlock> = {}): MetaBlock =>
-  meta({ role: "confirm", method: "confirm", evalPanel: null, evalSeed: 10_000 + seed, confirmation: { id: 0, arm }, ...over })
+  meta({ role: "confirm", method: "confirm", evalPanel: null, evalSeed: 10_000 + 4 * (seed % 250) + { candidate: 0, centre: 1, newborn: 2 }[arm], confirmation: { id: 0, arm }, ...over })
 
 export interface ScoredLifeSpec {
   /** Measures at every level. */

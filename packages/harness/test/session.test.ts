@@ -10,13 +10,13 @@ import { createWorld, hashSeed, type TraceEvent } from "@blanktab/world"
 import { uniformAction } from "../src/heldout"
 import { MILESTONES_V1, type Milestone } from "../src/milestones"
 import { CAREGIVER_DEFAULTS, clampCaregiverSettings, type CaregiverSettings } from "../src/caregiver"
-import { validateSessionPr } from "../../../tools/gate/validate"
+import { spacesOf, validateSessionPr } from "../../../tools/gate/validate"
 import { createCanvas } from "@napi-rs/canvas"
 import { OFFLINE_KNOWLEDGE_SHA, type Manifest } from "../src/knowledge"
 import { buildHeldOut } from "../src/heldout"
 import { DEFAULT_CHECKPOINT_EVERY_MS, curvePoint, DEFAULT_MAX_STEPS_PER_SEC, FIRST_LOG_CU, LAST_DOUBLING_CU, SessionInbox, logThresholds, nextCrossing, runSession, createPacer, type Clock, type LearnerInit, type SessionConfig, type SessionDeps, type SessionEvent, type SessionLearner, type SessionMeta, BadMetaBlockError } from "../src/session"
 import { CENTRE, GENOME_SPACE, birthBlock, legacyBlock, mkFile } from "./helpers"
-import { checkupSeed, panelSeed } from "../src/checkup"
+import { checkupSeed, confirmSeed, panelSeed } from "../src/checkup"
 import { sweepCheckpoints } from "../src/orphans"
 import { FIRST_LAYER_PARAMS } from "@blanktab/learner"
 import { decodeGenome, genomeSha, legacyGenome } from "@blanktab/meta"
@@ -1220,7 +1220,7 @@ describe("session v2", { timeout: 60_000 }, () => {
         const p = parseLogFile(JSON.parse(JSON.stringify(f)))
         expect(p.ok, p.ok ? "" : p.error).toBe(true)
       }
-      const v = await validateSessionPr(logs.map(f => ({ path: `data/runs/${f.learnerId}/${f.seq}.json`, content: JSON.stringify(f, null, 2) })), [], { space: GENOME_SPACE })
+      const v = await validateSessionPr(logs.map(f => ({ path: `data/runs/${f.learnerId}/${f.seq}.json`, content: JSON.stringify(f, null, 2) })), [], { spaces: spacesOf(GENOME_SPACE) })
       expect(v.errors).toEqual([])
       expect(v.ok).toBe(true)
     }
@@ -2056,6 +2056,60 @@ describe("session v2", { timeout: 60_000 }, () => {
         }
       })
 
+      it("a confirm block (candidate arm) runs checkups on confirmSeed variants and logs settings.seed = evalSeed", async () => {
+        // Confirmation 0, seed 10,004: j = 4, arm candidate (the parser recomputes it).
+        const evalSeed = 10_004
+        const birth: MetaBlock = {
+          ...(await birthBlock(ID)), role: "confirm", method: "confirm", drawSeed: 99, posteriorSha: "cd".repeat(32),
+          evalPanel: null, evalSeed, confirmation: { id: 0, arm: "candidate" },
+        }
+        const frozenSeeds: number[] = []
+        const idb = new IDBFactory()
+        await growM(idb, { cfg: { seed: evalSeed, lifetimeCU: 140, sleepInterval: 10, meta: await metaOf({ birth }) }, stub: { frozenSeeds } })
+        const logs = await logsOf(idb)
+        expect(levelsOf(logs)).toEqual([16, 32, 64, 128])
+        expect(frozenSeeds).toEqual([16, 32, 64, 128].flatMap(l => seedsAt(l, (lv, m) => confirmSeed(evalSeed, lv, m))))
+        for (const f of logs) {
+          expect(f.settings.seed).toBe(evalSeed)
+          expect(constant(f)).toEqual(birth)
+        }
+        await gateAccepts(logs)
+        // A confirmation life whose learner seed is not its evalSeed is refused before any learner exists (the gate
+        // would refuse its files); so is a newborn-arm block, which is a frozen file only (runNewborn).
+        await expect(growM(new IDBFactory(), { cfg: { seed: 7, lifetimeCU: 140, meta: await metaOf({ birth }) } })).rejects.toThrow(BadMetaBlockError)
+        const nb = { ...birth, evalSeed: 10_006, confirmation: { id: 0, arm: "newborn" } }
+        await expect(growM(new IDBFactory(), { cfg: { seed: 10_006, lifetimeCU: 140, meta: await metaOf({ birth: nb }) } })).rejects.toThrow(/arm newborn/)
+      })
+
+      it("final review: a resumed confirm life whose run goes without its block (metaOff) still meets its confirmSeed variants", async () => {
+        const evalSeed = 10_004
+        const birth: MetaBlock = {
+          ...(await birthBlock(ID)), role: "confirm", method: "confirm", drawSeed: 99, posteriorSha: "cd".repeat(32),
+          evalPanel: null, evalSeed, confirmation: { id: 0, arm: "candidate" },
+        }
+        const a = await metaOf({ birth })
+        const idb = new IDBFactory()
+        const first: number[] = []
+        await expect(growM(idb, { cfg: { seed: evalSeed, lifetimeCU: 140, sleepInterval: 10, meta: a }, stub: { frozenSeeds: first }, deps: reload(s => s.cu >= 40) })).rejects.toThrow("reload")
+        const before = levelsOf(await logsOf(idb))
+        expect(before.length).toBeGreaterThan(0)
+        const resumed: number[] = []
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+        try {
+          // The page's resumedHarness throws: the config's speed cap (999, not the block's) runs, so this run's files go without the block.
+          await growM(idb, { cfg: { seed: evalSeed, lifetimeCU: 140, sleepInterval: 10, maxStepsPerSec: 999, meta: { ...a, resumedHarness: () => { throw new Error("page bug") } } }, stub: { frozenSeeds: resumed } })
+          expect(warn.mock.calls.some(c => String(c[0]).includes("this run's log files go without it"))).toBe(true)
+        } finally {
+          warn.mockRestore()
+        }
+        const logs = await logsOf(idb)
+        const after = levelsOf(logs).filter(l => !before.includes(l))
+        expect(after.length).toBeGreaterThan(0)
+        expect(logs.some(f => !("meta" in f))).toBe(true) // the resumed run's files have no block
+        expect(resumed).toEqual(after.flatMap(l => seedsAt(l, (lv, m) => confirmSeed(evalSeed, lv, m))))
+        expect(resumed).not.toContain(seedsAt(after[0]!, (lv, m) => checkupSeed(ID, lv, m))[0])
+      })
+
       it("crossing files at 512, 1024 and 2048 carry filters of 104·conv1 floats; the 8–256 and 3072 files do not", async () => {
         const idb = new IDBFactory()
         const meta = await metaOf()
@@ -2322,9 +2376,9 @@ describe("session v2", { timeout: 60_000 }, () => {
           // under the config it was born with, and would not be a new life under today's.
           for (const f of logs) expect(parseLogFile(JSON.parse(JSON.stringify(f))).ok).toBe(true)
           const pr = (fs: LogFileV2[]) => fs.map(f => ({ path: `data/runs/${f.learnerId}/${f.seq}.json`, content: JSON.stringify(f) }))
-          expect((await validateSessionPr(pr(logs.slice(1)), [logs[0]!], { space: GENOME_SPACE })).errors).toEqual([])
-          expect((await validateSessionPr(pr(logs.slice(0, 1)), [], { space: GENOME_SPACE, budget: OLD })).errors).toEqual([])
-          expect((await validateSessionPr(pr(logs.slice(0, 1)), [], { space: GENOME_SPACE })).errors.join("\n")).toContain("is not the config's")
+          expect((await validateSessionPr(pr(logs.slice(1)), [logs[0]!], { spaces: spacesOf(GENOME_SPACE) })).errors).toEqual([])
+          expect((await validateSessionPr(pr(logs.slice(0, 1)), [], { spaces: spacesOf(GENOME_SPACE), budget: OLD })).errors).toEqual([])
+          expect((await validateSessionPr(pr(logs.slice(0, 1)), [], { spaces: spacesOf(GENOME_SPACE) })).errors.join("\n")).toContain("is not the config's")
         })
 
         it("switched on then off before 2048: no end", async () => {

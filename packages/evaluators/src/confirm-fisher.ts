@@ -4,7 +4,7 @@
 import { lifeBudget, sameBudget, type LogFileV2 } from "@blanktab/harness/log"
 import { budgetWindow, isGpuWidths, isV2, searchOf } from "./life.ts"
 import { fisherOneSided, holm, mannWhitneyOneSided } from "./stats.ts"
-import type { CohortContext, EvalOutput, Evaluator, LifeInput, MilestoneKey, References } from "./types.ts"
+import type { CohortContext, EvalOutput, Evaluator, LifeInput, LifeStanding, MilestoneKey, References } from "./types.ts"
 
 const ID = "confirm-fisher"
 const VERSION = 1
@@ -70,6 +70,16 @@ function classify(life: LifeInput, arm: Arm): Classified {
   return { status, sustained: new Set(), ...base }
 }
 
+/** In an arm's denominator: complete, or failed (a non-pass); abandoned and pending lives are excluded from it. */
+const isCounted = (s: Status) => s === "complete" || s === "failed"
+
+/** Evaluator.standing: classify's verdict on `life` as a life of arm `group` (any other group: excluded). */
+function standing(life: LifeInput, group: string): LifeStanding {
+  if (!(ARMS as readonly string[]).includes(group)) return "excluded"
+  const s = classify(life, group as Arm).status
+  return isCounted(s) ? "counted" : s === "pending" ? "pending" : "excluded"
+}
+
 const byId = (a: LifeInput, b: LifeInput) => (a.learnerId < b.learnerId ? -1 : a.learnerId > b.learnerId ? 1 : 0)
 
 /**
@@ -99,7 +109,7 @@ function evaluateCohort(groups: Record<string, LifeInput[]>, refs: References, c
     }
   }
   const count = (arm: Arm, s: Status) => arms[arm].lives.filter(x => x.c.status === s).length
-  const counted = (arm: Arm) => arms[arm].lives.filter(x => x.c.status === "complete" || x.c.status === "failed")
+  const counted = (arm: Arm) => arms[arm].lives.filter(x => isCounted(x.c.status))
   const counts = {} as Record<Arm, ArmCounts>
   for (const arm of ARMS) {
     counts[arm] = {
@@ -167,5 +177,5 @@ function evaluateCohort(groups: Record<string, LifeInput[]>, refs: References, c
 export const confirmFisher: Evaluator = Object.freeze({
   // needs is empty: confirm-fisher reads no reference itself. It passes refs through to the pinned search evaluator,
   // whose own needs (pinned too) make config load them; if they are absent, its lives are unscored and test 2 has no rows.
-  id: ID, version: VERSION, kind: "cohort" as const, needs: [], budget: BUDGET, evaluateCohort,
+  id: ID, version: VERSION, kind: "cohort" as const, needs: [], budget: BUDGET, evaluateCohort, standing,
 })

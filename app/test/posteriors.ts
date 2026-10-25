@@ -30,3 +30,16 @@ export function posteriorText(mode: Mode, page: PageCounts = {}, need: number[] 
     page: { eligibleLives: 0, lastPromotion: null, calibrationLives: 0, calibrationTarget: 30, looks: 0, ...page },
   }, null, 2) + "\n"
 }
+
+/**
+ * The v2 search fixture (packages/meta/test/fixtures/posterior-v2-search.json: a real fit on the repo's space and centre,
+ * 40 rows, an incumbent, confirmation 3 in flight with need 7/9/22), as its bytes.
+ */
+export const V2_SEARCH_TEXT = readFileSync(new URL("../../packages/meta/test/fixtures/posterior-v2-search.json", import.meta.url), "utf8")
+type Json = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+/** The v2 search fixture's text with `edit` applied to its parsed object (2-space JSON and a final newline). */
+export function v2SearchText(edit: (f: Json) => void = () => {}): string {
+  const f = JSON.parse(V2_SEARCH_TEXT) as Json
+  edit(f)
+  return JSON.stringify(f, null, 2) + "\n"
+}

@@ -167,16 +167,6 @@ export function parseVerified(text: string): VerifiedCache | null {
   return v as unknown as VerifiedCache
 }
 
-/** The cache's verdict on a life born under `posteriorSha`, or null when it has none (or is of another verifier). */
-function cachedVerdict(cache: VerifiedCache | null, learnerId: string, posteriorSha: string | null): Verdict | null {
-  if (cache === null || cache.verifier !== VERIFIER || !Object.hasOwn(cache.lives, learnerId)) return null
-  const v = cache.lives[learnerId]!
-  return v.posteriorSha === posteriorSha ? v : null
-}
-
-/** The lives buildMeta verifies: role search (the draws) and confirm (the confirmation draws), of the space's schema. */
-const isChecked = (meta: MetaBlock, schemaVersion: number) => (meta.role === "search" || meta.role === "confirm") && meta.genomeSchema === schemaVersion
-
 /**
  * The posteriorShas that the lives under `runsDir` buildMeta verifies (isChecked, for the space's `schemaVersion`) and
  * that are not yet in `verified` were born with (their first meta block's), for posteriorHistory: a cached life's
@@ -236,22 +226,47 @@ function checkOutcome(c: CalibrationState, config: EvalConfig): void {
   if (c.outcome === "pending" && !(n < SIGNAL_LOOKS.length && zeroBefore(n))) fail(`outcome pending needs fewer than ${SIGNAL_LOOKS.length} looks, all scored 0`)
 }
 
+// ---- verifier: begin (VERIFIER pins the sha256 of the text from here to "verifier: end") ----
+// Everything that decides a cached verdict lives here: which lives are checked and which meta block is their birth,
+// the cache lookup, the widths class, the genome comparison, the posterior conditioning and the rule itself.
+
 /** The first meta block a life logged (its birth), and the file it is in. */
 function birthOf(files: readonly LogFile[]): { file: LogFileV2; meta: MetaBlock } | null {
   for (const f of files) if (isV2(f) && f.meta) return { file: f, meta: f.meta }
   return null
 }
-const widthsClassOf = (w: LogFileV2["widths"]): "gpu" | "cpu" =>
-  w.conv1 === GPU_WIDTHS_CLASS.conv1 && w.conv2 === GPU_WIDTHS_CLASS.conv2 && w.enc === GPU_WIDTHS_CLASS.enc && w.hidden === GPU_WIDTHS_CLASS.hidden ? "gpu" : "cpu"
 
-const sameGenome = (a: Genome, b: Genome): boolean => {
+/** The lives buildMeta verifies: role search (the draws) and confirm (the confirmation draws), of the space's schema. */
+function isChecked(meta: MetaBlock, schemaVersion: number): boolean {
+  return (meta.role === "search" || meta.role === "confirm") && meta.genomeSchema === schemaVersion
+}
+
+/** The cache's verdict on a life born under `posteriorSha`, or null when it has none (or is of another verifier). */
+function cachedVerdict(cache: VerifiedCache | null, learnerId: string, posteriorSha: string | null): Verdict | null {
+  if (cache === null || cache.verifier !== VERIFIER || !Object.hasOwn(cache.lives, learnerId)) return null
+  const v = cache.lives[learnerId]!
+  return v.posteriorSha === posteriorSha ? v : null
+}
+
+function widthsClassOf(w: LogFileV2["widths"]): "gpu" | "cpu" {
+  return w.conv1 === GPU_WIDTHS_CLASS.conv1 && w.conv2 === GPU_WIDTHS_CLASS.conv2 && w.enc === GPU_WIDTHS_CLASS.enc && w.hidden === GPU_WIDTHS_CLASS.hidden ? "gpu" : "cpu"
+}
+
+function sameGenome(a: Genome, b: Genome): boolean {
   const ka = Object.keys(a).sort(), kb = Object.keys(b).sort()
   return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k])
 }
 
-interface Checked { posteriorMode: Mode | null; reason: string | null; genomeMismatch: boolean }
+/** Per posteriorSha, its gpu model conditioned once (the ts branch's cost), shared by every life born under it. */
+function conditionedBySha(): (sha: string, p: Posterior) => () => GpPosterior | null {
+  const memo = new Map<string, GpPosterior | null>()
+  return (sha, p) => () => {
+    if (!memo.has(sha)) memo.set(sha, p.models.gpu ? modelPosterior(p.models.gpu) : null)
+    return memo.get(sha)!
+  }
+}
 
-// ---- verifier: begin (VERIFIER pins the sha256 of the text from here to "verifier: end") ----
+interface Checked { posteriorMode: Mode | null; reason: string | null; genomeMismatch: boolean }
 
 /** Methods whose genome is a copy, never arithmetic: a recomputed genome that differs is no draw of the gate's. */
 const EXACT_GENOME: ReadonlySet<string> = new Set(["centre", "confirm"])
@@ -352,12 +367,7 @@ async function readLives(input: MetaInput, calibration: CalibrationState): Promi
   // centre draw must reproduce the logged genome exactly, and the logged genome its own genomeSha.
   const designShas = calibration.genomes.map(g => g.genomeSha)
   const design = new Set(designShas)
-  const memo = new Map<string, GpPosterior | null>()
-  const conditioned = (sha: string, p: Posterior) => () => {
-    if (!memo.has(sha)) memo.set(sha, p.models.gpu ? modelPosterior(p.models.gpu) : null)
-    return memo.get(sha)!
-  }
-  const ctx = { space, centres: input.centres, posteriors, conditioned }
+  const ctx = { space, centres: input.centres, posteriors, conditioned: conditionedBySha() }
   const cache = input.previous.verified
   const out: Lives = {
     rows: [], confirmLives: [], checked: 0, flagged: [], mismatched: [], mismatchedRows: [], unscored: {}, verdicts: {},
@@ -531,6 +541,8 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
     ...(s ? { model: { ...s.run, reason: s.reason } } : {}),
     // The open confirmation's counts, with the running lives holding a slot (they move with time).
     ...(step?.diagnostics ? { confirmation: step.diagnostics } : {}),
+    // A trigger that declared nothing, and why (confirm.ts MAX_CONFIRMATIONS_PER_CANDIDATE).
+    ...(step?.skipped ? { confirmationSkipped: step.skipped } : {}),
   }
   const verified: VerifiedCache = { schemaVersion: 1, verifier: VERIFIER, lives: lives.verdicts }
   return {

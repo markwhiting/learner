@@ -3,9 +3,10 @@ import { readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { NEWBORN_LEVELS, type LogFileV2 } from "@blanktab/harness/log"
 import { birthDraw, parseCentre, parsePosterior, toUnit, type ArmName, type Genome, type Posterior } from "@blanktab/meta"
+import { confirmFisher } from "@blanktab/evaluators"
 import { checkup, confirmMeta, endedLife, lid, scoredLife } from "../../../packages/evaluators/test/fixtures/build.ts"
 import {
-  armGroups, CONFIRM_TARGET, confirmationPath, DEADLINE_DAYS, deadlineOf, FORWARD_SKEW_MINUTES, IN_FLIGHT_HOURS, parseConfirmation, type ConfirmationFile, type VerifiedConfirmLife,
+  armGroups, CONFIRM_TARGET, confirmationPath, DEADLINE_DAYS, deadlineOf, FORWARD_SKEW_MINUTES, IN_FLIGHT_HOURS, MAX_CONFIRMATIONS_PER_CANDIDATE, parseConfirmation, type ConfirmationFile, type Outcome, type VerifiedConfirmLife,
 } from "../confirm.ts"
 import { buildMeta, type MetaFiles, type MetaInput } from "../meta.ts"
 import { incumbentFor } from "../search.ts"
@@ -18,6 +19,7 @@ import {
 useTempRuns()
 
 const C0 = confirmationPath(0)
+const standing = confirmFisher.standing!.bind(confirmFisher)
 const HOUR = 3_600_000
 const at = (ms: number) => new Date(Date.parse(BUILT_AT) + ms).toISOString()
 const posteriorOf = (out: MetaFiles): Posterior => {
@@ -25,7 +27,9 @@ const posteriorOf = (out: MetaFiles): Posterior => {
   if (!p) throw new Error("posterior does not parse")
   return p
 }
-const diagOf = (out: MetaFiles) => JSON.parse(out["data/meta/diagnostics.json"]) as { confirmation?: { id: number; counted: Record<ArmName, number>; inFlight: Record<ArmName, number> } }
+const diagOf = (out: MetaFiles) => JSON.parse(out["data/meta/diagnostics.json"]) as {
+  confirmation?: { id: number; counted: Record<ArmName, number>; inFlight: Record<ArmName, number> }; confirmationSkipped?: string
+}
 
 /** Scores that follow the first searched gene: the GP finds the incumbent far above the centre (pBeatsCentre ≈ 1). */
 const byGenome: Effect = (k, _i, g) => {
@@ -157,16 +161,16 @@ describe("confirmations (spec §4.5; plan 05b Task 9)", () => {
     }
     // A duplicate draw of centre seed 3: the lower learnerId counts, whatever order the lives come in.
     const dup = [life(0x502, "centre", 3), life(0x501, "centre", 3), life(0x503, "centre", 4)]
-    expect(armGroups(dup, c).centre.map(l => l.learnerId)).toEqual([lid(0x501), lid(0x503)])
+    expect(armGroups(dup, c, standing).centre.map(l => l.learnerId)).toEqual([lid(0x501), lid(0x503)])
     // 30 candidate lives on distinct seeds: the first 24 by learnerId; the extras are dropped by rule.
     const many = Array.from({ length: 30 }, (_, i) => life(0x700 + 29 - i, "candidate", i))
-    const g = armGroups(many, c)
+    const g = armGroups(many, c, standing)
     expect(g.candidate.map(l => l.learnerId)).toEqual(Array.from({ length: 24 }, (_, i) => lid(0x700 + i)))
     expect(g.centre).toEqual([])
     expect(g.newborn).toEqual([])
     // Lives of another confirmation are not this one's.
     const other = { ...life(0x800, "candidate", 50), meta: { ...confirmMeta("candidate", 50), confirmation: { id: 1, arm: "candidate" as const }, evalSeed: 11_200 } }
-    expect(armGroups([other], c).candidate).toEqual([])
+    expect(armGroups([other], c, standing).candidate).toEqual([])
   })
 
   it("need subtracts in-flight lives written within 48 h; a life silent for 49 h no longer holds a slot", async () => {
@@ -356,6 +360,38 @@ describe("confirmations (spec §4.5; plan 05b Task 9)", () => {
     expect(p.incumbent!.genomeSha).not.toBe(p.centre.genomeSha)
     expect(p.confirmation!.id).toBe(1)
   }, 600_000)
+
+  it("at most 3 confirmations per candidate: a 4th trigger on the same incumbent declares nothing (any outcomes counted); another candidate still declares", async () => {
+    const { w } = await declaredWorld()
+    const c0 = w.previous.confirmations[0]!
+    expect(MAX_CONFIRMATIONS_PER_CANDIDATE).toBe(3)
+    const other = { genomeSha: "ab".repeat(32), values: CENTRE }
+    /** Decided confirmations 0..n−1 of `cands`, with `outcomes`, each declared at 0 rows (so the trigger's row count holds now). */
+    const decided = (outcomes: Outcome[], cands: ConfirmationFile["candidate"][]): ConfirmationFile[] => outcomes.map((outcome, id) => ({
+      ...c0, id, seedBase: 10_000 + 1_000 * id, candidate: cands[id]!, trigger: { ...c0.trigger, rowsAtDeclaration: 0 },
+      result: { outcome, decidedAt: BUILT_AT, sourceCommit: commit(1), output: { evaluator: "confirm-fisher", version: 1, eligible: outcome !== "ineligible", score: outcome === "pass" ? 1 : 0, components: {}, diagnostics: {} }, lives: { candidate: [], centre: [], newborn: [] } },
+    }))
+    const same = c0.candidate
+    for (const outcomes of [["fail", "incomplete", "ineligible"], ["pass", "fail", "fail"]] as Outcome[][]) {
+      const out = await build(w, { previous: { ...w.previous, confirmations: decided(outcomes, [same, same, same]) } })
+      const p = posteriorOf(out)
+      expect(p.incumbent!.genomeSha).toBe(same.genomeSha) // the trigger fires for the same incumbent
+      expect(p.incumbent!.pBeatsCentre).toBeGreaterThanOrEqual(0.95)
+      expect(p.page.rowsSinceDeclaration).toBe(100)
+      expect(out.confirmations).toEqual({})
+      expect(p.confirmation).toBeNull()
+      expect(diagOf(out).confirmationSkipped).toBe(`candidate ${same.genomeSha.slice(0, 8)} already confirmed 3 times`)
+    }
+    // Two of the same candidate and one of another: the 3rd confirmation of this candidate is declared, as id 3.
+    const third = await build(w, { previous: { ...w.previous, confirmations: decided(["fail", "fail", "fail"], [same, other, same]) } })
+    expect(Object.keys(third.confirmations)).toEqual([confirmationPath(3)])
+    expect(parseConfirmation(third.confirmations[confirmationPath(3)]!)).toMatchObject({ id: 3, candidate: same, result: null })
+    expect(diagOf(third).confirmationSkipped).toBeUndefined()
+    // Three of another candidate: this one has none, and is declared.
+    const fresh = await build(w, { previous: { ...w.previous, confirmations: decided(["fail", "fail", "fail"], [other, other, other]) } })
+    expect(Object.keys(fresh.confirmations)).toEqual([confirmationPath(3)])
+    expect(posteriorOf(fresh).confirmation).toMatchObject({ id: 3, candidate: same })
+  }, 240_000)
 
   it("buildMeta twice on the same input (builtAt included) → identical bytes for every file", async () => {
     const { w, Q } = await declaredWorld()

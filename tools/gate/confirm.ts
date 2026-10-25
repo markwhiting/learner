@@ -4,12 +4,12 @@
 // A confirmation file is append-only: written once when declared, once more when its result is appended, never again.
 // Its times (declaredAt, deadline, decidedAt) are the build's `builtAt`, passed in: no clock is read here, and no time
 // reaches posterior.json. Promotion writes knowledge/genome.json, and only on a pass of both tests (decision 0018).
-import { lifeBudget, type LogFile, type LogFileV2, type MetaBlock } from "@blanktab/harness/log"
+import type { MetaBlock } from "@blanktab/harness/log"
 import {
   armOfSeed, checkGenome, fromUnit, genomeSha, parseCentre, sha256Hex,
   type ArmName, type Genome, type GenomeSpace, type GpModel, type Incumbent, type ServedConfirmation,
 } from "@blanktab/meta"
-import { cohortContext, getEvaluator, type EvalOutput, type LifeInput } from "@blanktab/evaluators"
+import { cohortContext, getEvaluator, type EvalOutput, type LifeInput, type LifeStanding } from "@blanktab/evaluators"
 import type { MetaInput } from "./meta.ts"
 import { triggered } from "./search.ts"
 import { serialise } from "./serialise.ts"
@@ -23,6 +23,12 @@ export const DEADLINE_DAYS = 21, IN_FLIGHT_HOURS = 48
  * skew. A file "written" further ahead (a fast or forged clock) holds none, so it cannot keep a slot until the deadline.
  */
 export const FORWARD_SKEW_MINUTES = 10
+/**
+ * The most confirmations one candidate genomeSha gets, whatever their outcomes (decision 0024, agent's call; final
+ * review ruling): a trigger for an incumbent already decided this many times declares nothing, so luck alone cannot
+ * promote a recipe by asking again and again. Changing it is a recorded decision.
+ */
+export const MAX_CONFIRMATIONS_PER_CANDIDATE = 3
 export const confirmationPath = (c: number): string => `data/meta/confirmations/${c}.json`
 export const PROMOTIONS_PATH = "data/meta/promotions.jsonl", GENOME_PATH = "knowledge/genome.json"
 /** The decision a promotion cites. */
@@ -103,19 +109,18 @@ export function parseConfirmation(text: string): ConfirmationFile {
   return v as unknown as ConfirmationFile
 }
 
-const isV2 = (f: LogFile): f is LogFileV2 => f.schemaVersion === 2
+/**
+ * How the pinned confirm evaluator counts a life of an arm (its Evaluator.standing): the gate never decides an arm is
+ * full on lives the evaluator would not count, and holds slots only for lives it calls pending (still running).
+ */
+export type Standing = (life: LifeInput, arm: ArmName) => LifeStanding
 
-/** How a confirmation life stands for the count (as confirm-fisher@1 classifies it). */
-type Standing = "complete" | "failed" | "abandoned" | "running"
-function standing(l: VerifiedConfirmLife): Standing {
-  const budgetCU = lifeBudget(l.meta).budgetCU
-  if (l.life.files.some(f => isV2(f) && (f.checkups ?? []).some(c => c.level === budgetCU))) return "complete"
-  const last = l.life.files[l.life.files.length - 1]!
-  if (!last.final) return "running"
-  return isV2(last) && last.meta?.end === "failed" ? "failed" : "abandoned"
+/** The pinned confirm evaluator's standing (it must have one). */
+function standingOf(input: MetaInput): Standing {
+  const ev = getEvaluator(input.config.confirm)
+  if (!ev.standing) throw new Error(`${input.config.confirm} gives no standing for a life: the gate cannot count its arms`)
+  return ev.standing.bind(ev)
 }
-/** Counted, as confirm-fisher counts: complete or failed (a failed life is a non-pass; an abandoned one is excluded). */
-const isCounted = (s: Standing) => s === "complete" || s === "failed"
 
 /** Confirmation `c`'s verified lives by arm (the seed's: armOfSeed), the lowest learnerId per (arm, evalSeed), in learnerId order. */
 function byArm(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile): Record<ArmName, VerifiedConfirmLife[]> {
@@ -134,7 +139,7 @@ function byArm(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile): Reco
 }
 
 /** Per arm, the lives that count: up to target[arm] counted ones, and the others (abandoned, running) among them. */
-function keptByArm(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile): Record<ArmName, { kept: VerifiedConfirmLife[]; counted: number }> {
+function keptByArm(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, standing: Standing): Record<ArmName, { kept: VerifiedConfirmLife[]; counted: number }> {
   const arms = byArm(lives, c)
   const out = {} as Record<ArmName, { kept: VerifiedConfirmLife[]; counted: number }>
   for (const arm of ARMS) {
@@ -143,7 +148,7 @@ function keptByArm(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile): 
     for (const l of arms[arm]) {
       if (counted === c.target[arm]) break // extras beyond the target are dropped by rule
       kept.push(l)
-      if (isCounted(standing(l))) counted++
+      if (standing(l.life, arm) === "counted") counted++
     }
     out[arm] = { kept, counted }
   }
@@ -155,8 +160,8 @@ function keptByArm(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile): 
  * learnerId order, the first target[arm] counted lives. Lives before the last of those that are not counted
  * (abandoned, still running) are passed too: the evaluator excludes them, and reports their rates.
  */
-export function armGroups(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile): Record<ArmName, LifeInput[]> {
-  const k = keptByArm(lives, c)
+export function armGroups(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, standing: Standing): Record<ArmName, LifeInput[]> {
+  const k = keptByArm(lives, c, standing)
   return { candidate: k.candidate.kept.map(l => l.life), centre: k.centre.kept.map(l => l.life), newborn: k.newborn.kept.map(l => l.life) }
 }
 
@@ -164,14 +169,14 @@ export function armGroups(lives: readonly VerifiedConfirmLife[], c: Confirmation
  * Per arm, the counted lives armGroups keeps, and the running lives (never counted) that hold a slot: newest file
  * written at most IN_FLIGHT_HOURS before builtAt and at most FORWARD_SKEW_MINUTES after it.
  */
-function armCounts(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, builtAt: string): { counted: Record<ArmName, number>; inFlight: Record<ArmName, number> } {
-  const k = keptByArm(lives, c), arms = byArm(lives, c)
+function armCounts(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, builtAt: string, standing: Standing): { counted: Record<ArmName, number>; inFlight: Record<ArmName, number> } {
+  const k = keptByArm(lives, c, standing), arms = byArm(lives, c)
   const now = Date.parse(builtAt)
   const counted = { candidate: k.candidate.counted, centre: k.centre.counted, newborn: k.newborn.counted }
   const inFlight = { candidate: 0, centre: 0, newborn: 0 }
   for (const arm of ARMS) {
     for (const l of arms[arm]) {
-      if (standing(l) !== "running") continue
+      if (standing(l.life, arm) !== "pending") continue
       const newest = l.life.files[l.life.files.length - 1]!
       const age = now - Date.parse(newest.writtenAt)
       if (age >= -FORWARD_SKEW_MINUTES * MINUTE_MS && age <= IN_FLIGHT_HOURS * HOUR_MS) inFlight[arm]++
@@ -216,6 +221,8 @@ export interface ConfirmStep {
   lastPromotion: string | null
   /** For diagnostics.json: the open confirmation's counts (inFlight moves with time, so never in the posterior). */
   diagnostics: { id: number; counted: Record<ArmName, number>; inFlight: Record<ArmName, number> } | null
+  /** For diagnostics.json: why a trigger that fired in this build declared nothing, else null. */
+  skipped: string | null
 }
 
 /** The previous confirmations, checked: ids 0..n−1 in order, and only the last may be open. */
@@ -283,14 +290,15 @@ export async function confirmStep(input: MetaInput, confirmLives: readonly Verif
   const last = prev.length > 0 ? prev[prev.length - 1]! : null
   const out: ConfirmStep = {
     files: {}, served: null, centre, promotionLine: null, genomeFile: null,
-    rowsSinceDeclaration: Math.max(0, searchEraRows - (last?.trigger.rowsAtDeclaration ?? 0)), lastPromotion: null, diagnostics: null,
+    rowsSinceDeclaration: Math.max(0, searchEraRows - (last?.trigger.rowsAtDeclaration ?? 0)), lastPromotion: null, diagnostics: null, skipped: null,
   }
   const all = [...prev]
+  const standing = standingOf(input)
   let decided = false
   if (last !== null && last.result === null) {
     await checkedOpen(last, input)
-    const groups = armGroups(confirmLives, last)
-    const counts = armCounts(confirmLives, last, input.builtAt)
+    const groups = armGroups(confirmLives, last, standing)
+    const counts = armCounts(confirmLives, last, input.builtAt, standing)
     const full = ARMS.every(a => counts.counted[a] >= last.target[a])
     const result = last.centre.genomeSha !== centre.genomeSha
       ? resultOf(last, groups, () => "incomplete", input)
@@ -319,24 +327,29 @@ export async function confirmStep(input: MetaInput, confirmLives: readonly Verif
     const values = fromUnit(input.space, incumbent.x, centre.values)
     const candidateSha = await genomeSha(input.space.schemaVersion, values)
     if (candidateSha !== incumbent.genomeSha) throw new Error(`confirmation ${id}: the incumbent's genomeSha does not match fromUnit of its x`)
-    const c: ConfirmationFile = {
-      schemaVersion: 1, id, genomeSchema: input.space.schemaVersion, confirm: input.config.confirm, search: input.config.search,
-      candidate: { genomeSha: candidateSha, values }, centre: { genomeSha: centre.genomeSha, values: { ...centre.values } },
-      seedBase: seedBaseOf(id), target: { ...CONFIRM_TARGET }, declaredAt: input.builtAt, deadline: deadlineOf(input.builtAt), sourceCommit: input.sourceCommit,
-      trigger: {
-        pBeatsCentre: incumbent.pBeatsCentre, incumbentMean: incumbent.mean, rowsAtDeclaration: searchEraRows,
-        modelSha: await sha256Hex(new TextEncoder().encode(serialise(model))),
-      },
-      result: null,
+    const before = all.filter(p => p.result !== null && p.candidate.genomeSha === candidateSha).length
+    if (before >= MAX_CONFIRMATIONS_PER_CANDIDATE) {
+      out.skipped = `candidate ${candidateSha.slice(0, 8)} already confirmed ${before} times`
+    } else {
+      const c: ConfirmationFile = {
+        schemaVersion: 1, id, genomeSchema: input.space.schemaVersion, confirm: input.config.confirm, search: input.config.search,
+        candidate: { genomeSha: candidateSha, values }, centre: { genomeSha: centre.genomeSha, values: { ...centre.values } },
+        seedBase: seedBaseOf(id), target: { ...CONFIRM_TARGET }, declaredAt: input.builtAt, deadline: deadlineOf(input.builtAt), sourceCommit: input.sourceCommit,
+        trigger: {
+          pBeatsCentre: incumbent.pBeatsCentre, incumbentMean: incumbent.mean, rowsAtDeclaration: searchEraRows,
+          modelSha: await sha256Hex(new TextEncoder().encode(serialise(model))),
+        },
+        result: null,
+      }
+      const text = serialise(c)
+      parseConfirmation(text) // what the gate writes, it can read back
+      all.push(c)
+      out.files[confirmationPath(id)] = text
+      const counts = armCounts(confirmLives, c, input.builtAt, standing)
+      out.served = served(c, counts)
+      out.diagnostics = { id, ...counts }
+      out.rowsSinceDeclaration = 0
     }
-    const text = serialise(c)
-    parseConfirmation(text) // what the gate writes, it can read back
-    all.push(c)
-    out.files[confirmationPath(id)] = text
-    const counts = armCounts(confirmLives, c, input.builtAt)
-    out.served = served(c, counts)
-    out.diagnostics = { id, ...counts }
-    out.rowsSinceDeclaration = 0
   }
   for (const c of all) if (c.result?.outcome === "pass") out.lastPromotion = c.result.decidedAt
   return out

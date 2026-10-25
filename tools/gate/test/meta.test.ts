@@ -790,7 +790,16 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     expect(end).toBeGreaterThan(begin)
     const sha = createHash("sha256").update(text.slice(begin, end), "utf8").digest("hex")
     // On a deliberate change: bump VERIFIER in meta.ts (every cached verdict is then re-verified) and pin the new pair.
-    expect({ verifier: VERIFIER, sha }).toEqual({ verifier: 2, sha: "0a23230fbab1343ade5abcad0693fec8f3a2445c200f8bb83cb461dbc8b10e5a" })
+    // (Final review: the helpers below moved inside the markers with no change of rule, so VERIFIER stayed 2; no
+    // verified.json of verifier 2 had merged yet.)
+    expect({ verifier: VERIFIER, sha }).toEqual({ verifier: 2, sha: "870378600db4c14057ec378d863f0969c05b80aaa5d6932b93620ea8c3ab378a" })
+    // Everything that decides a cached verdict is defined between the markers (and nowhere else in the file).
+    const pinned = text.slice(begin, end), rest = text.slice(0, begin) + text.slice(end)
+    for (const name of ["birthOf", "isChecked", "cachedVerdict", "widthsClassOf", "sameGenome", "conditionedBySha", "fieldMismatch", "verify"]) {
+      expect(pinned, name).toMatch(new RegExp(`\\bfunction ${name}\\(`))
+      expect(rest, name).not.toMatch(new RegExp(`\\b(function|const) ${name}\\b`))
+    }
+    expect(pinned).toMatch(/const EXACT_GENOME\b/)
   })
 
   it("a life born under the last v1 posterior verifies under 05b code", async () => {

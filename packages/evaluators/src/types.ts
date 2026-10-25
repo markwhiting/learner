@@ -59,6 +59,9 @@ export type LifeRole = "search" | "confirm"
  */
 export interface CohortContext { search: Evaluator }
 
+/** How a cohort evaluator counts one life of a group (Evaluator.standing). */
+export type LifeStanding = "counted" | "pending" | "excluded"
+
 export interface Evaluator {
   id: string; version: number; kind: "life" | "cohort"
   needs: string[] // reference names it reads, e.g. ["newborn"]: the source of truth for what config loads
@@ -71,6 +74,12 @@ export interface Evaluator {
   scoresRoles?: readonly LifeRole[]
   /** kind "cohort": a test over arms. The ones that score lives need `ctx` (they throw without it). */
   evaluateCohort?(groups: Record<string, LifeInput[]>, refs: References, ctx?: CohortContext): EvalOutput
+  /**
+   * kind "cohort": how evaluateCohort would count `life` as a member of `group`, by the same classification it uses
+   * (counted: in the group's denominator; pending: it may still be running; excluded: neither). The gate decides when
+   * an arm is full from this, so it never counts a life the evaluator would not (decision 0024).
+   */
+  standing?(life: LifeInput, group: string): LifeStanding
   targets?(outs: EvalOutput[]): number[] // search only: the GP target transform (spec §2.4)
   rankAverage?(outs: EvalOutput[]): number[] // search only: a_i of spec §2.4 step 2, over the eligible outputs in order
 }

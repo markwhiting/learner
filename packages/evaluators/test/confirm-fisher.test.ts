@@ -6,7 +6,7 @@ import {
   type Evaluator, type LifeInput, type NewbornReference,
 } from "@blanktab/evaluators"
 import { fisherOneSided } from "../src/stats"
-import { checkup, confirmMeta, endedLife, file, lid, scoredLife, type Mid } from "./fixtures/build"
+import { checkup, confirmMeta, CPU, endedLife, file, lid, scoredLife, type Mid } from "./fixtures/build"
 
 const REF = parseNewbornReference(JSON.parse(readFileSync(new URL("./fixtures/reference.json", import.meta.url), "utf8"))) as NewbornReference
 const refs = { newborn: REF }
@@ -193,5 +193,31 @@ describe("confirm-fisher@1 (spec §2.5)", () => {
     // A life listed in two arms counts once.
     const dup = run({ ...g, centre: [...g.centre, g.candidate[0]!] })
     expect((dup.diagnostics as unknown as Diag).counts.centre).toMatchObject({ duplicates: 1, counted: 24 })
+  })
+
+  it("standing() is the classification evaluateCohort counts by, on every fixture life (the gate decides full arms from it)", () => {
+    const g = design()
+    const k = fresh(), id = lid(0x5000 + k)
+    // Lives the gate's own classifier once counted but this evaluator ignores or excludes: CPU widths, a logged arm
+    // other than the group, and one still running (not final) before its budget checkup.
+    const cpu: LifeInput = { learnerId: id, files: scoredLife(id, { ms: { M2: 1 }, ratio: 1, meta: confirmMeta("candidate", k, { genomeSha: CANDIDATE }) }).map(f => ({ ...f, widths: CPU })) }
+    const k2 = fresh(), id2 = lid(0x5000 + k2)
+    const running: LifeInput = { learnerId: id2, files: endedLife(id2, "orphan", confirmMeta("candidate", k2, { genomeSha: CANDIDATE })).slice(0, 1) }
+    const lives: [Arm, LifeInput][] = [
+      ...(["candidate", "centre", "newborn"] as const).flatMap(arm => g[arm].map(l => [arm, l] as [Arm, LifeInput])),
+      ["candidate", cpu], ["candidate", running], ["centre", g.candidate[0]!], ["newborn", g.centre[0]!],
+    ]
+    const seen = new Set<string>()
+    for (const [arm, life] of lives) {
+      const s = confirmFisher.standing!(life, arm)
+      const counts = (run({ [arm]: [life] }).diagnostics as unknown as Diag).counts[arm]!
+      seen.add(s)
+      expect({ learnerId: life.learnerId, arm, s }).toEqual({
+        learnerId: life.learnerId, arm, s: counts.counted === 1 ? "counted" : counts.pending === 1 ? "pending" : "excluded",
+      })
+    }
+    expect([...seen].sort()).toEqual(["counted", "excluded", "pending"])
+    expect(confirmFisher.standing!(cpu, "candidate")).toBe("excluded")
+    expect(confirmFisher.standing!(g.candidate[0]!, "elsewhere")).toBe("excluded")
   })
 })

@@ -1,5 +1,5 @@
 // Pure helpers for the page's text: the history table, the links, the build label. No DOM here.
-import type { SessionRow, Summary } from "@blanktab/harness"
+import type { MetaMethod, SessionRow, Summary } from "@blanktab/harness"
 import { SUITE_SIZE, fmtLevel } from "./milestones"
 
 export interface Repo { readonly owner: string; readonly name: string }
@@ -28,22 +28,39 @@ export interface HistoryRow {
   heldOutRatio: string
   /** The latest checkup's score, "2 of 6 at 512 CU", or "—" for a learner without one. */
   milestones: string
+  /** How its genome was drawn (its row's recipe.method, in a word or two: RECIPE_WORDS), or "—" without a block. */
+  recipe: string
+  /** Its score under the pinned search evaluator ("0.41"), "not eligible", or "—" without one. */
+  score: string
+}
+
+/** The HISTORY table's word for each draw method (agent's call: short, plain words; the full line is the LEARNER tab's). */
+export const RECIPE_WORDS: Readonly<Record<MetaMethod, string>> = {
+  centre: "current", calibrate: "calibration", uniform: "random", ts: "meta-learner", confirm: "confirmation", newborn: "newborn", legacy: "legacy",
 }
 
 /** The HISTORY table's columns in order (the <th> texts of index.html); the numeric ones are right-aligned. Milestones is text. */
 export const HISTORY_COLUMNS: readonly { label: string; numeric: boolean }[] = [
   { label: "Learner", numeric: false }, { label: "Steps", numeric: true }, { label: "CU", numeric: true },
   { label: "Held-out ratio", numeric: true }, { label: "Own-stream ratio", numeric: true }, { label: "Milestones", numeric: false },
-  { label: "Final", numeric: false }, { label: "Setting", numeric: false }, { label: "Host", numeric: false },
+  { label: "Recipe", numeric: false }, { label: "Score", numeric: true }, { label: "Final", numeric: false }, { label: "Setting", numeric: false }, { label: "Host", numeric: false },
 ]
 
 const orDash = (v: number | null | undefined) => (typeof v === "number" ? fmt(v) : "—")
 
+/** A row's score under `evaluator` (id@version), as the HISTORY table shows it. */
+function scoreCell(s: SessionRow, evaluator: string | undefined): string {
+  const e = evaluator === undefined ? undefined : s.evals?.[evaluator]
+  if (!e) return "—"
+  return e.score === null ? "not eligible" : e.score.toFixed(2)
+}
+
 /**
  * Past sessions, newest first by lastWrittenAt (ISO strings sort as times). Rows without it (older summaries)
- * go last, ordered by sessionsSeenAtBirth descending, then the later summary entry first.
+ * go last, ordered by sessionsSeenAtBirth descending, then the later summary entry first. `evaluator`: the pinned search
+ * evaluator (id@version) whose score the Score column shows (none: "—").
  */
-export function historyRows(summary: Summary, repo: Repo): HistoryRow[] {
+export function historyRows(summary: Summary, repo: Repo, evaluator?: string): HistoryRow[] {
   return summary.sessions
     .map((s, i) => ({ s, i }))
     .sort((a, b) => {
@@ -66,6 +83,8 @@ export function historyRows(summary: Summary, repo: Repo): HistoryRow[] {
       lossRatio: orDash(s.lossRatio),
       heldOutRatio: orDash(s.heldOutRatio),
       milestones: s.checkupScore ? `${s.checkupScore.score} of ${SUITE_SIZE} at ${fmtLevel(s.checkupScore.level)} CU` : "—",
+      recipe: s.recipe ? RECIPE_WORDS[s.recipe.method] : "—",
+      score: scoreCell(s, evaluator),
     }))
 }
 

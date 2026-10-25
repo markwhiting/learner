@@ -87,6 +87,12 @@ export type FromWorker =
    * the panel its file records).
    */
   | { type: "newborn"; k: number; learnerId: string; done: boolean; evalPanel?: number }
+  /**
+   * A confirmation's newborn arm (plan 05b, Task 11): this tab's newborn `learnerId` drew it, so instead of a life it
+   * runs one frozen newborn of the candidate, seeded `evalSeed`, and queues its one file (gate data, contributed as any
+   * other): started, or its file is in the outbox (`done`). A `final` message follows, and the page starts a newborn.
+   */
+  | { type: "confirmNewborn"; learnerId: string; evalSeed: number; done: boolean }
   /** Newborn reference mode: every newborn asked for is done. */
   | { type: "newbornsDone" }
   /** The life stopped at a forced save asked with `halt`: its checkpoint is current; the page reloads onto it. */

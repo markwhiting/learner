@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS } from "@blanktab/learner"
 import { CAREGIVER_DEFAULTS, CONFIG_BUDGET, DEFAULT_MAX_STEPS_PER_SEC, DEFAULT_SLEEP_INTERVAL, parseMeta } from "@blanktab/harness"
 import { birthDraw, decodeGenome, genomeSha, legacyGenome, parsePosterior } from "@blanktab/meta"
 import { birthFromDraw, drawContextOf, resumedHarnessOf, sessionMetaOf } from "../src/birth"
-import { CENTRE, CENTRE_SHA, GENOME_JSON, SPACE, SPACE_JSON, posteriorText } from "./posteriors"
+import { CENTRE, CENTRE_SHA, GENOME_JSON, SPACE, SPACE_JSON, V2_SEARCH_TEXT, posteriorText } from "./posteriors"
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex")
 const knowledge = (posterior: string | null, space: unknown = SPACE_JSON, genome: unknown = GENOME_JSON) =>
@@ -71,6 +71,49 @@ describe("birthFromDraw", () => {
       }
       expect(methods.has(mode === "calibrate" ? "calibrate" : "uniform"), mode).toBe(true)
     }
+  })
+  it("birthFromDraw of a confirm draw (candidate arm) → meta role confirm, evalSeed, confirmation, evalPanel null, seed = evalSeed; parseMeta accepts it", async () => {
+    const ctx = (await drawContextOf(knowledge(V2_SEARCH_TEXT)))!
+    const posterior = parsePosterior(V2_SEARCH_TEXT)!
+    const drawOf = (id: string) => birthDraw({ learnerId: id, space: SPACE, centre: CENTRE, centreSha: CENTRE_SHA, widthsClass: "gpu", posterior, posteriorSha: sha(V2_SEARCH_TEXT) })
+    const pool = ids(200)
+    for (const arm of ["candidate", "centre", "newborn"] as const) {
+      const id = pool.find(i => drawOf(i).confirmation?.arm === arm)!
+      const d = drawOf(id)
+      const b = await birthFromDraw(ctx, id, "gpu")
+      expect(d.evalSeed).not.toBeNull()
+      expect(b.meta).toMatchObject({ role: "confirm", method: "confirm", evalSeed: d.evalSeed, confirmation: { id: 3, arm }, evalPanel: null, drawSeed: d.drawSeed, posteriorSha: sha(V2_SEARCH_TEXT), genome: d.genome })
+      expect(b.seed).toBe(d.evalSeed)
+      expect(b.kind).toBe(arm === "newborn" ? "confirmNewborn" : "life")
+      expect(b.meta.genome).toEqual(arm === "centre" ? posterior.confirmation!.centre.values : posterior.confirmation!.candidate.values)
+      // The newborn arm's block is a frozen file's (cu 0, final); the others' are a life's first file.
+      const at = arm === "newborn" ? { cu: 0, stepsTotal: 0, final: true } : { cu: 0, stepsTotal: 0, final: false }
+      expect(parseMeta(b.meta, at)).toEqual(b.meta)
+    }
+    // Every other birth has the learnerId's seed (no override), and a ts or uniform one its panel.
+    const other = await birthFromDraw(ctx, pool.find(i => drawOf(i).method === "ts")!, "gpu")
+    expect(other).toMatchObject({ kind: "life", meta: { method: "ts", evalSeed: null, confirmation: null } })
+    expect(other.seed).toBeUndefined()
+    expect(typeof other.meta.evalPanel).toBe("number")
+  })
+  it("birthFromDraw equals birthDraw + decodeGenome for 50 ids under the v2 search fixture (ts and confirm included)", async () => {
+    const ctx = (await drawContextOf(knowledge(V2_SEARCH_TEXT)))!
+    const posterior = parsePosterior(V2_SEARCH_TEXT)!
+    const methods = new Set<string>()
+    for (const id of ids(50)) {
+      for (const widthsClass of ["gpu", "cpu"] as const) {
+        const b = await birthFromDraw(ctx, id, widthsClass)
+        const d = birthDraw({ learnerId: id, space: SPACE, centre: CENTRE, centreSha: CENTRE_SHA, widthsClass, posterior, posteriorSha: sha(V2_SEARCH_TEXT) })
+        const dec = decodeGenome(d.genome, SPACE)
+        expect(b.meta).toMatchObject({ role: d.role, method: d.method, drawSeed: d.drawSeed, posteriorSha: d.posteriorSha, evalPanel: d.evalPanel, evalSeed: d.evalSeed, confirmation: d.confirmation, genome: d.genome })
+        expect(b.meta.genomeSha).toBe(await genomeSha(SPACE.schemaVersion, d.genome))
+        expect(b.learnerSettings).toEqual({ ...DEFAULT_SETTINGS, ...dec.learner })
+        expect(b.caregiver).toEqual({ ...CAREGIVER_DEFAULTS, ...dec.caregiver })
+        expect([b.maxStepsPerSec, b.sleepInterval]).toEqual([dec.harness.maxStepsPerSec, dec.harness.sleepInterval])
+        methods.add(`${widthsClass}:${b.meta.method}`)
+      }
+    }
+    expect([...methods].sort()).toEqual(["cpu:centre", "cpu:uniform", "gpu:confirm", "gpu:ts", "gpu:uniform"])
   })
   it("a posterior built for another centre: centre, with the reason; drawSeed and posteriorSha still recorded", async () => {
     const text = posteriorText("calibrate").replace(CENTRE_SHA, "f".repeat(64))

@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildSummary, pinnedScoring, readLearnerLogs } from "../summary.ts"
 import { parseNewbornReference, searchComposite } from "@blanktab/evaluators"
-import { scoredLife } from "../../../packages/evaluators/test/fixtures/build.ts"
+import { file, meta, scoredLife } from "../../../packages/evaluators/test/fixtures/build.ts"
 import { parseSessionRow, type LogFile, type LogFileV1, type LogFileV2 } from "@blanktab/harness/log"
 
 const A = "lrn_aaaaaaaaaaaaaaaa"
@@ -142,6 +142,33 @@ describe("buildSummary scores (Plan 05a Task 9)", () => {
     for (const r of scored.sessions) expect(parseSessionRow(JSON.parse(JSON.stringify(r)))!.evals).toEqual(r.evals)
     // Without scoring (as before 05a): no evals key at all.
     for (const r of buildSummary(dir, null).sessions) expect("evals" in r).toBe(false)
+  })
+})
+
+describe("buildSummary recipe (plan 05b, Task 11)", () => {
+  it("rows carry recipe {role, method} from the first meta block; parseSessionRow drops a malformed recipe, not the row", () => {
+    const T = "lrn_7777777777777777", L = "lrn_6666666666666666", C = "lrn_8888888888888888"
+    const ts = meta({ method: "ts" })
+    put(file({ learnerId: T, seq: 0, cu: 10, meta: ts }))
+    put(file({ learnerId: T, seq: 1, cu: 20, meta: { ...ts, end: "failed" }, final: true }))
+    // No block in its first file (older code), then one: the first block is the recipe.
+    put(file({ learnerId: L, seq: 0, cu: 10, meta: null }))
+    put(file({ learnerId: L, seq: 1, cu: 20, meta: meta({ role: "legacy", method: "legacy", evalPanel: null, drawSeed: null, posteriorSha: null }) }))
+    put(file({ learnerId: C, seq: 0, cu: 10, meta: meta({ role: "confirm", method: "confirm", evalPanel: null, evalSeed: 10_000, confirmation: { id: 0, arm: "candidate" } }) }))
+    put(log(A, 0)) // a v1 life: no block, no recipe
+    const rows = Object.fromEntries(buildSummary(dir, null).sessions.map(r => [r.learnerId, r]))
+    expect(rows[T]!.recipe).toEqual({ role: "search", method: "ts" })
+    expect(rows[L]!.recipe).toEqual({ role: "legacy", method: "legacy" })
+    expect(rows[C]!.recipe).toEqual({ role: "confirm", method: "confirm" })
+    expect("recipe" in rows[A]!).toBe(false)
+    for (const r of Object.values(rows)) expect(parseSessionRow(JSON.parse(JSON.stringify(r)))).toEqual(r)
+    // Malformed: an unknown role or method, a method its role never has, extra keys, not an object. The row stays.
+    for (const bad of [{ role: "x", method: "ts" }, { role: "search", method: "y" }, { role: "search", method: "confirm" }, { role: "search", method: "ts", extra: 1 }, "ts", null, 5]) {
+      const r = parseSessionRow({ ...JSON.parse(JSON.stringify(rows[T]!)), recipe: bad })
+      expect(r, JSON.stringify(bad)).not.toBeNull()
+      expect(r!.learnerId).toBe(T)
+      expect("recipe" in r!, JSON.stringify(bad)).toBe(false)
+    }
   })
 })
 

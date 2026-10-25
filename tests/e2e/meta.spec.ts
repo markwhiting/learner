@@ -1,13 +1,15 @@
 // Plan 05a Task 12: the page's birth draw, its recipe and meta-learner lines, the short-lives switch and newborn mode.
+// Plan 05b Task 11: ts and confirm births under a search posterior, the confirmation newborn, and the mode guard.
 import { test, expect, type Page } from "@playwright/test"
 import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
 import { LEARNER_STATE_VERSION } from "@blanktab/learner/version"
 import { DEFAULT_SETTINGS } from "@blanktab/learner"
 import { birthDraw, parsePosterior } from "@blanktab/meta"
 import { NEWBORN_SEED_BASE } from "@blanktab/harness/newborn"
-import { parseLogFile } from "@blanktab/harness/log"
+import { NEWBORN_LEVELS, parseLogFile } from "@blanktab/harness/log"
 import { spacesOf, validateSessionPr } from "../../tools/gate/validate"
-import { CENTRE, CENTRE_SHA, GENOME_JSON, SPACE, SPACE_JSON, posteriorText } from "../../app/test/posteriors"
+import { CENTRE, CENTRE_SHA, GENOME_JSON, SPACE, SPACE_JSON, V2_SEARCH_TEXT, posteriorText, v2SearchText } from "../../app/test/posteriors"
 import { fmt } from "../../app/src/site"
 
 const ID_RE = /lrn_[0-9a-f]{16}/
@@ -357,5 +359,102 @@ test("?newborns=0-0 writes one newborn file that parses and validates", async ({
   }))
   expect(local).toEqual([{ learnerId, lastPr: 0, closedInARow: 0, localOnly: true }])
   expect(github.filter(u => !u.endsWith("/user"))).toEqual([])
+  expect(errors).toEqual([])
+})
+
+// ---- Plan 05b, Task 11. The stubbed posterior.json is the v2 search fixture (a real fit, confirmation 3 in flight), served
+// by a Playwright route: the only place a tab meets a search posterior before the signal check answers (ruling 1: data
+// only, no code switch). GPU widths on the CPU backend: a "gpu" widths class, which alone draws ts and confirm.
+const GPU_CLASS = "/learner/?testBackend=cpu&testWidths=gpu&testLifetimeCU=0.05&testSleepInterval=1000"
+const gpuDraw = (learnerId: string, text: string) =>
+  birthDraw({ learnerId, space: SPACE, centre: CENTRE, centreSha: CENTRE_SHA, widthsClass: "gpu", posterior: parsePosterior(text), posteriorSha: sha(text) })
+const POOL = Array.from({ length: 400 }, (_, i) => `lrn_${(0x5eac00 + i).toString(16).padStart(16, "0")}`)
+/** This tab's learner is `learnerId` (its sessionStorage), so its draw is known in Node. */
+const pin = (page: Page, learnerId: string) =>
+  page.addInitScript(i => { if (!sessionStorage.getItem("blanktab:learnerId")) sessionStorage.setItem("blanktab:learnerId", i) }, learnerId)
+
+test("a search posterior: the page's first file has method ts or uniform, and its genome equals birthDraw in Node for the same learnerId and bytes", async ({ context }) => {
+  test.setTimeout(180_000)
+  // A ts life, and (the same fixture) a confirmation life of the candidate arm, seeded by its evalSeed.
+  const picks = [POOL.find(i => gpuDraw(i, V2_SEARCH_TEXT).method === "ts")!, POOL.find(i => gpuDraw(i, V2_SEARCH_TEXT).confirmation?.arm === "candidate")!]
+  for (const learnerId of picks) {
+    const page = await context.newPage()
+    const { errors } = await serve(page, { "posterior.json": V2_SEARCH_TEXT })
+    await pin(page, learnerId)
+    await page.goto(GPU_CLASS)
+    await expect(page.getByTestId("learner-id")).toHaveText(learnerId)
+    const d = gpuDraw(learnerId, V2_SEARCH_TEXT)
+    await expect(page.getByTestId("meta-state")).toHaveText(/^Confirming recipe [0-9a-f]{8} on fresh worlds: 70 of 108 lives\.$/)
+    await expect(page.getByTestId("recipe-text")).toHaveText(d.method === "ts"
+      ? "drawn by the meta-learner (a Thompson sample from 40 lives)"
+      : `a confirmation life (candidate arm, fresh world ${d.evalSeed!.toLocaleString("en-US")})`, { timeout: 30_000 })
+    await expect.poll(async () => (await filesOf(page, learnerId)).length, { timeout: 60_000 }).toBeGreaterThan(0)
+    const first = (await filesOf(page, learnerId))[0]!
+    const meta = first.meta!
+    expect(["ts", "uniform", "confirm"]).toContain(meta.method)
+    expect({ role: meta.role, method: meta.method, drawSeed: meta.drawSeed, posteriorSha: meta.posteriorSha, evalPanel: meta.evalPanel, evalSeed: meta.evalSeed, confirmation: meta.confirmation, genome: meta.genome })
+      .toEqual({ role: d.role, method: d.method, drawSeed: d.drawSeed, posteriorSha: sha(V2_SEARCH_TEXT), evalPanel: d.evalPanel, evalSeed: d.evalSeed, confirmation: d.confirmation, genome: d.genome })
+    // A confirmation life's learner seed is its evalSeed (the gate checks settings.seed = meta.evalSeed).
+    if (d.role === "confirm") expect(first.settings.seed).toBe(d.evalSeed)
+    expect(parseLogFile(JSON.parse(JSON.stringify(first))).ok).toBe(true)
+    expect(errors).toEqual([])
+    await page.close()
+  }
+})
+
+test("a confirmation in the posterior and a learnerId whose draw is the newborn arm: one frozen confirm file is queued and a new life starts", async ({ page }) => {
+  test.setTimeout(300_000) // a GPU-width newborn's three frozen checkups on the CPU (about a minute here)
+  const learnerId = POOL.find(i => gpuDraw(i, V2_SEARCH_TEXT).confirmation?.arm === "newborn")!
+  const d = gpuDraw(learnerId, V2_SEARCH_TEXT)
+  const { errors } = await serve(page, { "posterior.json": V2_SEARCH_TEXT })
+  await pin(page, learnerId)
+  await page.goto(GPU_CLASS)
+  await expect(page.getByTestId("learner-id")).toHaveText(learnerId)
+  await expect(page.getByTestId("recipe-text")).toHaveText(`a confirmation life (newborn arm, fresh world ${d.evalSeed!.toLocaleString("en-US")})`, { timeout: 30_000 })
+  await expect(page.getByTestId("status")).toHaveText(/^checking a confirmation newborn \(seed [\d,]+\) on its fresh worlds$/)
+  // Its one file, then the page's next life: another learner, born from its own draw.
+  await expect(page.getByTestId("learner-id")).not.toHaveText(learnerId, { timeout: 270_000 })
+  const files = await filesOf(page, learnerId)
+  expect(files).toHaveLength(1)
+  const f = files[0]!
+  expect(parseLogFile(JSON.parse(JSON.stringify(f))).ok).toBe(true)
+  expect(f).toMatchObject({ seq: 0, final: true, cu: 0, stepsTotal: 0, settings: { seed: d.evalSeed } })
+  expect(f.meta).toMatchObject({ role: "confirm", method: "confirm", evalPanel: null, evalSeed: d.evalSeed, confirmation: { id: 3, arm: "newborn" }, drawSeed: d.drawSeed, posteriorSha: sha(V2_SEARCH_TEXT), genome: d.genome })
+  expect((f.checkups ?? []).map(c => c.level)).toEqual([...NEWBORN_LEVELS])
+  // Gate data, contributed as any other file: not marked local-only.
+  const contribution = await page.evaluate(i => new Promise<unknown>(res => {
+    const req = indexedDB.open("blanktab")
+    req.onsuccess = () => { const g = req.result.transaction("contribution").objectStore("contribution").get(i); g.onsuccess = () => res(g.result ?? null) }
+  }), learnerId)
+  expect((contribution as { localOnly?: boolean } | null)?.localOnly ?? false).toBe(false)
+  await expect(page.getByTestId("learner-id")).toHaveText(ID_RE)
+  await expect(page.getByTestId("recipe-text")).not.toHaveText("drawing…", { timeout: 30_000 })
+  expect(errors).toEqual([])
+})
+
+test("the committed calibrate posterior: the page shows 'Calibrating: …' and the first file's method is calibrate, uniform or centre", async ({ page }) => {
+  const text = readFileSync(new URL("../../data/meta/posterior.json", import.meta.url), "utf8")
+  expect(parsePosterior(text)!.mode).toBe("calibrate")
+  const { errors } = await serve(page, { "posterior.json": text })
+  await page.goto(GPU_CLASS)
+  const id = await learnerIdOf(page)
+  await expect(page.getByTestId("meta-state")).toHaveText(/^Calibrating: \d+ of \d+ lives measured, to learn whether the score can tell recipes apart\.$/)
+  await expect.poll(async () => (await filesOf(page, id)).length, { timeout: 60_000 }).toBeGreaterThan(0)
+  const meta = (await filesOf(page, id))[0]!.meta!
+  expect(["calibrate", "uniform", "centre"]).toContain(meta.method)
+  expect(meta).toMatchObject({ ...(({ role, method, drawSeed, evalPanel, genome }) => ({ role, method, drawSeed, evalPanel, genome }))(gpuDraw(id, text)), posteriorSha: sha(text) })
+  expect(errors).toEqual([])
+})
+
+test("a v2 posterior with mode calibrate and a model (mode guard): the first file has method centre and posteriorSha null; the meta-learner line reads 'Not reachable: this learner runs the current recipe.'", async ({ page }) => {
+  const text = v2SearchText(f => { f.mode = "calibrate"; f.confirmation = null })
+  expect(parsePosterior(text)).toBeNull()
+  const { errors } = await serve(page, { "posterior.json": text })
+  await page.goto(GPU_CLASS)
+  const id = await learnerIdOf(page)
+  await expect(page.getByTestId("meta-state")).toHaveText("Not reachable: this learner runs the current recipe.")
+  await expect(page.getByTestId("recipe-text")).toHaveText("the current recipe")
+  await expect.poll(async () => (await filesOf(page, id)).length, { timeout: 60_000 }).toBeGreaterThan(0)
+  expect((await filesOf(page, id))[0]!.meta).toMatchObject({ role: "search", method: "centre", posteriorSha: null, drawSeed: null, genome: CENTRE })
   expect(errors).toEqual([])
 })

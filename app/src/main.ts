@@ -262,6 +262,8 @@ async function live(id: string, ctx: Ctx, held?: () => void, record?: unknown): 
       void drawnFrom.then(dc => { if (ctx.life === life) ui.recipe({ meta, ctx: dc }) })
     }
     else if (m.type === "unlabelled") ui.recipe({ unlabelled: m.reason })
+    // A confirmation's newborn arm: one frozen file instead of a life; its `final` follows, then a newborn starts.
+    else if (m.type === "confirmNewborn" && m.done) ui.status("the confirmation newborn's file is in the outbox; a newborn starts next")
     else if (m.type === "queued") {
       ui.progress(m.steps, m.cu)
       // Without a token (or for a local-only learner) nothing is ever sent: keep each learner's unsent files bounded.

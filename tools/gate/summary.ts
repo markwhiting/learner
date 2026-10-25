@@ -68,6 +68,16 @@ export function latestCheckup(logs: LogFile[]): { level: number; score: number }
   return null
 }
 
+/**
+ * How the life's genome was drawn: the role and method of its first meta block (lowest seq), or null when no file has
+ * one (v1 lives, lives from before 05a). The block is constant across a life's files (the gate checks), except a
+ * pre-05a life resumed later, whose first block is its legacy one.
+ */
+export function recipeOf(logs: LogFile[]): SessionRow["recipe"] | null {
+  for (const l of logs) if (l.schemaVersion === 2 && l.meta) return { role: l.meta.role, method: l.meta.method }
+  return null
+}
+
 /** What the summary scores each life with: the pinned search evaluator and the pinned references (summary-cli.ts). */
 export interface SummaryScoring { evaluator: Evaluator; refs: References }
 
@@ -104,6 +114,7 @@ export function buildSummary(runsDir: string, scoring: SummaryScoring | null): S
       const logs = readLearnerLogs(join(runsDir, id)).filter(l => l.learnerId === id)
       const last = logs[logs.length - 1]
       if (!last) continue
+      const recipe = recipeOf(logs)
       sessions.push({
         learnerId: id, settings: last.settings, hostSig: last.hostSig, stepsTotal: last.stepsTotal,
         final: last.final, codeSha: last.codeSha, knowledgeSha: last.knowledgeSha, sessionsSeenAtBirth: last.sessionsSeenAtBirth,
@@ -113,6 +124,7 @@ export function buildSummary(runsDir: string, scoring: SummaryScoring | null): S
         heldOutRatio: heldOutRatio(logs),
         checkupScore: latestCheckup(logs),
         ...(scoring ? { evals: evalsOf(id, logs, scoring) } : {}),
+        ...(recipe ? { recipe } : {}),
       })
     }
   }

@@ -279,6 +279,11 @@ export interface SessionRow {
    * evals["search-composite@1"]. score, C and H are null when not eligible. Absent in summaries built before it existed.
    */
   evals?: Record<string, SessionEval>
+  /**
+   * How the life's genome was drawn (plan 05b, Task 11): its first meta block's role and method, for the HISTORY table.
+   * Absent for a life whose files carry no block, and in summaries built before it existed.
+   */
+  recipe?: { role: MetaRole; method: MetaMethod }
 }
 
 /** One evaluator's score of a life in the summary (spec §2.2). */
@@ -311,8 +316,9 @@ export function parseSessionRow(v: unknown): SessionRow | null {
   if (!isObj(v) || typeof v.learnerId !== "string" || !LEARNER_ID_RE.test(v.learnerId)) return null
   if (!isObj(v.settings) || !isObj(v.hostSig) || !isNum(v.hostSig.cores) || typeof v.hostSig.webgpu !== "boolean") return null
   if (!isNum(v.stepsTotal) || !isNum(v.sessionsSeenAtBirth) || typeof v.final !== "boolean") return null
-  const { lastWrittenAt, cu, lossRatio, heldOutRatio, checkupScore, evals, ...rest } = v
+  const { lastWrittenAt, cu, lossRatio, heldOutRatio, checkupScore, evals, recipe, ...rest } = v
   const kept = parseEvals(evals)
+  const how = parseRecipe(recipe)
   return {
     ...(rest as unknown as SessionRow),
     ...(isIso(lastWrittenAt) ? { lastWrittenAt } : {}),
@@ -325,7 +331,16 @@ export function parseSessionRow(v: unknown): SessionRow | null {
       && isNonNegInt(checkupScore.score) && checkupScore.score <= MAX_SUITE_SIZE
       ? { level: checkupScore.level, score: checkupScore.score } : null,
     ...(kept ? { evals: kept } : {}),
+    ...(how ? { recipe: how } : {}),
   }
+}
+
+/** A row's recipe as the page keeps it: exactly { role, method }, a method its role may have (ROLE_METHODS); else undefined. */
+function parseRecipe(v: unknown): SessionRow["recipe"] {
+  if (!isObj(v) || unknownKey(v, ["role", "method"], "recipe") !== null) return undefined
+  const role = v.role as MetaRole, method = v.method as MetaMethod
+  if (!ROLES.includes(role) || !ROLE_METHODS[role].includes(method)) return undefined
+  return { role, method }
 }
 
 const isNumOrNull = (v: unknown): v is number | null => v === null || isNum(v)

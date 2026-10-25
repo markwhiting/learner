@@ -12,7 +12,9 @@ import { runNewborn } from "@blanktab/harness/newborn"
 import { openQueue } from "@blanktab/harness/queue"
 import {
   BadMetaBlockError, DEFAULT_MAX_STEPS_PER_SEC, SessionInbox, curvePoint, runSession, type LearnerInit, type SessionConfig, type SessionLearner, type SessionMeta,
+  type SessionResult,
 } from "@blanktab/harness/session"
+import { hasCheckpoint } from "@blanktab/harness/checkpoint"
 import { chooseBackend, type Chosen } from "./backend"
 import { birthFromDraw, drawContextOf, sessionMetaOf, withoutPosterior, type Birth, type DrawContext } from "./birth"
 import { frameGate } from "./frames"
@@ -59,6 +61,13 @@ function budgetOf(budgetCU: number | undefined): EvalBudget {
  */
 interface Candidate { name: string; birth?: Birth; meta?: SessionMeta; unlabelled?: string }
 
+/**
+ * A newborn's births: the candidates a session tries in order, and, when the draw was a confirmation's newborn arm,
+ * that birth (with the context it was drawn in): it runs as one frozen newborn instead of a life (runConfirmNewborn),
+ * and the candidates are its fallbacks.
+ */
+interface Births { list: Candidate[]; newbornArm?: { birth: Birth; ctx: DrawContext } }
+
 /** `lrn_` + 16 hex from the crypto RNG: a newborn reference's own learnerId (it never takes over this tab's). */
 function freshLearnerId(): string {
   return "lrn_" + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("")
@@ -79,17 +88,20 @@ function rateMeter(): (steps: number) => number {
 /**
  * The birth candidates for life `id` at `widths` (the first run's): its draw (birthFromDraw), then a centre draw if the
  * draw was not already centre, then none. A candidate that cannot be built is skipped, with the reason on the console.
+ * A draw of a confirmation's newborn arm is not a candidate (a session never runs it): it is `newbornArm`.
  */
-async function candidatesOf(m: StartMessage, widths: Widths): Promise<Candidate[]> {
+async function candidatesOf(m: StartMessage, widths: Widths): Promise<Births> {
   const id = m.cfg.learnerId
   const ctx = await contextOf(m.draw)
-  if (!ctx) return [{ name: "none", unlabelled: m.draw ? "the genome files could not be read" : "no genome files" }]
+  if (!ctx) return { list: [{ name: "none", unlabelled: m.draw ? "the genome files could not be read" : "no genome files" }] }
   const budget = budgetOf(m.overrides?.budgetCU)
   const out: Candidate[] = []
+  let newbornArm: Births["newbornArm"]
   const add = async (name: string, c: DrawContext) => {
     try {
       const birth = await birthFromDraw(c, id, widthsClassOf(widths), budget)
       if (birth.reason !== undefined) console.warn(`blanktab: learner ${id}: the posterior gave the centre: ${birth.reason}`)
+      if (birth.kind === "confirmNewborn") { newbornArm = { birth, ctx: c }; return }
       const knobs = { ...(m.overrides?.maxStepsPerSec !== undefined ? { maxStepsPerSec: m.overrides.maxStepsPerSec } : {}), ...(m.overrides?.sleepInterval !== undefined ? { sleepInterval: m.overrides.sleepInterval } : {}) }
       out.push({ name, birth, meta: sessionMetaOf(c, birth.meta, budget, knobs) })
     } catch (e) {
@@ -99,7 +111,7 @@ async function candidatesOf(m: StartMessage, widths: Widths): Promise<Candidate[
   await add("drawn", ctx)
   if (ctx.posterior !== null) await add("centre", withoutPosterior(ctx))
   out.push({ name: "none", unlabelled: "the session refused its genome blocks (see the console)" })
-  return out
+  return { list: out, ...(newbornArm ? { newbornArm } : {}) }
 }
 
 /**
@@ -112,6 +124,8 @@ function configOf(c: SessionConfig, m: StartMessage, cand: Candidate): SessionCo
   return {
     ...c,
     ...(b ? { learnerSettings: b.learnerSettings, caregiver: b.caregiver, ...(m.ownCap ? {} : { maxStepsPerSec: b.maxStepsPerSec, sleepInterval: b.sleepInterval }) } : {}),
+    // A confirmation life's learner seed is its evalSeed (a resumed life's comes from its checkpoint whatever this says).
+    ...(b?.seed !== undefined ? { seed: b.seed } : {}),
     ...(cand.meta ? { meta: cand.meta } : {}),
     ...(o.maxStepsPerSec !== undefined ? { maxStepsPerSec: o.maxStepsPerSec } : {}),
     ...(o.sleepInterval !== undefined ? { sleepInterval: o.sleepInterval } : {}),
@@ -142,8 +156,12 @@ async function start(m: StartMessage): Promise<void> {
    * The birth, decided at the first run (its widths class is known then) and kept: a restore on another backend runs
    * the same genome (and resumes from the checkpoint, which carries its block anyway).
    */
-  let candidates: Promise<Candidate[]> | undefined
+  let candidates: Promise<Births> | undefined
   let accepted: Candidate | undefined
+  /** The newborn arm's frozen file was refused (BadMetaBlockError): later runs go to the candidates. */
+  let armRefused = false
+  /** Whether this life is a newborn: no checkpoint (handed over or stored) and no log file yet. */
+  const isNewborn = async () => m.checkpointRecord === undefined && !(await hasCheckpoint(indexedDB, id)) && (await queue.files(id)).length === 0
 
   /** The log files' share of the caregiver line (createCarryTally). */
   const carryFiles = (files: readonly LogFile[]): CarryFile[] =>
@@ -248,7 +266,26 @@ async function start(m: StartMessage): Promise<void> {
    */
   const run: RunLife = async (c, chosen, restore) => {
     if (accepted) return runOnce(c, chosen, restore, accepted)
-    const list = await (candidates ??= candidatesOf(m, c.widths))
+    if (!candidates) {
+      // The draw runs once, before the learner starts (a ts draw conditions the model: a moment, up to a few seconds).
+      post({ type: "status", message: "drawing a recipe…" })
+      candidates = candidatesOf(m, c.widths)
+      const fresh = await isNewborn()
+      await candidates
+      if (fresh) post({ type: "status", message: "newborn" })
+    }
+    const births = await candidates
+    // A confirmation's newborn arm runs as one frozen newborn, in place of a life (a resumed life is never one).
+    if (births.newbornArm && !armRefused && await isNewborn()) {
+      try {
+        return await runConfirmNewborn(births.newbornArm.birth, births.newbornArm.ctx, chosen)
+      } catch (e) {
+        if (!(e instanceof BadMetaBlockError)) throw e
+        armRefused = true
+        console.warn(`blanktab: ${e.message}; trying the ${births.list[0]!.name} birth instead`)
+      }
+    }
+    const list = births.list
     for (const [i, cand] of list.entries()) {
       try {
         return await runOnce(c, chosen, restore, cand)
@@ -258,6 +295,37 @@ async function start(m: StartMessage): Promise<void> {
       }
     }
     throw new Error("unreachable: the last candidate has no block to refuse")
+  }
+
+  /**
+   * A confirmation's newborn arm (spec §4.5; decision 0024 "Confirmation-newborn files"): this tab's learner `id` is one
+   * untrained learner of the candidate, seeded by its evalSeed, checked frozen on that seed's own variants, its one file
+   * queued for the contributor (gate data: not local-only). About 4 minutes on a GPU. Nothing to resume: a restore after
+   * a GPU failure runs it again from the start (its file is queued only at its end).
+   */
+  const runConfirmNewborn = async (birth: Birth, ctx: DrawContext, chosen: Chosen): Promise<SessionResult> => {
+    const meta = birth.meta
+    const { evalSeed, confirmation, drawSeed, posteriorSha } = meta
+    if (evalSeed === null || confirmation === null || drawSeed === null || posteriorSha === null) throw new BadMetaBlockError(id, "a confirmation newborn's block needs its evalSeed, confirmation and draw")
+    post({ type: "confirmNewborn", learnerId: id, evalSeed, done: false })
+    post({ type: "meta", meta, lastLevel: 0 })
+    post({ type: "status", message: `checking a confirmation newborn (seed ${evalSeed.toLocaleString("en-US")}) on its fresh worlds` })
+    const file = await runNewborn({
+      learnerId: id, who: { kind: "confirm", evalSeed, confirmationId: confirmation.id, drawSeed, posteriorSha },
+      codeSha: cfg.codeSha, knowledgeSha: cfg.knowledgeSha, hostSig: { ...cfg.hostSig, webgpu: chosen.kind === "webgpu" },
+      widths: chosen.widths, settings: birth.learnerSettings, genome: { schema: meta.genomeSchema, values: { ...meta.genome }, sha: meta.genomeSha }, space: ctx.space,
+    }, {
+      createLearner: async init => {
+        const l = await learnerOn(chosen, init)
+        if (!("state" in init)) post({ type: "learner", settings: { ...init.settings, maxStepsPerSec: birth.maxStepsPerSec, seed: init.seed }, widths: { ...init.widths } })
+        return l
+      },
+      checkupCanvas: () => new OffscreenCanvas(WORLD.width, WORLD.height), idb: indexedDB, now: () => new Date(),
+    })
+    post({ type: "checkups", results: file.checkups ?? [], reset: true })
+    post({ type: "queued", seq: file.seq, steps: 0, cu: 0, final: true })
+    post({ type: "confirmNewborn", learnerId: id, evalSeed, done: true })
+    return { steps: 0, cu: 0, seq: file.seq + 1, resumedFrom: null, alreadyFinal: false, halted: false }
   }
 
   const r = await liveOnBestBackend(cfg, {

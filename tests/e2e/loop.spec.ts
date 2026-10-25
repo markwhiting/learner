@@ -5,7 +5,7 @@ import { createHash } from "node:crypto"
 import { birthDraw, genomeSha, parsePosterior } from "@blanktab/meta"
 import { spacesOf, validateSessionPr } from "../../tools/gate/validate"
 import { GENOME_SPACE } from "../../packages/harness/test/helpers"
-import { CENTRE, GENOME_JSON, SPACE_JSON, posteriorText } from "../../app/test/posteriors"
+import { CENTRE, GENOME_JSON, SPACE_JSON, posteriorText, v2SearchText } from "../../app/test/posteriors"
 
 const TOKEN = "test-token"
 const UP = "markwhiting/learner"
@@ -54,14 +54,15 @@ const CORS = {
 }
 
 /** Mocks knowledge/*.json and api.github.com, and records every request the page (or its worker) makes. */
-async function setup(page: Page, opts: { knowledge: "ok" | "unreachable"; token?: string }) {
+/** `files`: knowledge files served over KNOWLEDGE's (the search lines' fit test). */
+async function setup(page: Page, opts: { knowledge: "ok" | "unreachable"; token?: string; files?: Record<string, unknown> }) {
   const gh = fakeGithub({ token: TOKEN, login: "tester", canPush: true })
   const all: Request[] = []
   page.context().on("request", r => all.push(r))
   await page.route("**/knowledge/*.json", route => {
     if (opts.knowledge === "unreachable") return route.abort("internetdisconnected")
     const name = new URL(route.request().url()).pathname.split("/").pop()!
-    const body = KNOWLEDGE[name]
+    const body = { ...KNOWLEDGE, ...opts.files }[name]
     if (body === undefined) return route.fulfill({ status: 404 })
     return typeof body === "string" ? route.fulfill({ body, contentType: "application/json" }) : route.fulfill({ json: body })
   })
@@ -664,10 +665,11 @@ const DESKTOPS = [{ width: 1280, height: 800 }, { width: 1440, height: 900 }, { 
  * `fontScale` makes every element's text that much larger (its computed font-size times the scale, set inline), standing
  * in for a platform whose fonts set taller than this one's (e.g. Linux CI): the layout must absorb it, not overflow.
  */
-async function expectFits(page: Page, sizes: { width: number; height: number }[], fontScale = 1) {
-  await setup(page, { knowledge: "ok" })
+async function expectFits(page: Page, sizes: { width: number; height: number }[], fontScale = 1, files?: Record<string, unknown>, before?: () => Promise<void>) {
+  await setup(page, { knowledge: "ok", ...(files ? { files } : {}) })
   await page.goto(LONG)
   await expect.poll(() => curvePoints(page)).toBeGreaterThan(0)
+  await before?.()
   if (fontScale !== 1) {
     await page.evaluate(scale => {
       const els = [...document.querySelectorAll<HTMLElement>("body, body *")]
@@ -730,6 +732,43 @@ test("on a laptop or desktop window each tab fits it: no page scroll either way,
 
 test("the fit absorbs taller text (fonts that set 8% larger, as on another platform): still no scroll, nothing overflows", async ({ page }) => {
   await expectFits(page, [{ width: 1280, height: 800 }, { width: 1440, height: 900 }], 1.08)
+})
+
+/**
+ * The longest 05b lines (plan 05b, Task 11): a search posterior with a confirmation in flight and a promotion (the
+ * meta-learner line), a promoted genome.json (HISTORY's "Current recipe"), summary rows with a recipe and a score, and
+ * the longest recipe line a life can have (a confirmation life's; this CPU-class tab draws centre or uniform, so the
+ * line is set in the DOM, with its three gene highlights).
+ */
+const SEARCH_FILES: Record<string, unknown> = {
+  "posterior.json": v2SearchText(f => { f.page.lastPromotion = "2026-11-03T09:00:00.000Z"; f.page.eligibleLives = 1214 }),
+  "genome.json": { ...GENOME, provenance: { source: "promotion", confirmation: 0, decision: "docs/decisions/0024-meta-learner-search-calls.md", promotedAt: "2026-11-03T09:00:00.000Z", fisher: null, mannWhitneyP: null, lives: {} } },
+  "summary.json": { schemaVersion: 1, sessions: [
+    { ...row("lrn_aaaaaaaaaaaaaaaa"), recipe: { role: "search", method: "ts" }, evals: { "search-composite@1": { eligible: true, score: 0.4123, C: 0.5, H: 0.3 } } },
+    { ...row("lrn_bbbbbbbbbbbbbbbb"), cu: 1024.5, lossRatio: 0.9123, heldOutRatio: 1.0456, recipe: { role: "confirm", method: "confirm" }, evals: { "search-composite@1": { eligible: false, score: null, C: null, H: null } } },
+  ] },
+}
+const longestRecipe = (page: Page) => async () => {
+  await expect(page.getByTestId("meta-state")).toHaveText(/^Confirming recipe [0-9a-f]{8} on fresh worlds: 70 of 108 lives\. Last promotion: 2026-11-03\.$/)
+  await page.getByTestId("recipe-text").evaluate(e => { e.textContent = "a confirmation life (current-recipe arm, fresh world 10,347)" })
+  await page.getByTestId("recipe-genes").evaluate(e => { e.textContent = " · caregiver temperature ×0.31, caregiver exploration ×2.9, head learning rate ×0.42" })
+}
+
+test("the search lines fit (05b): a confirmation, a promotion and the longest recipe line, at every desktop size; HISTORY has its recipe and score columns", async ({ page }) => {
+  test.setTimeout(180_000)
+  await expectFits(page, DESKTOPS, 1, SEARCH_FILES, longestRecipe(page))
+  await expect(page.getByRole("tab", { name: "History" })).toBeVisible()
+  await page.getByRole("tab", { name: "History" }).click()
+  await expect(page.getByTestId("current-recipe")).toHaveText("Current recipe: promoted 2026-11-03 (confirmation 0)")
+  const cells = (id: string) => page.locator(`[data-testid="history"] tbody tr:has(a:text("${id}")) td`)
+  await expect(cells("lrn_aaaaaaaaaaaaaaaa").nth(6)).toHaveText("meta-learner")
+  await expect(cells("lrn_aaaaaaaaaaaaaaaa").nth(7)).toHaveText("0.41")
+  await expect(cells("lrn_bbbbbbbbbbbbbbbb").nth(6)).toHaveText("confirmation")
+  await expect(cells("lrn_bbbbbbbbbbbbbbbb").nth(7)).toHaveText("not eligible")
+})
+
+test("the search lines fit with text 8% larger (05b)", async ({ page }) => {
+  await expectFits(page, [{ width: 1280, height: 800 }, { width: 1440, height: 900 }], 1.08, SEARCH_FILES, longestRecipe(page))
 })
 
 test("on a laptop-height window the right column's prose is clamped, and its \"more\" opens it in full", async ({ page }) => {

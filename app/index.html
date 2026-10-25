@@ -181,6 +181,8 @@
     td.num { text-align: right; }
     th.num { text-align: right; }
     .empty { margin: 0; padding: 14px; color: var(--muted); }
+    .current-recipe { margin: 0; padding: 10px 14px 2px; font-size: 12px; font-weight: 650; }
+    .current-recipe[hidden] { display: none; }
     td[data-label="Setting"] { white-space: normal; min-width: 360px; }
 
     /* ABOUT */
@@ -388,8 +390,10 @@
 
     <section role="tabpanel" id="panel-history" aria-labelledby="tab-history" hidden>
       <div class="table-wrap surface" data-testid="history">
+        <!-- The centre in force: the initial recipe, or the latest promotion (it changes only on a passed confirmation). -->
+        <p class="current-recipe" data-testid="current-recipe" hidden></p>
         <table>
-          <thead><tr><th scope="col">Learner</th><th scope="col" class="num">Steps</th><th scope="col" class="num">CU</th><th scope="col" class="num">Held-out ratio</th><th scope="col" class="num">Own-stream ratio</th><th scope="col">Milestones</th><th scope="col">Final</th><th scope="col">Setting</th><th scope="col">Host</th></tr></thead>
+          <thead><tr><th scope="col">Learner</th><th scope="col" class="num">Steps</th><th scope="col" class="num">CU</th><th scope="col" class="num">Held-out ratio</th><th scope="col" class="num">Own-stream ratio</th><th scope="col">Milestones</th><th scope="col">Recipe</th><th scope="col" class="num">Score</th><th scope="col">Final</th><th scope="col">Setting</th><th scope="col">Host</th></tr></thead>
           <tbody></tbody>
         </table>
         <p class="empty" hidden>No past sessions yet. When a learner's logs are merged, its session appears here.</p>

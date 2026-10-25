@@ -5,7 +5,7 @@ import evaluation from "../../config/evaluation.json" with { type: "json" }
 import type { DrawContext } from "./birth"
 import { appendPoints, fitCanvas, ownStreamText, ratioText, sparkline } from "./curve"
 import { appendCheckups, milestoneBars, milestoneText } from "./milestones"
-import { NEWBORN_RUN_TEXT, genomeHighlights, metaLineOf, missingText, recipeText, scoreText, unlabelledText } from "./recipe"
+import { NEWBORN_RUN_TEXT, currentRecipeText, genomeHighlights, metaLineOf, missingText, recipeText, scoreText, unlabelledText } from "./recipe"
 import { HISTORY_COLUMNS, buildLabel, fmt, fmtSettings, historyRows, siteLinks } from "./site"
 
 const $ = <T extends HTMLElement>(sel: string): T => {
@@ -138,12 +138,16 @@ function renderStatic(): void {
 }
 
 function renderHistory(k: Knowledge): void {
-  const box = byTest("history"), rows = historyRows(k.summary, REPO)
+  const box = byTest("history"), rows = historyRows(k.summary, REPO, SEARCH_EVALUATOR)
+  // The centre in force (knowledge/genome.json's provenance): it changes only on a passed confirmation.
+  const current = byTest("current-recipe"), text = k.meta ? currentRecipeText(k.meta.genome) : null
+  current.textContent = text ?? ""
+  current.hidden = text === null
   box.querySelector("tbody")!.replaceChildren(...rows.map(r => {
     const tr = document.createElement("tr")
     const a = document.createElement("a")
     a.href = r.href; a.textContent = r.learnerId; a.target = "_blank"; a.rel = "noopener noreferrer"
-    const values: (string | Node)[] = [a, r.steps, r.cu, r.heldOutRatio, r.lossRatio, r.milestones, r.final, r.setting, r.host]
+    const values: (string | Node)[] = [a, r.steps, r.cu, r.heldOutRatio, r.lossRatio, r.milestones, r.recipe, r.score, r.final, r.setting, r.host]
     for (const [i, c] of values.entries()) {
       const { label, numeric } = HISTORY_COLUMNS[i]!
       const td = document.createElement("td")
@@ -338,7 +342,9 @@ export function createUi(): Ui {
       if ("unlabelled" in r) { byTest("recipe-text").textContent = unlabelledText(r.unlabelled); return }
       if ("newborn" in r) { byTest("recipe-text").textContent = r.newborn; return }
       const { meta, ctx } = r
-      byTest("recipe-text").textContent = recipeText(meta, ctx?.posterior ?? null)
+      // A ts life's words name the model it was drawn from: only that posterior's (a resumed life's may have changed since).
+      const drawnFrom = meta.method !== "ts" || ctx?.posteriorSha === meta.posteriorSha ? ctx?.posterior ?? null : null
+      byTest("recipe-text").textContent = recipeText(meta, drawnFrom)
       // The highlights need the genome in the page's space (a legacy genome of an older schema has none).
       let highlights: string[] = []
       try {

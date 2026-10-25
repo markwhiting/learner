@@ -37,6 +37,7 @@ describe("historyRows", () => {
       learnerId: "lrn_aaaaaaaaaaaaaaaa",
       href: "https://github.com/markwhiting/learner/tree/main/data/runs/lrn_aaaaaaaaaaaaaaaa",
       steps: "1500", final: "no", setting: "moveProbability = 0.123", host: "4 cores · no webgpu", cu: "—", lossRatio: "—", heldOutRatio: "—", milestones: "—",
+      recipe: "—", score: "—",
     })
     expect(historyRows({ schemaVersion: 1, sessions: [row("lrn_aaaaaaaaaaaaaaaa", 0, { settings: {} })] }, REPO)[0]).toMatchObject({ final: "yes", setting: "none", host: "8 cores · webgpu" })
   })
@@ -51,6 +52,23 @@ describe("historyRows", () => {
     expect(at({ checkupScore: { level: 2048, score: 0 } })).toBe("0 of 6 at 2,048 CU")
     expect(at({ checkupScore: null })).toBe("—")
     expect(at({})).toBe("—")
+  })
+})
+
+describe("historyRows recipe and score (plan 05b, Task 11)", () => {
+  it("a recipe column in words from recipe.method, and a score column from evals[evaluator]; '—' without", () => {
+    const at = (over: Partial<SessionRow>, evaluator?: string) => {
+      const [r] = historyRows({ schemaVersion: 1, sessions: [row("lrn_aaaaaaaaaaaaaaaa", 0, over)] }, REPO, evaluator)
+      return [r!.recipe, r!.score]
+    }
+    const evals = { "search-composite@1": { eligible: true, score: 0.41234, C: 0.5, H: 0.3 }, "other@2": { eligible: false, score: null, C: null, H: null } }
+    expect(at({ recipe: { role: "search", method: "ts" }, evals }, "search-composite@1")).toEqual(["meta-learner", "0.41"])
+    expect(at({ recipe: { role: "search", method: "uniform" }, evals }, "other@2")).toEqual(["random", "not eligible"])
+    expect(at({ recipe: { role: "search", method: "uniform" }, evals }, "missing@1")).toEqual(["random", "—"])
+    expect(at({ recipe: { role: "search", method: "uniform" }, evals })).toEqual(["random", "—"])
+    const words = (["centre", "calibrate", "uniform", "ts", "confirm", "newborn", "legacy"] as const).map(method => at({ recipe: { role: "search", method } })[0])
+    expect(words).toEqual(["current", "calibration", "random", "meta-learner", "confirmation", "newborn", "legacy"])
+    expect(at({})).toEqual(["—", "—"])
   })
 })
 
@@ -89,11 +107,11 @@ describe("buildLabel", () => {
 })
 
 describe("HISTORY_COLUMNS", () => {
-  it("the labels equal app/index.html's HISTORY <th> texts, in order; numeric exactly Steps, CU, Held-out ratio, Own-stream ratio", () => {
+  it("the labels equal app/index.html's HISTORY <th> texts, in order; numeric exactly Steps, CU, Held-out ratio, Own-stream ratio, Score", () => {
     const html = readFileSync(join(__dirname, "../index.html"), "utf8")
     const head = html.match(/<thead><tr>(<th[^>]*>[^<]*<\/th>)+<\/tr><\/thead>/)![0]
     const ths = [...head.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map(m => m[1])
     expect(HISTORY_COLUMNS.map(c => c.label)).toEqual(ths)
-    expect(HISTORY_COLUMNS.filter(c => c.numeric).map(c => c.label)).toEqual(["Steps", "CU", "Held-out ratio", "Own-stream ratio"])
+    expect(HISTORY_COLUMNS.filter(c => c.numeric).map(c => c.label)).toEqual(["Steps", "CU", "Held-out ratio", "Own-stream ratio", "Score"])
   })
 })

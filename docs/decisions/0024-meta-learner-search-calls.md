@@ -138,6 +138,39 @@ A confirmation's newborn arm uses the reference newborn's frozen file shape, so 
 - `centresBySha` hashes with `node:crypto` synchronously. `history.test.ts` pins its sha equal to `@blanktab/meta`'s `genomeSha`.
 - **Tools with one space.** `tools/eval` (collect-newborns, newborn-reference) passes `spacesOf(space)` with the checkout's space only. Newborn files of an older schema would now be refused there rather than checked for structure only. None exist.
 
+### Rows and the fit [agent; within spec §4.3]
+
+Built in `tools/gate/search.ts` and `tools/gate/meta.ts` (Task 8).
+
+- **Only in mode `search`.** In every other mode `buildMeta` calls nothing of the search: no rows are subset, no fit runs, and the posterior is 05a's bytes with `schemaVersion` 2 and `page.rowsSinceDeclaration` 0 (a test rebuilds 05a's golden this way, byte for byte, and a spy on `fitGp` sees no call in calibrate or flat with 200 rows). `diagnostics.json` is unchanged in those modes.
+- **Rows.** An eligible life under `config.search`, of method `calibrate`, `uniform`, `ts` or `centre`, on gpu widths, at the space's schema, with inheritance `none`, that verifies. Confirmation lives are verified but are never rows. y is `targets(...)` over all rows; above 1,000 rows, `rowSubset` keeps the 1,000 with the largest `hashSeed(0, "subset/" + learnerId)`. x is `toUnit` of the **logged** genome, rounded to 6 decimals (and kept in [0, 1]).
+- **No model, with a reason.** Fewer than d + 1 rows (13 at d = 12), a non-finite target, a fit that throws (ragged data, or more than 13 searched genes), a fit with no finite start, or a fitted model that `conditionGp` refuses: `models` is `{}`, the incumbent is null, and the posterior's `diagnostics.model` is `{ reason }`. Tabs then draw centre (and uniform).
+- **Reuse.** When the previous posterior's model has the same genes, rows, x and y, its `hyper` and `fit` are reused without refitting. The fit is deterministic, so this changes no byte (tested).
+- **The hyperparameters are fitted on at most 500 rows** (`FIT_ROWS`) [agent's call, not in the spec]. Above 500 rows, the fit uses the 500 model rows with the largest subset hash; the model still conditions on all its rows (up to 1,000), and tabs sample from that. Why: a gate run may build up to 3 times (commit-meta's rebuild on a moved main), and a full fit at 1,000 rows is 177 s on the laptop, so about 6–9 min on a CI runner (2–3× slower), up to 27 min for three, against gate.yml's 30-minute limit. Measured on the laptop (Node 22): `fitGp` 4.5 s at 300 rows and 19.7 s at 500; `buildModel` at the 1,000-row cap (fit on 500, condition on 1,000) 17.5 s, and `incumbentFor` 0.22 s. So one build's fit is under a minute on CI and three are under 3 minutes. The cap is deterministic: no clock decides anything. Only the gpu class is fitted, so this is the whole fit time per run.
+- **What the fit did** goes in `diagnostics.json` `model` (rows, fitRows, refit, the starts that took no step, the reason), never in the posterior, whose bytes must not move between a refit and a reuse.
+- **Rows since declaration** are counted from the signal look's `lives` until Task 9 declares a confirmation (plan conflict 5): `max(0, rows − lives)`.
+- **The incumbent** is `incumbentOf` seeded with `hashSeed(0, "incumbent/" + sha256(serialise(model)))` against the current centre; its genomeSha is that of `fromUnit(space, x*, centre)`. `triggered` holds when pBeatsCentre ≥ 0.95, ≥ 100 rows since the declaration, no confirmation in flight and an incumbent that is not the centre; Task 9 acts on it.
+- **Posterior size.** At 1,000 rows the posterior is about 285 KB (the spec estimated 150 KB).
+
+### Centre in force [agent; closes 05a Task 10's note; Review Focus 3]
+
+- A tab draws with its own `knowledge/genome.json`, which a promotion may have moved. The gate therefore tries up to two centres when it recomputes a draw: the posterior's `centre` (the one it was built for), then, for a `centre` draw only, the logged genome itself when its sha is one of the centres main has had (`centresBySha` over `knowledge/genome.json`'s history, plus the checkout's own). The first that reproduces method, drawSeed, evalPanel, evalSeed and confirmation, with the exact genome, wins. A life born under P whose tab held an older centre B therefore verifies as a `centre` draw with the fallback "posterior built for another centre", and is a row on B.
+- **A `centre` draw whose genome is no centre main ever had is flagged `"unknown centre"`**, checked right after the posterior, as an unknown posteriorSha is.
+- **Copies are exact.** A `centre` or `confirm` draw must reproduce the genome exactly; only `uniform`, `ts` and `calibrate` (within the design) keep a row on a logged genome that differs from the recomputed one (spec §7.4). For a confirm life that means its genome is the confirmation's candidate (candidate and newborn arms) or its centre (centre arm), as the gate fixed them in the declaration (spec §4.5 "Integrity"); otherwise `"genome is not confirmation <c>'s candidate|centre"`.
+- **Confirm lives** are verified like draws (evalSeed and `{ id, arm }` included) and kept for Task 9. Two lives with the same evalSeed both verify; Task 9 counts only the lower learnerId.
+
+### Verification cache [agent; settles 05a's note on posteriorHistory growth]
+
+- `data/meta/verified.json` = `{ schemaVersion: 1, verifier: 2, lives: { <learnerId>: { posteriorSha, reason, genomeMismatch } } }`, written every build with the verdict of every life checked.
+- A life in it with the same posteriorSha is not verified again, and `wantedPosteriors` asks the history walk only for uncached lives' posteriors, so the walk stops at recent posteriors.
+- A missing or malformed cache, or one of another `verifier`, verifies every life again (the cache saves work, it never decides). A build from no cache gives the same files as one from the cache (tested). Scoring and rows are recomputed every build; only the draw check is cached.
+- **Cost.** A `ts` re-verification is one tab birth: 0.5 s per life at 1,000 rows on the laptop. With the cache that is paid once per life (≤ 50 an hour). A lost cache, or a `verifier` bump, re-verifies every life in one build: with many `ts` lives that could exceed the gate's 30 minutes (about 1,000 ts lives on CI). **Open:** a per-build cap on fresh verifications, if that day comes.
+- `commit-meta.ts` commits `verified.json` once Task 10 widens `META_PATH_RE`.
+
+### Calibration consistency [agent; Review Focus 2]
+
+`keptCalibration` refuses a `calibration.json` whose outcome is not the one its looks give, so a hand-edited "signal" cannot switch the search on. Every look must be an eligible output of the pinned `config.signal`, scored 0 or 1. `signal` needs the last look scored 1 and every earlier one 0; `flat` needs all 3 looks, all 0; `pending` needs fewer than 3 looks, all 0. The gate then stops and writes nothing.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

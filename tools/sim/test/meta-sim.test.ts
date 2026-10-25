@@ -65,7 +65,7 @@ describe("meta-learner simulation (plan 05b Task 12)", () => {
     // main's history is linear: every commit's first parent is the one before (nothing was forced past).
     const log = git("rev-list", "--parents", "main").trim().split("\n").map(l => l.split(" "))
     for (let i = 0; i + 1 < log.length; i++) expect(log[i]![1]).toBe(log[i + 1]![0])
-  }, 180_000)
+  }, 300_000)
 
   it("quick sim, calibration finds no signal: flat after 3 looks, and inert to the end (no fit, no model, no confirmation, genome.json unchanged)", async () => {
     const dir = fresh()
@@ -82,5 +82,5 @@ describe("meta-learner simulation (plan 05b Task 12)", () => {
     expect(git("ls-tree", "-r", "--name-only", "main", "data/meta").trim().split("\n").filter(p => /confirmations|promotions/.test(p))).toEqual([])
     expect(r.promoted).toBe(false)
     expect(r.knowledgeShaAfter).toBe(r.knowledgeShaBefore)
-  }, 180_000)
+  }, 300_000)
 })

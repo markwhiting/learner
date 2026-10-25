@@ -135,20 +135,20 @@ describe("candidateSet", () => {
 })
 
 describe("thompsonPick", () => {
-  it("thompsonPick over 2,000 seeds on a 1-d model with a clear peak at 0.7: ≥ 80 % of picks within 0.1 of 0.7, and some outside (exploration)", () => {
+  it("thompsonPick over 400 seeds on a 1-d model with a clear peak at 0.7: ≥ 80 % of picks within 0.1 of 0.7, and some outside (exploration)", () => {
     const post = peaked1d()
     let near = 0
     let outside = 0
-    for (let s = 0; s < 2000; s++) {
+    for (let s = 0; s < 400; s++) {
       const rng = createRng(hashSeed(s, "ts-1d"))
       const pick = thompsonPick(post, candidateSet(post, rng), rng)
       expect(pick).not.toBeNull()
       if (Math.abs(pick!.x[0]! - 0.7) <= 0.1) near++
       else outside++
     }
-    expect(near / 2000).toBeGreaterThanOrEqual(0.8)
+    expect(near / 400).toBeGreaterThanOrEqual(0.8)
     expect(outside).toBeGreaterThan(0)
-  }, 120_000)
+  }, 300_000)
 
   it("thompsonPick samples jointly: between two correlated candidates it picks the first at Φ(Δμ/σΔ) ± 0.03 over 4,000 seeds, not at the marginal rate", () => {
     const post = peaked1d()

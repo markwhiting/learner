@@ -9,7 +9,7 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createRng } from "@blanktab/detmath"
 import type { LogFile, LogFileV2, MetaBlock } from "@blanktab/harness/log"
-import { birthDraw, genomeSha, parseCentre, parseGenomeSpace, parsePosterior, sha256Hex, type Genome } from "@blanktab/meta"
+import { birthDraw, decodeGenome, genomeSha, parseCentre, parseGenomeSpace, parsePosterior, sha256Hex, type Genome, type GenomeSpace } from "@blanktab/meta"
 import { parseNewbornReference, type NewbornReference } from "@blanktab/evaluators"
 import { lid, scoredLife, typicalLife, type ScoredLifeSpec } from "../../../packages/evaluators/test/fixtures/build.ts"
 import { loadEvalConfig } from "../../eval/config.ts"
@@ -39,6 +39,8 @@ export function useTempRuns(): void {
   beforeEach(() => { runs = mkdtempSync(join(tmpdir(), "meta-")) })
   afterEach(() => { rmSync(runs, { recursive: true, force: true }) })
 }
+/** Writes the next lives to `dir` (the simulation's own runs dir; tests use useTempRuns). */
+export const useRunsDir = (dir: string) => { runs = dir }
 /** The current test's runs dir. */
 export const runsDir = () => runs
 export const put = (f: LogFile) => {
@@ -83,31 +85,46 @@ let nextK = 1
 export const resetK = (k: number) => { nextK = k }
 export interface Born { learnerId: string; draw: ReturnType<typeof birthDraw>; meta: MetaBlock; files: LogFileV2[] }
 /**
+ * The flat settings a session logs for a learner of `meta`'s genome (app/src/worker.ts: the decoded learner and
+ * caregiver genes, the speed cap, and the learner seed, which a confirmation life takes from its evalSeed): what
+ * validateSessionPr checks against the genome. `seed` stands in for the learnerId's own seed otherwise.
+ */
+export function sessionSettings(space: GenomeSpace, meta: MetaBlock, seed: number): Record<string, number> {
+  const d = decodeGenome(meta.genome, space)
+  return { ...d.learner, ...d.caregiver, maxStepsPerSec: d.harness.maxStepsPerSec, seed: meta.role === "confirm" && meta.evalSeed !== null ? meta.evalSeed : seed }
+}
+
+/**
  * A life born as a tab would birth it under the posterior bytes `text`, on GPU widths unless `widths` says otherwise,
- * with the tab's own centre `centre` (default: main's): birthDraw's genome, method, seeds, panel and confirmation,
- * logged in its meta block. `alter` edits the block it logs.
+ * with the tab's own centre `centre` (default: main's) and genome space `space` (default: main's): birthDraw's genome,
+ * method, seeds, panel and confirmation, logged in its meta block. `alter` edits the block it logs. `session`: its
+ * files carry the settings the session logs (sessionSettings), so validateSessionPr accepts them.
  */
 export async function bornLife(text: string | null, opts: {
   effect?: Effect; widths?: LogFileV2["widths"]; alter?: (m: MetaBlock) => MetaBlock | Promise<MetaBlock>; k?: number; centre?: Genome
   /** Milestones passed at 512, 1024 and 2048 CU (default none). */
   passed?: ScoredLifeSpec["passed"]
+  space?: GenomeSpace; session?: boolean
 } = {}): Promise<Born> {
   const k = opts.k ?? nextK++
   const learnerId = lid(0x10000 + k)
   const posterior = text === null ? null : parsePosterior(text)
   const posteriorSha = text === null ? null : await shaOf(text)
   const centre = opts.centre ?? CENTRE
-  const d = birthDraw({ learnerId, space: SPACE, centre, centreSha: await shaOfGenome(centre), widthsClass: opts.widths ? "cpu" : "gpu", posterior, posteriorSha })
+  const space = opts.space ?? SPACE
+  const sha = (g: Genome) => genomeSha(space.schemaVersion, g)
+  const d = birthDraw({ learnerId, space, centre, centreSha: await sha(centre), widthsClass: opts.widths ? "cpu" : "gpu", posterior, posteriorSha })
   let meta: MetaBlock = {
-    v: 1, role: d.role, method: d.method, genomeSchema: SPACE.schemaVersion, genome: d.genome, genomeSha: await shaOfGenome(d.genome),
+    v: 1, role: d.role, method: d.method, genomeSchema: space.schemaVersion, genome: d.genome, genomeSha: await sha(d.genome),
     drawSeed: d.drawSeed, posteriorSha: d.posteriorSha, evalPanel: d.evalPanel, evalSeed: d.evalSeed, confirmation: d.confirmation,
     inheritance: { filters: "none" },
   }
   if (opts.alter) meta = await opts.alter(meta)
   const e = (opts.effect ?? noise)(k, d.calibrationIndex, meta.genome)
-  const files = opts.widths
+  const built = opts.widths
     ? typicalLife(learnerId, { meta, widths: opts.widths })
     : scoredLife(learnerId, { ms: { M1: 0.9, M2: e.m2, M3: 0.2, M4: 0.3, M5: 0.8, M6: 0 }, ratio: e.ratio, meta, ...(opts.passed ? { passed: opts.passed } : {}) })
+  const files = opts.session ? built.map(f => ({ ...f, settings: sessionSettings(space, f.meta ?? meta, k) })) : built
   for (const f of files) put(f)
   return { learnerId, draw: d, meta, files }
 }

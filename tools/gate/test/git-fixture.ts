@@ -1,16 +1,17 @@
 // A throwaway GitHub stand-in for gate tests: a bare "origin" served over file:// (with filters allowed), a "work"
 // clone that plays the gate's checkout of main, and an author clone that pushes main commits and refs/pull/N/head.
 import { execFileSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { gitRunner, type Git } from "../github.ts"
 
 /** A file's content, or a symlink to a target, or a submodule (gitlink) at a commit. */
 export type Entry = string | Buffer | { symlink: string } | { submodule: string }
 
 /** The repo's knowledge/genome-space.json, which main carries in every fixture (the gate reads it from its checkout). */
-export const SPACE_JSON = readFileSync(join(__dirname, "../../../knowledge/genome-space.json"), "utf8")
+export const SPACE_JSON = readFileSync(fileURLToPath(new URL("../../../knowledge/genome-space.json", import.meta.url)), "utf8")
 
 /** Isolates every git the fixture and the code under test run from the user's and the system's git config. */
 export const FIXTURE_ENV = {
@@ -23,7 +24,10 @@ export interface Fixture {
   work: string
   /** git in `work`, as loadPrViaGit's gitFn. */
   git: Git
-  /** Commits to main on origin and (unless `pull` is false) pulls it into `work`; resolves to the new main commit. */
+  /**
+   * Commits to main on origin, on top of origin's main (a gate commit pushed from `work` included), and (unless `pull`
+   * is false) pulls it into `work`; resolves to the new main commit.
+   */
   commitMain(files: Record<string, Entry>, remove?: string[], pull?: boolean): string
   /** Sets refs/pull/<n>/head on origin to a commit on top of main (`stack`: on top of PR n's last commit); resolves to it. */
   pr(n: number, files: Record<string, Entry>, remove?: string[], stack?: boolean): string
@@ -32,8 +36,13 @@ export interface Fixture {
   cleanup(): void
 }
 
-export function makeFixture(): Fixture {
-  const dir = mkdtempSync(join(tmpdir(), "gate-git-"))
+/** `base`: an empty (or absent) directory to build the fixture in, kept by the caller; default a fresh temp dir. */
+export function makeFixture(base?: string): Fixture {
+  const dir = base !== undefined ? resolve(base) : mkdtempSync(join(tmpdir(), "gate-git-"))
+  if (base !== undefined) {
+    mkdirSync(dir, { recursive: true })
+    if (readdirSync(dir).length > 0) throw new Error(`makeFixture: ${dir} is not empty`)
+  }
   const bare = join(dir, "origin.git"), src = join(dir, "src"), work = join(dir, "work")
   const run = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, ...FIXTURE_ENV }, stdio: ["ignore", "pipe", "pipe"] }).trim()
   run(dir, "init", "-q", "--bare", "-b", "main", bare)
@@ -63,6 +72,7 @@ export function makeFixture(): Fixture {
     git: gitRunner({ cwd: work, env: FIXTURE_ENV }),
     commitMain(files, remove = [], pull = true) {
       run(src, "checkout", "-q", "main")
+      run(src, "pull", "-q", "--ff-only", "origin", "main")
       const sha = apply(files, remove)
       run(src, "push", "-q", "origin", "main")
       if (pull) run(work, "pull", "-q", "--ff-only")

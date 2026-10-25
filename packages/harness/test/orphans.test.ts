@@ -5,7 +5,7 @@ import { checkpointIds, readCheckpointRecord, saveCheckpoint, type Checkpoint } 
 import { CHECKPOINTS, CHECKPOINT_META, OUTBOX, openDb } from "../src/db"
 import { CAREGIVER_DEFAULTS, createCaregiver } from "../src/caregiver"
 import { parseLogFile, type LogFileV2 } from "../src/log"
-import { validateSessionPr } from "../../../tools/gate/validate"
+import { spacesOf, validateSessionPr } from "../../../tools/gate/validate"
 import { openQueue } from "../src/queue"
 import { MAX_ORPHANS, ORPHAN_MAX_AGE_MS, learnerLockName, sweepCheckpoints, waitLock, webLock } from "../src/orphans"
 import { adoptLearnerId, storedLearnerId } from "../src/identity"
@@ -291,7 +291,7 @@ describe("orphans deleted by the sweep end on the record with a final log (Plan 
       expect(p.ok, p.ok ? "" : p.error).toBe(true)
     }
     const last = files.at(-1)!
-    const v = await validateSessionPr([{ path: `data/runs/${last.learnerId}/${last.seq}.json`, content: JSON.stringify(last, null, 2) }], files.slice(0, -1), { space: GENOME_SPACE })
+    const v = await validateSessionPr([{ path: `data/runs/${last.learnerId}/${last.seq}.json`, content: JSON.stringify(last, null, 2) }], files.slice(0, -1), { spaces: spacesOf(GENOME_SPACE) })
     expect(v.errors).toEqual([])
     expect(v.ok).toBe(true)
   }

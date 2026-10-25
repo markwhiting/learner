@@ -90,7 +90,7 @@ export interface MetaBlock {
   missing?: string[]
   /** base64 of FILTER_FLOATS_PER_CONV1·widths.conv1 float32 LE: periphery conv1 w,b then fovea conv1 w,b (Model.params order). */
   filters?: string
-  /** Role "newborn" only: its one held-out score at birth (plan gap 5). */
+  /** Role "newborn", and a confirmation newborn (isFrozenNewborn), only: its one held-out score at birth (plan gap 5). */
   heldOut?: HeldOutScore
   /** Final files only. */
   end?: MetaEnd
@@ -111,6 +111,23 @@ export const MAX_EVAL_PANEL = 16
 export const MIN_EVAL_SEED = 10_000
 /** Seeds per confirmation block (spec §4.5). */
 export const EVAL_SEED_BLOCK = 1000
+/**
+ * A confirmation seed's arm by j mod 4, j = evalSeed − MIN_EVAL_SEED − EVAL_SEED_BLOCK·id (spec §4.5): @blanktab/meta
+ * ARM_OF_J, copied because log.ts imports no package (tools/genome-centre.test.ts pins the two equal).
+ */
+export const CONFIRM_ARM_OF_J: readonly string[] = Object.freeze(["candidate", "centre", "newborn", "newborn"])
+/** The arm confirmation `id`'s seed `evalSeed` belongs to (@blanktab/meta armOfSeed): the parser and the gate recompute it. */
+export function confirmArmOfSeed(evalSeed: number, id: number): string {
+  const j = evalSeed - MIN_EVAL_SEED - EVAL_SEED_BLOCK * id
+  return CONFIRM_ARM_OF_J[((j % 4) + 4) % 4]!
+}
+/**
+ * Whether a meta block is a frozen newborn's: role "newborn" (a reference newborn), or role "confirm" of arm "newborn"
+ * (a confirmation newborn; decision 0024 "Confirmation-newborn files"). Its one file is seq 0, final, cu 0 and
+ * stepsTotal 0, with exactly its budget levels' checkups, run frozen above cu; it may carry heldOut.
+ */
+export const isFrozenNewborn = (m: Pick<MetaBlock, "role" | "confirmation"> | undefined): boolean =>
+  m?.role === "newborn" || (m?.role === "confirm" && m.confirmation?.arm === "newborn")
 /** A generous cap on meta.genomeSchema (the gate also rejects any schema newer than main's genome space). */
 export const MAX_GENOME_SCHEMA = 1000
 
@@ -450,8 +467,9 @@ export function parseLogFile(json: unknown): ParseResult {
     if (typeof r === "string") return fail(r)
     meta = r
   }
-  const newborn = meta?.role === "newborn"
-  if (newborn && json.seq !== 0) return fail("a newborn file (meta.role \"newborn\") must have seq 0")
+  // A reference newborn or a confirmation newborn: one frozen file (isFrozenNewborn).
+  const newborn = isFrozenNewborn(meta)
+  if (newborn && json.seq !== 0) return fail("a newborn file (meta.role \"newborn\", or a confirmation's newborn arm) must have seq 0")
   let checkups: CheckupResult[] | undefined
   let suiteVersion: number | undefined
   if ("milestoneSuiteVersion" in json) {
@@ -460,7 +478,7 @@ export function parseLogFile(json: unknown): ParseResult {
     suiteVersion = sv
   }
   if ("checkups" in json) {
-    // Only a newborn reference checks levels above its cu (0): it is checked at NEWBORN_LEVELS untrained (spec §7.3).
+    // Only a frozen newborn checks levels above its cu (0): it is checked at its budget's levels untrained (spec §7.3).
     const r = parseCheckups(json.checkups, suiteVersion, cu, json.stepsTotal, { allowAhead: newborn })
     if (typeof r === "string") return fail(r)
     checkups = r
@@ -473,7 +491,7 @@ export function parseLogFile(json: unknown): ParseResult {
       if (sum - ev > EVAL_CU_TOLERANCE * Math.max(ev, sum)) return fail(`checkups' evalCU (${sum}) exceeds the file's evalCU (${ev})`)
     }
   }
-  // A newborn reference is checked at its own budget's levels (lifeBudget), whatever the config says now.
+  // A frozen newborn is checked at its own budget's levels (lifeBudget), whatever the config says now.
   const newbornLevels = lifeBudget(meta).levels
   if (newborn && !(checkups && checkups.length === newbornLevels.length && checkups.every((c, i) => c.level === newbornLevels[i]))) {
     return fail(`a newborn file must hold exactly ${newbornLevels.length} checkups, at levels ${newbornLevels.join(", ")}`)
@@ -599,8 +617,10 @@ function base64Bytes(s: string, expectBytes: number): number | null {
  * Structure only, browser-safe: genome bounds, the genomeSha and constancy across files are the gate's (validate.ts).
  * Strict keys; `budget`, when present, a strict EvalBudget, never for role "legacy" (which runs under V1_BUDGET);
  * `filters` only in a file whose levelAtOrBelow(cu) is one of the block's own budget levels (lifeBudget), of exactly
- * FILTER_FLOATS_PER_CONV1·widths.conv1 float32; `heldOut` only for role "newborn"; `missing` only for role "legacy";
- * `end` only in a final file. A newborn's file has cu 0, stepsTotal 0, final true, method "newborn" and a panel.
+ * FILTER_FLOATS_PER_CONV1·widths.conv1 float32; `heldOut` only for a frozen newborn (isFrozenNewborn); `missing` only for
+ * role "legacy"; `end` only in a final file. A newborn's file has cu 0, stepsTotal 0, final true, method "newborn" and a
+ * panel. A confirm block's arm is its seed's (confirmArmOfSeed), and one of arm "newborn" is a frozen file like a
+ * newborn's (cu 0, stepsTotal 0, final true), with no panel.
  */
 export function parseMeta(v: unknown, f: { cu: number; stepsTotal: number; final: boolean; widths?: LogFileV2["widths"] }): MetaBlock | string {
   if (!isObj(v)) return "meta must be an object"
@@ -645,6 +665,9 @@ export function parseMeta(v: unknown, f: { cu: number; stepsTotal: number; final
     const lo = MIN_EVAL_SEED + EVAL_SEED_BLOCK * confirmation.id, hi = lo + EVAL_SEED_BLOCK - 1
     if ((v.evalSeed as number) < lo || (v.evalSeed as number) > hi) return `meta.evalSeed must lie in confirmation ${confirmation.id}'s block [${lo}, ${hi}]`
     if (v.evalPanel !== null) return "meta.evalPanel must be null for role confirm"
+    // The arm is the seed's (spec §4.5: j mod 4), never the tab's say: a life cannot pick its arm.
+    const arm = confirmArmOfSeed(v.evalSeed as number, confirmation.id)
+    if (confirmation.arm !== arm) return `meta.confirmation.arm must be ${arm}, the arm of evalSeed ${v.evalSeed as number} in confirmation ${confirmation.id}`
   } else {
     if (confirmation !== null) return "meta.confirmation is only for role confirm"
     if (v.evalSeed !== null) return "meta.evalSeed is only for role confirm"
@@ -686,8 +709,9 @@ export function parseMeta(v: unknown, f: { cu: number; stepsTotal: number; final
     filters = v.filters
   }
   let heldOut: HeldOutScore | undefined
+  const frozen = isFrozenNewborn({ role, confirmation })
   if ("heldOut" in v) {
-    if (role !== "newborn") return "meta.heldOut is only for role newborn"
+    if (!frozen) return "meta.heldOut is only for role newborn or a confirmation newborn"
     const h = v.heldOut
     if (!isObj(h)) return "meta.heldOut must be an object"
     const hk = unknownKey(h, HELD_OUT_KEYS, "meta.heldOut")
@@ -704,6 +728,8 @@ export function parseMeta(v: unknown, f: { cu: number; stepsTotal: number; final
   if (role === "newborn") {
     if (!(f.cu === 0 && f.stepsTotal === 0 && f.final)) return "meta.role newborn needs a final file at cu 0 and stepsTotal 0"
     if (v.evalPanel === null) return "meta.evalPanel must be set for role newborn"
+  } else if (frozen && !(f.cu === 0 && f.stepsTotal === 0 && f.final)) {
+    return "a confirmation newborn (arm newborn) needs a final file at cu 0 and stepsTotal 0"
   }
   return {
     v: 1, role, method, genomeSchema: v.genomeSchema, genome: { ...(g as Record<string, number | string>) }, genomeSha: v.genomeSha,

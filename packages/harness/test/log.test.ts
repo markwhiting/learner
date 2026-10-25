@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import evaluationConfig from "../../../config/evaluation.json" with { type: "json" }
-import { BUDGET_CU, evalBudgetOf, lifeBudget, V1_BUDGET, ERROR_REASON_RE, FILTER_LEVELS, MAX_CHECKUPS_PER_FILE, MAX_EVAL_PANEL, MAX_GENOME_SCHEMA, NEWBORN_LEVELS, parseMeta, MAX_SUITE_SIZE, MILESTONE_IDS, MILESTONE_SUITE_VERSION, isLogLevel, levelAtOrBelow, logThresholds, nextCrossing, parseLogFile, parseSessionRow, MAX_SESSION_EVALS, type CheckupResult } from "../src/log"
+import { CONFIRM_ARM_OF_J, confirmArmOfSeed, BUDGET_CU, evalBudgetOf, lifeBudget, V1_BUDGET, ERROR_REASON_RE, FILTER_LEVELS, MAX_CHECKUPS_PER_FILE, MAX_EVAL_PANEL, MAX_GENOME_SCHEMA, NEWBORN_LEVELS, parseMeta, MAX_SUITE_SIZE, MILESTONE_IDS, MILESTONE_SUITE_VERSION, isLogLevel, levelAtOrBelow, logThresholds, nextCrossing, parseLogFile, parseSessionRow, MAX_SESSION_EVALS, type CheckupResult } from "../src/log"
 import { mkFile } from "./helpers"
 import { PANELS } from "@blanktab/meta"
 
@@ -210,6 +210,9 @@ describe("meta (spec §7.3; Plan 05a)", () => {
     searchMeta({ role: "legacy", method: "legacy", drawSeed: null, posteriorSha: null, evalPanel: null, ...over })
   const newbornMeta = (over: Record<string, unknown> = {}) =>
     searchMeta({ role: "newborn", method: "newborn", drawSeed: null, posteriorSha: null, evalPanel: 5, heldOut: { loss: 0.03, baseline: 0.025 }, ...over })
+  /** A confirmation newborn (decision 0024): confirmation 3's seed 13,006 (j = 6, arm newborn), no panel, a held-out score. */
+  const confirmNewbornMeta = (over: Record<string, unknown> = {}) =>
+    confirmMeta({ evalSeed: 13_006, confirmation: { id: 3, arm: "newborn" }, heldOut: { loss: 0.03, baseline: 0.025 }, ...over })
   /** A newborn reference's file; `meta` null leaves meta out. */
   const newbornFile = (meta: unknown = newbornMeta(), over: Record<string, unknown> = {}) => v2({
     seq: 0, cu: 0, stepsTotal: 0, final: true, curve: [], evalCU: 3, caregiver: { carries: 0, to: {}, safetyNet: false },
@@ -270,10 +273,11 @@ describe("meta (spec §7.3; Plan 05a)", () => {
   })
 
   it("confirmation and evalSeed are set iff role confirm; evalSeed lies in its confirmation's block [10,000 + 1,000·id, 10,999 + 1,000·id] (spec §4.5)", () => {
-    for (const arm of ["candidate", "centre", "newborn"]) expect(err(withMeta(confirmMeta({ confirmation: { id: 3, arm } }))), arm).toBe("")
+    expect(err(withMeta(confirmMeta({ evalSeed: 13_005, confirmation: { id: 3, arm: "centre" } })))).toBe("")
     expect(err(withMeta(confirmMeta({ evalSeed: 13_000 })))).toBe("")
-    expect(err(withMeta(confirmMeta({ evalSeed: 13_999 })))).toBe("")
-    expect(err(withMeta(confirmMeta({ evalSeed: 10_000, confirmation: { id: 0, arm: "centre" } })))).toBe("")
+    expect(err(withMeta(confirmMeta({ evalSeed: 13_997, confirmation: { id: 3, arm: "centre" } })))).toBe("")
+    expect(err(parseLogFile(newbornFile(confirmNewbornMeta({ evalSeed: 13_999 }))))).toBe("")
+    expect(err(withMeta(confirmMeta({ evalSeed: 10_000, confirmation: { id: 0, arm: "candidate" } })))).toBe("")
     expect(err(withMeta(confirmMeta({ evalSeed: 12_999 })))).toContain("meta.evalSeed must lie in confirmation 3's block [13000, 13999]")
     expect(err(withMeta(confirmMeta({ evalSeed: 14_000 })))).toContain("meta.evalSeed must lie in confirmation 3's block")
     // A confirm life needs both; it meets the confirmation's own variants, so it has no panel.
@@ -288,6 +292,53 @@ describe("meta (spec §7.3; Plan 05a)", () => {
     }
     expect(err(parseLogFile(newbornFile(newbornMeta({ evalSeed: 13_004 }))))).toContain("meta.evalSeed is only for role confirm")
     expect(err(parseLogFile(newbornFile(newbornMeta({ confirmation: { id: 3, arm: "newborn" } }))))).toContain("meta.confirmation is only for role confirm")
+  })
+
+  it("a confirm-newborn file (cu 0, final, three checkups above cu, heldOut) parses; the same shape with arm candidate fails; arm newborn at cu 600 fails", () => {
+    const r = parseLogFile(newbornFile(confirmNewbornMeta()))
+    expect(err(r)).toBe("")
+    if (r.ok && r.value.schemaVersion === 2) expect(r.value.meta).toEqual(confirmNewbornMeta())
+    expect(err(parseLogFile(JSON.parse(JSON.stringify(newbornFile(confirmNewbornMeta({ heldOut: undefined }))))))).toBe("") // heldOut optional
+    expect(err(parseLogFile(newbornFile(confirmNewbornMeta({ end: "orphan" }))))).toBe("")
+    // The same frozen shape for arm candidate (seed 13,004): no frozen checkups, no heldOut.
+    const cand = confirmNewbornMeta({ evalSeed: 13_004, confirmation: { id: 3, arm: "candidate" } })
+    expect(err(parseLogFile(newbornFile(cand)))).toContain("meta.heldOut is only for role newborn or a confirmation newborn")
+    expect(err(parseLogFile(JSON.parse(JSON.stringify(newbornFile({ ...cand, heldOut: undefined })))))).toContain("level is ahead")
+    // A candidate life that ended at birth (a final file at cu 0, no checkups) is still a valid life.
+    expect(err(parseLogFile(JSON.parse(JSON.stringify(newbornFile({ ...cand, heldOut: undefined, end: "orphan" }, { checkups: [] })))))).toBe("")
+    // Arm newborn in any other shape: a running life's file, a checkpoint, a later seq, too few checkups, a panel.
+    const cases: [string, Record<string, unknown>, string][] = [
+      ["cu 600", newbornFile(confirmNewbornMeta(), { cu: 600 }), "a confirmation newborn (arm newborn) needs a final file at cu 0 and stepsTotal 0"],
+      ["not final", newbornFile(confirmNewbornMeta(), { final: false }), "a confirmation newborn (arm newborn) needs a final file"],
+      ["steps", newbornFile(confirmNewbornMeta(), { stepsTotal: 5 }), "a confirmation newborn (arm newborn) needs a final file"],
+      ["seq 1", newbornFile(confirmNewbornMeta(), { seq: 1 }), "must have seq 0"],
+      ["two checkups", newbornFile(confirmNewbornMeta(), { checkups: [checkup(512, { steps: 0 }), checkup(1024, { steps: 0 })] }), "exactly 3 checkups"],
+      ["a panel", newbornFile(confirmNewbornMeta({ evalPanel: 3 })), "meta.evalPanel must be null for role confirm"],
+    ]
+    for (const [name, f, want] of cases) expect(err(parseLogFile(f)), name).toContain(want)
+    expect(parseMeta(confirmNewbornMeta(), { cu: 600, stepsTotal: 1000, final: false })).toContain("needs a final file at cu 0")
+    expect(parseMeta(JSON.parse(JSON.stringify(confirmNewbornMeta({ heldOut: undefined }))), { cu: 0, stepsTotal: 0, final: false })).toContain("needs a final file at cu 0")
+  })
+
+  it("confirmation.arm must equal ARM_OF_J[(evalSeed − 10000 − 1000·id) mod 4]: 13,004 candidate ok, 13,005 candidate fails, 13,006 newborn ok", () => {
+    expect(CONFIRM_ARM_OF_J).toEqual(["candidate", "centre", "newborn", "newborn"])
+    expect(err(withMeta(confirmMeta({ evalSeed: 13_004, confirmation: { id: 3, arm: "candidate" } })))).toBe("")
+    expect(err(withMeta(confirmMeta({ evalSeed: 13_005, confirmation: { id: 3, arm: "candidate" } }))))
+      .toContain("meta.confirmation.arm must be centre, the arm of evalSeed 13005 in confirmation 3")
+    expect(err(parseLogFile(newbornFile(confirmNewbornMeta({ evalSeed: 13_006 }))))).toBe("")
+    expect(err(parseLogFile(newbornFile(confirmNewbornMeta({ evalSeed: 13_007 }))))).toBe("") // j mod 4 = 3: newborn too
+    expect(err(parseLogFile(newbornFile(confirmNewbornMeta({ evalSeed: 13_008 }))))).toContain("meta.confirmation.arm must be candidate")
+    // Every seed of a block, for each arm: exactly the seed's arm parses (j counted from the block's own base).
+    for (const id of [0, 7]) {
+      for (let j = 0; j < 1000; j += 37) {
+        const evalSeed = 10_000 + 1000 * id + j
+        expect(confirmArmOfSeed(evalSeed, id)).toBe(CONFIRM_ARM_OF_J[j % 4])
+        for (const arm of ["candidate", "centre"]) {
+          const r = withMeta(confirmMeta({ evalSeed, confirmation: { id, arm } }))
+          expect(err(r) === "", `${id}/${j}/${arm}`).toBe(arm === CONFIRM_ARM_OF_J[j % 4])
+        }
+      }
+    }
   })
 
   it("parseMeta's widths are optional: without them a block without filters parses and one with filters is rejected", () => {
@@ -373,8 +424,9 @@ describe("meta (spec §7.3; Plan 05a)", () => {
     expect(err(withMeta(searchMeta({ end: "done" }), { final: true }))).toContain("meta.end must be one of")
     expect(err(parseLogFile(newbornFile(newbornMeta({ end: "budget" }))))).toBe("")
     expect(err(parseLogFile(JSON.parse(JSON.stringify(newbornFile(newbornMeta({ heldOut: undefined }))))))).toBe("") // heldOut is optional
-    for (const role of ["search", "legacy"]) {
-      const m = role === "search" ? searchMeta({ heldOut: { loss: 1, baseline: 1 } }) : legacyMeta({ heldOut: { loss: 1, baseline: 1 } })
+    for (const role of ["search", "legacy", "confirm"]) {
+      const h = { heldOut: { loss: 1, baseline: 1 } }
+      const m = role === "search" ? searchMeta(h) : role === "legacy" ? legacyMeta(h) : confirmMeta(h)
       expect(err(withMeta(m)), role).toContain("meta.heldOut is only for role newborn")
     }
     for (const heldOut of [{ loss: -1, baseline: 1 }, { loss: 1 }, { loss: 1, baseline: 1, x: 1 }, null]) {

@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { validateSessionPr, type PrFile, type ValidateOptions } from "../validate.ts"
+import { execFileSync } from "node:child_process"
+import { mainSpaces } from "../gate.ts"
+import { spacesOf, validateSessionPr, type PrFile, type ValidateOptions } from "../validate.ts"
 import { parseLogFile, type CurvePoint, type LogFile, type LogFileV1, type LogFileV2, type MetaBlock } from "@blanktab/harness/log"
-import { decodeGenome, genomeSha, parseCentre, parseGenomeSpace, type Genome } from "@blanktab/meta"
+import { decodeGenome, genomeSha, parseCentre, parseGenomeSpace, type Genome, type GenomeSpace } from "@blanktab/meta"
 
 const KNOWLEDGE = join(__dirname, "../../../knowledge")
 const SPACE = parseGenomeSpace(JSON.parse(readFileSync(join(KNOWLEDGE, "genome-space.json"), "utf8")))
@@ -17,7 +19,9 @@ const log = (seq: number, over: Partial<LogFileV1> = {}): LogFileV1 => ({
   sessionsSeenAtBirth: 0, final: false, ...over,
 })
 const file = (l: LogFile, id = ID): PrFile => ({ path: `data/runs/${id}/${l.seq}.json`, content: JSON.stringify(l) })
-const errs = (files: PrFile[], prev: LogFile[] = [], opts: ValidateOptions = { space: SPACE }) => validateSessionPr(files, prev, opts)
+const errs = (files: PrFile[], prev: LogFile[] = [], opts: ValidateOptions = { spaces: spacesOf(SPACE) }) => validateSessionPr(files, prev, opts)
+/** The errors of a PR of new files checked against `spaces`, joined. */
+const msg2 = async (files: PrFile[], spaces: ReadonlyMap<number, GenomeSpace>) => (await errs(files, [], { spaces })).errors.join("\n")
 
 const pt = (cu: number, steps: number, predLoss = 0.02, baselineLoss = 0.025): CurvePoint => ({ cu, steps, predLoss, baselineLoss })
 /** A v2 file: CU doubles with seq (seq 0 at 1 CU), 400 steps per CU. */
@@ -370,18 +374,27 @@ describe("validateSessionPr v2: caregiver.lostCarries (Plan 04c)", () => {
 
 // Node-only (reads the repo), so it lives here under the root tsconfig, not in packages/harness (browser-typed).
 describe("committed logs", () => {
-  it("every committed log under data/runs still parses", async () => {
-    const root = join(__dirname, "../../../data/runs")
-    let n = 0
-    for (const d of readdirSync(root).filter(d => d.startsWith("lrn_"))) {
-      for (const f of readdirSync(join(root, d))) {
-        if (!/^\d+\.json$/.test(f)) continue
-        const r = parseLogFile(JSON.parse(readFileSync(join(root, d, f), "utf8")))
-        expect(r.ok, `${d}/${f}: ${r.ok ? "" : r.error}`).toBe(true)
-        n++
+  it("every committed file under data/runs and data/newborns still parses, and each learner's files validate against main's genome spaces", { timeout: 120_000 }, async () => {
+    const repo = join(__dirname, "../../..")
+    const spaces = mainSpaces(repo, args => execFileSync("git", args, { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }))
+    const counts: Record<string, number> = {}
+    for (const dir of ["data/runs", "data/newborns"]) {
+      const root = join(repo, dir)
+      counts[dir] = 0
+      for (const d of readdirSync(root).filter(d => d.startsWith("lrn_")).sort()) {
+        const names = readdirSync(join(root, d)).filter(f => /^\d+\.json$/.test(f)).sort((x, y) => parseInt(x) - parseInt(y))
+        const files = names.map(f => ({ path: `data/runs/${d}/${f}`, content: readFileSync(join(root, d, f), "utf8") }))
+        for (const f of files) {
+          const r = parseLogFile(JSON.parse(f.content))
+          expect(r.ok, `${dir}/${d}/${f.path}: ${r.ok ? "" : r.error}`).toBe(true)
+          counts[dir]++
+        }
+        const v = await validateSessionPr(files, [], { spaces })
+        expect(v.errors, `${dir}/${d}`).toEqual([])
       }
     }
-    expect(n).toBeGreaterThan(0)
+    expect(counts["data/runs"]).toBeGreaterThan(0)
+    expect(counts["data/newborns"]).toBeGreaterThan(0)
   })
 })
 
@@ -411,9 +424,6 @@ describe("validateSessionPr: the meta block (spec §7.3; Plan 05a)", () => {
     expect(await msg([file(withMeta(0, await metaOf({}, CENTRE, SPACE.schemaVersion + 1)))])).toContain(`meta.genomeSchema ${SPACE.schemaVersion + 1} is newer than main's genome space (${SPACE.schemaVersion})`)
     const aheadLegacy = { ...(await legacyOf(outOfBounds)), genomeSchema: SPACE.schemaVersion + 1, genomeSha: await genomeSha(SPACE.schemaVersion + 1, outOfBounds) }
     expect(await msg([file(withMeta(0, aheadLegacy))])).toContain("is newer than main's genome space")
-    // An older schema: structure only (an older space's bounds are not this one's). Main here is one schema ahead.
-    const newerMain = { ...SPACE, schemaVersion: SPACE.schemaVersion + 1 }
-    expect((await errs([file(withMeta(0, await metaOf({}, outOfBounds)))], [], { space: newerMain })).errors).toEqual([])
     // No space to check against: never accepted unchecked (legacy needs none).
     expect((await errs([file(withMeta(0, await metaOf()))], [], {})).errors.join("\n")).toContain("no genome space")
     expect((await errs([file(withMeta(0, await legacyOf(outOfBounds)))], [], {})).ok).toBe(true)
@@ -429,13 +439,13 @@ describe("validateSessionPr: the meta block (spec §7.3; Plan 05a)", () => {
     // The config moves to 4096: a file of a life born under 2048 still validates, filters at its own 512 level (not a 4096-budget level) included.
     const gpu = btoa(String.fromCharCode(...new Uint8Array(new Float32Array(104 * 16).buffer)))
     const later = [file(withMeta(1, born)), file(withMeta(2, { ...born, filters: gpu }, { cu: 512 }))]
-    expect((await errs(later, [withMeta(0, born)], { space: SPACE, budget: HYPOTHETICAL })).errors).toEqual([])
+    expect((await errs(later, [withMeta(0, born)], { spaces: spacesOf(SPACE), budget: HYPOTHETICAL })).errors).toEqual([])
     // But a new life (seq 0) under the moved config must carry it: the old budget, or none (v1), is rejected; the new one passes.
     for (const m of [born, await metaOf()]) {
-      expect((await errs([file(withMeta(0, m))], [], { space: SPACE, budget: HYPOTHETICAL })).errors.join("\n"))
+      expect((await errs([file(withMeta(0, m))], [], { spaces: spacesOf(SPACE), budget: HYPOTHETICAL })).errors.join("\n"))
         .toContain("a new life's meta.budget (2048 CU at 512, 1024, 2048) is not the config's (4096 CU at 1024, 2048, 4096)")
     }
-    expect((await errs([file(withMeta(0, await metaOf({ budget: HYPOTHETICAL })))], [], { space: SPACE, budget: HYPOTHETICAL })).errors).toEqual([])
+    expect((await errs([file(withMeta(0, await metaOf({ budget: HYPOTHETICAL })))], [], { spaces: spacesOf(SPACE), budget: HYPOTHETICAL })).errors).toEqual([])
     // Under today's config, a new life born under 4096 is rejected, and a newborn reference at seq 0 too.
     expect(await msg([file(withMeta(0, await metaOf({ budget: HYPOTHETICAL })))])).toContain("is not the config's (2048 CU at 512, 1024, 2048)")
     const newborn = await metaOf({ role: "newborn", method: "newborn", evalPanel: 2, budget: HYPOTHETICAL, heldOut: { loss: 1, baseline: 1 } })
@@ -474,17 +484,47 @@ describe("validateSessionPr: the meta block (spec §7.3; Plan 05a)", () => {
     expect((await errs([file(f9), file(f10)], [withMeta(8, a)])).errors).toEqual([])
   })
 
-  it("a non-legacy genome must decode to the file's logged settings; legacy and older schemas are not compared", async () => {
+  it("a non-legacy genome must decode to the file's logged settings, an older schema's against its own space; legacy is not compared", async () => {
     const m = await metaOf()
     expect((await errs([file(withMeta(0, m))])).errors).toEqual([])
     expect(await msg([file(withMeta(0, m, { settings: { ...ranWith(CENTRE), lr: 6e-4 } }))])).toContain("meta.genome is not what ran: settings.lr is 0.0006, the genome's lr is 0.0005")
     const { caregiverPeriod: _p, ...noCare } = ranWith(CENTRE)
     void _p
     expect(await msg([file(withMeta(0, m, { settings: noCare }))])).toContain("meta.genome is not what ran: settings.caregiverPeriod is absent")
-    // Legacy lives logged what they ran before 05a; an older schema's genes are not this space's.
+    // Legacy lives logged what they ran before 05a.
     expect((await errs([file(withMeta(0, await legacyOf(CENTRE), { settings: { ...ranWith(CENTRE), lr: 6e-4 } }))])).errors).toEqual([])
+    // An older schema is compared against its own space (05a let it through unchecked).
     const newerMain = { ...SPACE, schemaVersion: SPACE.schemaVersion + 1 }
-    expect((await errs([file(withMeta(0, m, { settings: { lr: 1 } }))], [], { space: newerMain })).errors).toEqual([])
+    expect(await msg2([file(withMeta(0, m, { settings: { ...ranWith(CENTRE), lr: 1 } }))], spacesOf(SPACE, newerMain))).toContain("meta.genome is not what ran: settings.lr is 1")
+    expect((await errs([file(withMeta(0, m))], [], { spaces: spacesOf(SPACE, newerMain) })).errors).toEqual([])
+  })
+
+  it("a search file claiming genome schema 1 when the map has only schema 2 is rejected 'unknown genome schema 1'", async () => {
+    const only2 = spacesOf({ ...SPACE, schemaVersion: 2 })
+    expect(SPACE.schemaVersion).toBe(1)
+    expect(await msg2([file(withMeta(0, await metaOf()))], only2)).toContain("unknown genome schema 1")
+    // Legacy keeps its pre-05a values whatever the map holds.
+    expect((await errs([file(withMeta(0, await legacyOf(outOfBounds)))], [], { spaces: only2 })).errors).toEqual([])
+  })
+
+  it("with spaces {1, 2}, an out-of-bounds schema-1 genome is rejected (the bypass is closed)", async () => {
+    const both = spacesOf(SPACE, { ...SPACE, schemaVersion: 2 })
+    expect(await msg2([file(withMeta(0, await metaOf({}, outOfBounds)))], both)).toContain("meta.genome is outside the genome space: entropyWeight 0.001 is outside [0.0025, 0.04]")
+    // In bounds, it is accepted; a schema-3 genome is still newer than main's newest (2).
+    expect((await errs([file(withMeta(0, await metaOf()))], [], { spaces: both })).errors).toEqual([])
+    expect(await msg2([file(withMeta(0, await metaOf({}, CENTRE, 3)))], both)).toContain("meta.genomeSchema 3 is newer than main's genome space (2)")
+  })
+
+  it("a confirm life whose settings.seed ≠ evalSeed is rejected", async () => {
+    // Confirmation 0, seed 10,004: j = 4, arm candidate.
+    const m = await metaOf({ role: "confirm", method: "confirm", evalPanel: null, evalSeed: 10_004, confirmation: { id: 0, arm: "candidate" } })
+    expect((await errs([file(withMeta(0, m, { settings: { ...ranWith(CENTRE), seed: 10_004 } }))])).errors).toEqual([])
+    expect(await msg([file(withMeta(0, m))])).toContain("a confirmation life's settings.seed (7) is not its meta.evalSeed (10004)")
+    const { seed: _s, ...noSeed } = ranWith(CENTRE)
+    void _s
+    expect(await msg([file(withMeta(0, m, { settings: noSeed }))])).toContain("a confirmation life's settings.seed (undefined) is not its meta.evalSeed (10004)")
+    // A search life's seed is its own.
+    expect((await errs([file(withMeta(0, await metaOf()))])).errors).toEqual([])
   })
 
   it("two files carrying filters for level 512 are rejected", async () => {

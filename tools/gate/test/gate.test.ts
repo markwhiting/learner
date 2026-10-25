@@ -4,12 +4,12 @@ import { join } from "node:path"
 import { act, decide, memoBound, runGate, type GateDeps, type GateOps, type OpenPr } from "../gate.ts"
 import { gitRunner, MAX_PR_FILES } from "../github.ts"
 import { FIXTURE_ENV, makeFixture, prObject, type Fixture } from "./git-fixture.ts"
-import type { PrFile } from "../validate.ts"
+import { spacesOf, type PrFile } from "../validate.ts"
 import type { LogFile, LogFileV1 } from "@blanktab/harness/log"
 import { SPACE_JSON } from "./git-fixture.ts"
 import { parseGenomeSpace } from "@blanktab/meta"
 
-const SPACE = parseGenomeSpace(JSON.parse(SPACE_JSON))
+const SPACE = spacesOf(parseGenomeSpace(JSON.parse(SPACE_JSON)))
 
 const ID = "lrn_0123456789abcdef"
 const NOW = new Date("2026-10-21T12:00:00.000Z")

@@ -3,7 +3,7 @@
 // restore afterwards. Everything a milestone reads (state, trace) is privileged and harness only.
 import type { TrainableLearner } from "@blanktab/learner"
 import { hashSeed, type CanvasLike } from "@blanktab/world"
-import { ERROR_REASON_RE, type CheckupResult } from "./log"
+import { ERROR_REASON_RE, type CheckupResult, type MetaBlock } from "./log"
 import { MILESTONES_V1, recordRun, type Milestone } from "./milestones"
 
 /** hashSeed(0, `${learnerId}/${level}/${milestoneId}`): a variant this learner has never seen. */
@@ -17,6 +17,28 @@ export function checkupSeed(learnerId: string, level: number, milestoneId: strin
  */
 export function panelSeed(panel: number, level: number, milestoneId: string): number {
   return hashSeed(0, `panel/${panel}/${level}/${milestoneId}`)
+}
+
+/**
+ * hashSeed(0, `confirm/${evalSeed}/${level}/${milestoneId}`): the variant a confirmation life with seed `evalSeed` meets
+ * (spec §4.5; decision 0024 "Confirmation seeds"). Every arm's life with that seed meets the same worlds, and the
+ * "confirm/" prefix keeps them apart from every shared panel's (panelSeed), which search lives meet.
+ */
+export function confirmSeed(evalSeed: number, level: number, milestoneId: string): number {
+  return hashSeed(0, `confirm/${evalSeed}/${level}/${milestoneId}`)
+}
+
+/**
+ * The checkup variant seeds a life with meta block `m` meets: confirmSeed(evalSeed, …) for a confirmation life,
+ * panelSeed(evalPanel, …) for a life on a shared panel, else undefined (runCheckup's default, checkupSeed: a life
+ * without meta, or a legacy one). The one rule, shared by the session and the newborn runner.
+ */
+export function variantSeedOf(m: Pick<MetaBlock, "evalPanel" | "evalSeed"> | undefined): ((level: number, milestoneId: string) => number) | undefined {
+  if (m === undefined) return undefined
+  const { evalSeed, evalPanel } = m
+  if (evalSeed !== null) return (l, id) => confirmSeed(evalSeed, l, id)
+  if (evalPanel !== null) return (l, id) => panelSeed(evalPanel, l, id)
+  return undefined
 }
 
 /**
@@ -55,7 +77,8 @@ export interface CheckupDeps {
   yieldNow?: () => Promise<void>
   /**
    * Each milestone's variant seed. Default checkupSeed(learnerId, level, id): a life without meta, or a legacy life.
-   * A life with a shared panel (meta.evalPanel) passes (l, m) => panelSeed(panel, l, m) (decision 0022).
+   * A life with a shared panel (meta.evalPanel) passes (l, m) => panelSeed(panel, l, m) (decision 0022); a confirmation
+   * life (meta.evalSeed) passes (l, m) => confirmSeed(evalSeed, l, m) (decision 0024).
    */
   variantSeed?: (level: number, milestoneId: string) => number
 }

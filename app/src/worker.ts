@@ -288,7 +288,7 @@ async function newborns(m: StartMessage, range: { from: number; to: number }): P
     await queue.setContribution({ learnerId, lastPr: 0, closedInARow: 0, localOnly: true })
     const centre = await birthFromDraw(withoutPosterior(ctx), learnerId, widthsClassOf(chosen.widths))
     const file = await runNewborn({
-      learnerId, k, codeSha: m.cfg.codeSha, knowledgeSha: m.cfg.knowledgeSha, hostSig: { ...m.cfg.hostSig, webgpu: chosen.kind === "webgpu" },
+      learnerId, who: { kind: "reference", k }, codeSha: m.cfg.codeSha, knowledgeSha: m.cfg.knowledgeSha, hostSig: { ...m.cfg.hostSig, webgpu: chosen.kind === "webgpu" },
       widths: chosen.widths, settings: centre.learnerSettings, genome: { schema: ctx.space.schemaVersion, values: { ...ctx.centre }, sha: ctx.centreSha }, space: ctx.space,
     }, {
       createLearner: async init => learnerOn(chosen, init), checkupCanvas: () => new OffscreenCanvas(WORLD.width, WORLD.height),

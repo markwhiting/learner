@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from "@blanktab/learner"
 import { birthDraw, parsePosterior } from "@blanktab/meta"
 import { NEWBORN_SEED_BASE } from "@blanktab/harness/newborn"
 import { parseLogFile } from "@blanktab/harness/log"
-import { validateSessionPr } from "../../tools/gate/validate"
+import { spacesOf, validateSessionPr } from "../../tools/gate/validate"
 import { CENTRE, CENTRE_SHA, GENOME_JSON, SPACE, SPACE_JSON, posteriorText } from "../../app/test/posteriors"
 import { fmt } from "../../app/src/site"
 
@@ -147,7 +147,7 @@ test("a life born without a block (before 05a) resumes as legacy: the recipe say
   const files_ = await filesOf(page, id)
   const last = files_[files_.length - 1]!
   expect(last.meta).toMatchObject({ role: "legacy", method: "legacy", evalPanel: null, missing: ["sleepInterval"] })
-  const v = await validateSessionPr(files_.map(f => ({ path: `data/runs/${id}/${f.seq}.json`, content: JSON.stringify(f, null, 2) })), [], { space: SPACE })
+  const v = await validateSessionPr(files_.map(f => ({ path: `data/runs/${id}/${f.seq}.json`, content: JSON.stringify(f, null, 2) })), [], { spaces: spacesOf(SPACE) })
   expect(v.errors).toEqual([])
   expect(errors).toEqual([])
 })
@@ -348,7 +348,7 @@ test("?newborns=0-0 writes one newborn file that parses and validates", async ({
   expect(parseLogFile(JSON.parse(JSON.stringify(f))).ok).toBe(true)
   expect(f).toMatchObject({ seq: 0, final: true, cu: 0, stepsTotal: 0, settings: { seed: NEWBORN_SEED_BASE } })
   expect(f.meta).toMatchObject({ role: "newborn", method: "newborn", evalPanel: 1, genomeSha: CENTRE_SHA, genome: CENTRE })
-  const v = await validateSessionPr([{ path: `data/runs/${learnerId}/0.json`, content: JSON.stringify(f, null, 2) }], [], { space: SPACE })
+  const v = await validateSessionPr([{ path: `data/runs/${learnerId}/0.json`, content: JSON.stringify(f, null, 2) }], [], { spaces: spacesOf(SPACE) })
   expect(v.errors).toEqual([])
   // Kept in this browser for the collector: marked local-only, never sent.
   const local = await page.evaluate(() => new Promise<unknown[]>(res => {

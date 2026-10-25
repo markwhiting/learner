@@ -13,7 +13,7 @@ import { LEARNER_ID_RE, parseLogFile } from "@blanktab/harness/log"
 import { NEWBORN_COUNT } from "@blanktab/harness/newborn"
 import type { GenomeSpace } from "@blanktab/meta"
 import { loadGenomeSpace } from "../gate/gate.ts"
-import { validateSessionPr } from "../gate/validate.ts"
+import { spacesOf, validateSessionPr } from "../gate/validate.ts"
 
 /** One outbox row as the page stores it (packages/harness/src/queue.ts). */
 export interface OutboxRow { learnerId: string; seq: number; file: unknown }
@@ -37,7 +37,7 @@ export async function writeCollected(rows: readonly OutboxRow[], outDir: string,
     const parsed = parseLogFile(JSON.parse(JSON.stringify(file)))
     if (!parsed.ok) { out.errors.push(`${at}: ${parsed.error}`); continue }
     const bytes = bytesOf(file)
-    const v = await validateSessionPr([{ path: `data/runs/${at}`, content: bytes }], [], { space })
+    const v = await validateSessionPr([{ path: `data/runs/${at}`, content: bytes }], [], { spaces: spacesOf(space) })
     if (v.errors.length > 0) { out.errors.push(...v.errors.map(e => `${at}: ${e}`)); continue }
     const path = join(outDir, learnerId, `${seq}.json`)
     if (existsSync(path)) {

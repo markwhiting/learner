@@ -35,7 +35,7 @@ function ended(arm: Exclude<Arm, "newborn">, sha: string, end: "failed" | "orpha
 }
 /**
  * A confirmation newborn: one final file at cu 0 with its three frozen checkups (as a reference newborn's); M3 passed
- * at `m3Levels` of them. Its log shape is not settled until 05b wires confirmations (see the parse note below).
+ * at `m3Levels` of them. The frozen confirmation-newborn file (decision 0024; plan 05b Task 7).
  */
 function newborn(sha: string, m3Levels: number): LifeInput {
   const k = fresh(), learnerId = lid(0x5000 + k)
@@ -87,9 +87,9 @@ describe("confirm-fisher@1 (spec §2.5)", () => {
 
   it("a candidate that sustains M3 in 20/24 against 6/60 newborns and beats centre on a → 1; failed lives count as non-passes; abandoned excluded and counted; an abandonment ratio > 2× is flagged", () => {
     const groups = design()
-    // The search arms' fixtures are logs the gate accepts. A confirmation newborn's file (cu 0, frozen checkups) is not
-    // accepted by today's parser, which allows frozen checkups only for role newborn: its log shape is 05b's.
-    for (const arm of ["candidate", "centre"] as const) expect(groups[arm].every(l => parses(l.files)), arm).toBe(true)
+    // Every arm's fixtures are logs the parser accepts, the confirmation newborns' frozen files (cu 0, frozen checkups;
+    // decision 0024) included.
+    for (const arm of ["candidate", "centre", "newborn"] as const) expect(groups[arm].every(l => parses(l.files)), arm).toBe(true)
     const out = run(groups)
     expect(out).toMatchObject({ evaluator: "confirm-fisher", version: 1, eligible: true, score: 1, components: { behaviour: 1, better: 1 } })
     const d = out.diagnostics as unknown as Diag

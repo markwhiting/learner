@@ -5,7 +5,7 @@ import type { LearnerSettings, LearnerState, LearnerStats, TrainableLearner, Wid
 import { hashSeed, type CanvasLike, type RoomKind, type World } from "@blanktab/world"
 import { checkGenome, genomeSha, settingsMismatch, type GenomeSpace } from "@blanktab/meta"
 import { clampCaregiverSettings, createCaregiver, type Caregiver, type CaregiverSettings } from "./caregiver"
-import { panelSeed, runCheckup } from "./checkup"
+import { runCheckup, variantSeedOf } from "./checkup"
 import { DEFAULT_MAX_STEPS_PER_SEC, finalLogOf, thin, birthOf, type Birth, type Lived } from "./final"
 import { deleteCheckpoint, fromRecord, loadCheckpoint, saveCheckpoint, tailEvalCUError, type Checkpoint } from "./checkpoint"
 import { OFFLINE_KNOWLEDGE_SHA, type Manifest } from "./knowledge"
@@ -359,8 +359,8 @@ export function curvePoint(
  *   (cfg.meta.legacy of its flat settings, saved in a checkpoint at once; a failing or bad one is warned about and the
  *   life runs on without a block) or a newborn's `cfg.meta.birth` (checked: BadMetaBlockError); else none.
  *   It goes into every checkpoint and log file, and nothing of it reaches the learner. A crossing file at one of the life's budget levels
- *   carries `filters` (the first layer, through learner.readParams). With a meta block evalPanel, checkups meet
- *   panelSeed variants. A failed life's final file has `end: "failed"`. With the inbox's short-lives switch on, at a
+ *   carries `filters` (the first layer, through learner.readParams). With a meta block evalSeed (a confirmation life),
+ *   checkups meet confirmSeed variants; with a meta block evalPanel, panelSeed variants (variantSeedOf). A failed life's final file has `end: "failed"`. With the inbox's short-lives switch on, at a
  *   clean sleep with its budget checkup (lifeBudget) done, no checkup due and no halt waiting, the life ends: its final file has
  *   `end: "budget"` and the result says `ended: "budget"`.
  */
@@ -460,7 +460,8 @@ export async function runSession(cfg: SessionConfig, deps: SessionDeps): Promise
     }
   }
   /**
-   * A newborn's block, checked: the parser accepts it (no filters, end or heldOut; not a newborn reference), its genome
+   * A newborn's block, checked: the parser accepts it (no filters, end or heldOut; not a newborn reference nor a
+   * confirmation newborn, which are frozen files), a confirmation life's seed is its evalSeed, its genome
    * lies in cfg.meta.space at that space's schema, its genomeSha is its genome's, and it decodes to the settings this
    * life runs and logs (`flat`). BadMetaBlockError otherwise, before any learner exists (the page falls back to another draw).
    */
@@ -469,6 +470,8 @@ export async function runSession(cfg: SessionConfig, deps: SessionDeps): Promise
     const bad = parseMeta(b, { cu: 0, stepsTotal: 0, final: false })
     if (typeof bad === "string") throw new BadMetaBlockError(id, bad)
     if (b.role === "legacy") throw new BadMetaBlockError(id, "a newborn's block cannot be role legacy")
+    // A confirmation life's learner seed is its evalSeed (spec §4.5), as the gate checks (settings.seed = meta.evalSeed).
+    if (b.role === "confirm" && flat.seed !== b.evalSeed) throw new BadMetaBlockError(id, `a confirmation life's seed ${flat.seed} is not its evalSeed ${b.evalSeed}`)
     const now = m.budget ?? CONFIG_BUDGET
     if (!b.budget || !sameBudget(b.budget, now)) {
       throw new BadMetaBlockError(id, `a newborn's block must carry the config's budget (${now.budgetCU} CU at ${now.levels.join(", ")})`)
@@ -559,6 +562,8 @@ export async function runSession(cfg: SessionConfig, deps: SessionDeps): Promise
     // file. Its checkpoints keep it, so a later run whose settings agree writes it again.
     const meta: MetaBlock | undefined = block && cp?.meta && cfg.meta ? resumedBlockOrNone(cfg.meta.space, block, flatSettings()) : block
     if (block && !meta) metaOff = true
+    /** The checkup variants (variantSeedOf): a confirmation life's confirmSeed, a panel's panelSeed, else checkupSeed. */
+    const variantSeed = variantSeedOf(meta)
     /** The room the previous frame was seen in (undefined: no previous frame this run, or a restore since). */
     let prevRoom: string | undefined
     /**
@@ -689,8 +694,7 @@ export async function runSession(cfg: SessionConfig, deps: SessionDeps): Promise
         const out = await runCheckup({
           learnerId: id, level, steps, learner: { frozenRun: o => l.frozenRun!(o), stats: () => l.stats() },
           canvas: () => c.canvas(), ...(c.suite ? { suite: c.suite } : {}),
-          // A shared panel (decision 0022); a life without meta, or a legacy one, keeps checkupSeed.
-          ...(meta && meta.evalPanel !== null ? { variantSeed: (lv: number, m: string) => panelSeed(meta.evalPanel!, lv, m) } : {}),
+          ...(variantSeed ? { variantSeed } : {}),
           ...(deps.recoverable ? { recoverable: deps.recoverable } : {}),
           shouldStop: () => inbox?.haltWaiting ?? false, yieldNow: pace,
         })

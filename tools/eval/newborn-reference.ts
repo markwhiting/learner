@@ -14,7 +14,7 @@ import { NEWBORN_COUNT, NEWBORN_SEED_BASE } from "@blanktab/harness/newborn"
 import { genomeSha, parseCentre } from "@blanktab/meta"
 import { PROVENANCE_TEXT_RE, getEvaluator, parseNewbornReference, type NewbornProvenance, type NewbornReference } from "@blanktab/evaluators"
 import { loadGenomeSpace } from "../gate/gate.ts"
-import { validateSessionPr } from "../gate/validate.ts"
+import { spacesOf, validateSessionPr } from "../gate/validate.ts"
 import { loadEvalConfig } from "./config.ts"
 import { collectLives } from "./lives.ts"
 
@@ -59,7 +59,7 @@ async function checkCollected(root: string, runsDir: string): Promise<string[]> 
     const names = readdirSync(join(runsDir, id)).filter(n => /^\d+\.json$/.test(n)).sort()
     const files = names.map(n => ({ path: `data/runs/${id}/${n}`, content: readFileSync(join(runsDir, id, n), "utf8") }))
     if (files.length === 0) continue
-    const v = await validateSessionPr(files, [], { space })
+    const v = await validateSessionPr(files, [], { spaces: spacesOf(space) })
     for (const e of v.errors) errors.push(`${id}: ${e}`)
   }
   if (errors.length > 0) return errors

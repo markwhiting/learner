@@ -107,6 +107,37 @@ That is under the spec's estimate (§4.3: 1–3 s at birth in a worker). Browser
 - **A confirmation genome is checked like a calibration genome.** If `checkGenome` refuses it, the draw is `centre` with a reason, not a life the session would refuse.
 - **`armOfSeed(evalSeed, id)` = `ARM_OF_J[(evalSeed − 10000 − 1000·id) mod 4]`** (the mod taken non-negative), so the arm can be recomputed from the seed alone.
 
+### Confirmation-newborn files [agent; settles 05a's open note on the log shape]
+
+A confirmation's newborn arm uses the reference newborn's frozen file shape, so `confirm-fisher@1` reads it unchanged and keeps its version. (Task 7; `packages/harness/src/log.ts`, `newborn.ts`.)
+
+- **The shape.** A file with `role: "confirm"` and `confirmation.arm: "newborn"` is a frozen file: `seq: 0`, `cu: 0`, `stepsTotal: 0` and `final: true`, with exactly its budget levels' checkups, run above cu (`allowAhead`). It may carry `meta.heldOut`. `isFrozenNewborn` names the two frozen kinds (role `newborn`, and a confirmation newborn), and `meta.heldOut` is allowed for those two only.
+- **Only that shape.** An arm-`newborn` block in any other file (a running life's, a later seq, too few checkups) is refused by the parser, and so by the session's `newbornBlock` and the checkpoint loader. A candidate or centre life never gets frozen checkups or `heldOut`. It may still end at cu 0 (an orphan swept right after birth), as any life may.
+- **The runner.** `runNewborn({ who: { kind: "confirm", evalSeed, confirmationId, drawSeed, posteriorSha } })` runs it: the candidate's genome, learner seed = evalSeed, no panel, role and method `confirm`. It checks its block with `parseMeta` before making a learner, so a seed of another arm is refused there. Reference mode (`who: { kind: "reference", k }`) is unchanged. A confirmation newborn's file is gate data and is contributed normally (the page wiring is Task 11).
+
+### The arm is the seed's [agent; implements 05a's note "the gate recomputes the arm from evalSeed mod 4"]
+
+- `parseMeta` refuses a confirm block whose `confirmation.arm` is not `ARM_OF_J[(evalSeed − 10000 − 1000·id) mod 4]`. Every reader of a log (the tab's writer checks, the checkpoint loader, the gate's validator, the evaluators' fixtures) applies it, so a tab cannot choose its arm.
+- `log.ts` imports no package, so the 4-entry table is copied there as `CONFIRM_ARM_OF_J` (`confirmArmOfSeed`). `tools/genome-centre.test.ts` pins it equal to `@blanktab/meta`'s `ARM_OF_J`, and `confirmArmOfSeed` equal to `armOfSeed` on every seed of two blocks.
+
+### Confirmation seeds [agent; within spec §4.5]
+
+- **Checkup variants.** A life whose block has `evalSeed` (every confirmation life, every arm) meets `confirmSeed(evalSeed, level, m) = hashSeed(0, "confirm/<evalSeed>/<level>/<m>")`. Lives with the same evalSeed meet the same worlds. The `confirm/` prefix keeps them apart from every shared panel's `panelSeed` (tested: disjoint on the budget levels for all 16 panels). `variantSeedOf(meta)` is the one rule, shared by the session and the newborn runner: confirmSeed, else panelSeed, else 05a's `checkupSeed`.
+- **The learner seed is evalSeed** (spec §4.5). `validateSessionPr` refuses a confirm file whose `settings.seed` is not `meta.evalSeed`. The session refuses such a birth (`BadMetaBlockError`) before making a learner, so a tab never writes a file the gate would refuse. The world seed stays the learnerId's.
+
+### Every schema checked against its own space [agent; closes 05a Task 6's older-schema bypass]
+
+- In 05a, a non-legacy genome of an older schema than main's current one was checked for structure only. That let a file claim an old schema to skip the bounds check.
+- Now `ValidateOptions.spaces` (it replaces `space`) maps each schemaVersion to its space. Every non-legacy block is checked against `spaces.get(meta.genomeSchema)`: bounds, settings (`settingsMismatch`) and sha. A schema not in the map is refused (`"unknown genome schema N"`). A schema newer than the newest in the map is refused as before. Legacy blocks keep their pre-05a values (plan gap 4).
+- **Where the map comes from.** `tools/gate/history.ts` has three functions:
+  - `fileHistory` lists the distinct committed texts of a file, newest first, from the commits that added or modified it;
+  - `spacesBySchema` keeps the newest text of `knowledge/genome-space.json` per schemaVersion, and skips texts that do not parse;
+  - `centresBySha` lists every `genome.json` main has had, for Task 8.
+
+  `gate.ts` and `validate-cli.ts` build the map with `mainSpaces(root, git)`: that history over main's full history (both checkouts are `fetch-depth: 0`), plus the checkout's current space. They stop, as before, when the current space is missing or invalid.
+- `centresBySha` hashes with `node:crypto` synchronously. `history.test.ts` pins its sha equal to `@blanktab/meta`'s `genomeSha`.
+- **Tools with one space.** `tools/eval` (collect-newborns, newborn-reference) passes `spacesOf(space)` with the checkout's space only. Newborn files of an older schema would now be refused there rather than checked for structure only. None exist.
+
 ## Alternatives considered
 
 - **Keep `schemaVersion` 1 and add the new fields to it.** Rejected. 05a's parser accepts any object for `models` and `incumbent`, but checks the page's exact keys, so a new page field would make 05a tabs refuse the file anyway, and silently. A version bump says so on purpose, and both outcomes are the same safe draw (`centre`).

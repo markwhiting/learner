@@ -9,7 +9,7 @@ import { sobolPoints } from "@blanktab/detmath"
 import { lifeBudget, type LogFile, type LogFileV2, type MetaBlock } from "@blanktab/harness/log"
 import {
   birthDraw, checkGenome, fromUnit, genomeSha, parsePosterior, POSTERIOR_SCHEMA, searched, sha256Hex,
-  type Draw, type Genome, type GenomeSpace, type GpModel, type Incumbent, type Mode, type Posterior,
+  modelPosterior, type Draw, type Genome, type GenomeSpace, type GpModel, type GpPosterior, type Incumbent, type Mode, type Posterior,
 } from "@blanktab/meta"
 import {
   cohortContext, getEvaluator, GPU_WIDTHS_CLASS, SIGNAL_LOOKS, type EvalOutput, type LifeInput, type References,
@@ -27,8 +27,11 @@ export const POSTERIOR_INDEX_PATH = "data/meta/posterior-index.jsonl"
 export const DIAGNOSTICS_PATH = "data/meta/diagnostics.json"
 /** Each life's birth verdict, recorded once (plan 05b Task 8): the history walk then reads only new lives' posteriors. */
 export const VERIFIED_PATH = "data/meta/verified.json"
-/** The verification rule's version: a cache of another verifier is ignored, and every life is verified again. */
-const VERIFIER = 2
+/**
+ * The verification rule's version: a cache of another verifier is ignored, and every life is verified again. Bump it
+ * with any change between the verifier markers below; meta.test.ts pins their sha256 to this number.
+ */
+export const VERIFIER = 2
 
 /** The calibration design's Sobol seed (spec §4.6). */
 const CALIB_SEED = "calib/1"
@@ -47,9 +50,10 @@ export interface CalibrationState {
   looks: CalibrationLook[] // append-only
   outcome: "pending" | "signal" | "flat"
 }
-/** A life's birth verdict: the posteriorSha it was verified under, why it is not a draw the gate can reproduce (or
- * null), and whether its logged genome differs from the recomputed one. */
-export interface Verdict { posteriorSha: string | null; reason: string | null; genomeMismatch: boolean }
+/** A life's birth verdict: the posteriorSha it was verified under and that posterior's mode (null: offline, or the
+ * posterior is unknown or unreadable), why it is not a draw the gate can reproduce (or null), and whether its logged
+ * genome differs from the recomputed one. Only facts of the birth: nothing that depends on the calibration state. */
+export interface Verdict { posteriorSha: string | null; posteriorMode: Mode | null; reason: string | null; genomeMismatch: boolean }
 export interface VerifiedCache { schemaVersion: 1; verifier: 2; lives: Record<string, Verdict> }
 export interface MetaInput {
   runsDir: string; config: EvalConfig; refs: References; space: GenomeSpace; centre: Genome; sourceCommit: string
@@ -126,18 +130,21 @@ export function posteriorHistory(git: (args: string[]) => string, wanted: Readon
 
 const HEX64 = /^[0-9a-f]{64}$/
 const LEARNER_ID = /^lrn_[0-9a-f]{16}$/
+const MODES: readonly unknown[] = ["calibrate", "search", "paused", "flat"]
 const isVerdict = (v: unknown): v is Verdict =>
-  isObj(v) && exactKeys(v, ["posteriorSha", "reason", "genomeMismatch"]) && (v.posteriorSha === null || (typeof v.posteriorSha === "string" && HEX64.test(v.posteriorSha)))
+  isObj(v) && exactKeys(v, ["posteriorSha", "posteriorMode", "reason", "genomeMismatch"])
+  && (v.posteriorSha === null || (typeof v.posteriorSha === "string" && HEX64.test(v.posteriorSha)))
+  && (v.posteriorMode === null || MODES.includes(v.posteriorMode)) && !(v.posteriorSha === null && v.posteriorMode !== null)
   && (v.reason === null || typeof v.reason === "string") && typeof v.genomeMismatch === "boolean" && !(v.reason !== null && v.genomeMismatch)
 
 /**
  * data/meta/verified.json's text → the cache, or null on any shape error (the gate then verifies every life again: the
- * cache only saves work, it never decides). A cache of another verifier parses, and buildMeta ignores it.
+ * cache only saves work, it never decides). A cache of another verifier is null too.
  */
 export function parseVerified(text: string): VerifiedCache | null {
   let v: unknown
   try { v = JSON.parse(text) } catch { return null }
-  if (!isObj(v) || !exactKeys(v, ["schemaVersion", "verifier", "lives"]) || v.schemaVersion !== 1 || !Number.isSafeInteger(v.verifier)) return null
+  if (!isObj(v) || !exactKeys(v, ["schemaVersion", "verifier", "lives"]) || v.schemaVersion !== 1 || v.verifier !== VERIFIER) return null
   const lives = v.lives
   if (!isObj(lives) || !Object.entries(lives).every(([id, x]) => LEARNER_ID.test(id) && isVerdict(x))) return null
   return v as unknown as VerifiedCache
@@ -150,18 +157,19 @@ function cachedVerdict(cache: VerifiedCache | null, learnerId: string, posterior
   return v.posteriorSha === posteriorSha ? v : null
 }
 
-/** The lives buildMeta verifies: role search (the draws) and confirm (the confirmation draws). */
-const isDraw = (meta: MetaBlock) => meta.role === "search" || meta.role === "confirm"
+/** The lives buildMeta verifies: role search (the draws) and confirm (the confirmation draws), of the space's schema. */
+const isChecked = (meta: MetaBlock, schemaVersion: number) => (meta.role === "search" || meta.role === "confirm") && meta.genomeSchema === schemaVersion
 
 /**
- * The posteriorShas that the lives under `runsDir` not yet in `verified` were born with (their first meta block's), for
- * posteriorHistory: a cached life's posterior is never read again, so the history walk stops at the recent posteriors.
+ * The posteriorShas that the lives under `runsDir` buildMeta verifies (isChecked, for the space's `schemaVersion`) and
+ * that are not yet in `verified` were born with (their first meta block's), for posteriorHistory: a cached life's
+ * posterior is never read again, so the history walk stops at the recent posteriors.
  */
-export function wantedPosteriors(runsDir: string, verified: VerifiedCache | null = null): Set<string> {
+export function wantedPosteriors(runsDir: string, schemaVersion: number, verified: VerifiedCache | null = null): Set<string> {
   const out = new Set<string>()
   for (const life of collectLives(runsDir)) {
     const birth = birthOf(life.files)
-    if (!birth || !isDraw(birth.meta)) continue
+    if (!birth || !isChecked(birth.meta, schemaVersion)) continue
     const sha = birth.meta.posteriorSha
     if (typeof sha === "string" && cachedVerdict(verified, life.learnerId, sha) === null) out.add(sha)
   }
@@ -224,7 +232,9 @@ const sameGenome = (a: Genome, b: Genome): boolean => {
   return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k])
 }
 
-interface Checked { reason: string | null; genomeMismatch: boolean }
+interface Checked { posteriorMode: Mode | null; reason: string | null; genomeMismatch: boolean }
+
+// ---- verifier: begin (VERIFIER pins the sha256 of the text from here to "verifier: end") ----
 
 /** Methods whose genome is a copy, never arithmetic: a recomputed genome that differs is no draw of the gate's. */
 const EXACT_GENOME: ReadonlySet<string> = new Set(["centre", "confirm"])
@@ -245,7 +255,8 @@ function fieldMismatch(meta: MetaBlock, d: Draw): string | null {
  * Re-verification (spec §7.4): the life's draw recomputed from its learnerId, the posterior bytes its posteriorSha
  * names, the space, its widths class and the centre in force at its birth. A row is lost for an unknown or unreadable
  * posterior, an unknown centre, a mismatched method, seed, panel, evalSeed or confirmation, a logged genome outside
- * the space or not matching its genomeSha, or a calibrate genome outside the design. A genome that differs from the
+ * the space or not matching its genomeSha (readLives adds, every build, a calibrate genome outside the design: the
+ * design is the calibration state's, not the birth's, so it is never cached). A genome that differs from the
  * recomputed one alone keeps the row, on its logged genome, except for centre and confirm draws, whose genome the gate
  * fixed (spec §4.5 "Integrity").
  *
@@ -255,14 +266,18 @@ function fieldMismatch(meta: MetaBlock, d: Draw): string | null {
  * centre main has had (`centres`), which reproduces the fallback "posterior built for another centre".
  */
 async function verify(learnerId: string, meta: MetaBlock, widthsClass: "gpu" | "cpu", ctx: {
-  space: GenomeSpace; centres: ReadonlyMap<string, Genome>; design: ReadonlySet<string>; posteriors: ReadonlyMap<string, Posterior | null>
+  space: GenomeSpace; centres: ReadonlyMap<string, Genome>; posteriors: ReadonlyMap<string, Posterior | null>
+  /** Per posteriorSha, its model conditioned once (the ts branch's cost), shared by every life born under it. */
+  conditioned: (sha: string, p: Posterior) => () => GpPosterior | null
 }): Promise<Checked> {
-  const no = (reason: string): Checked => ({ reason, genomeMismatch: false })
   let posterior: Posterior | null = null
+  let posteriorMode: Mode | null = null
+  const no = (reason: string): Checked => ({ posteriorMode, reason, genomeMismatch: false })
   if (meta.posteriorSha !== null) {
     if (!ctx.posteriors.has(meta.posteriorSha)) return no("unknown posteriorSha")
     posterior = ctx.posteriors.get(meta.posteriorSha)!
     if (posterior === null) return no("posterior unreadable") // a tab that cannot parse it logs no sha (draws centre)
+    posteriorMode = posterior.mode
   }
   // A centre draw runs the tab's centre: one main never had is no draw of the gate's.
   if (meta.method === "centre" && !ctx.centres.has(meta.genomeSha)) return no("unknown centre")
@@ -270,7 +285,8 @@ async function verify(learnerId: string, meta: MetaBlock, widthsClass: "gpu" | "
   if (posterior !== null) candidates.push({ values: posterior.centre.values, sha: posterior.centre.genomeSha })
   if (meta.method === "centre" && meta.genomeSha !== posterior?.centre.genomeSha) candidates.push({ values: ctx.centres.get(meta.genomeSha)!, sha: meta.genomeSha })
   const tries = candidates.map(c => {
-    const d = birthDraw({ learnerId, space: ctx.space, centre: c.values, centreSha: c.sha, widthsClass, posterior, posteriorSha: meta.posteriorSha })
+    const conditioned = posterior !== null && meta.posteriorSha !== null ? ctx.conditioned(meta.posteriorSha, posterior) : undefined
+    const d = birthDraw({ learnerId, space: ctx.space, centre: c.values, centreSha: c.sha, widthsClass, posterior, posteriorSha: meta.posteriorSha, conditioned })
     return { d, why: fieldMismatch(meta, d) }
   })
   const exact = tries.find(t => t.why === null && sameGenome(meta.genome, t.d.genome))
@@ -286,13 +302,14 @@ async function verify(learnerId: string, meta: MetaBlock, widthsClass: "gpu" | "
   const bad = checkGenome(ctx.space, meta.genome)
   if (bad !== null) return no(`genome not in the space: ${bad}`)
   if (meta.genomeSha !== await genomeSha(meta.genomeSchema, meta.genome)) return no("genomeSha does not match the genome")
-  if (meta.method === "calibrate" && !ctx.design.has(meta.genomeSha)) return no("calibrate genome not in the calibration design")
-  return { reason: null, genomeMismatch: !exact }
+  return { posteriorMode, reason: null, genomeMismatch: !exact }
 }
+// ---- verifier: end ----
 
 /** The lives' rows and counts under the pinned search evaluator, after re-verification. */
 interface Lives {
-  rows: { life: LifeInput; meta: MetaBlock; out: EvalOutput }[]
+  /** searchEra: born under a posterior of mode search (the rows rowsSinceDeclaration counts). */
+  rows: { life: LifeInput; meta: MetaBlock; out: EvalOutput; searchEra: boolean }[]
   /** Verified confirmation lives (role confirm): never rows (spec §4.3); Task 9 groups them by arm. */
   confirmLives: { life: LifeInput; meta: MetaBlock }[]
   checked: number; flagged: { learnerId: string; reason: string }[]
@@ -317,7 +334,13 @@ async function readLives(input: MetaInput, calibration: CalibrationState): Promi
   // `centres` holds every schema's centres, each keyed by its own schema's sha. A wrong entry cannot pass a life: a
   // centre draw must reproduce the logged genome exactly, and the logged genome its own genomeSha.
   const designShas = calibration.genomes.map(g => g.genomeSha)
-  const ctx = { space, centres: input.centres, design: new Set(designShas), posteriors }
+  const design = new Set(designShas)
+  const memo = new Map<string, GpPosterior | null>()
+  const conditioned = (sha: string, p: Posterior) => () => {
+    if (!memo.has(sha)) memo.set(sha, p.models.gpu ? modelPosterior(p.models.gpu) : null)
+    return memo.get(sha)!
+  }
+  const ctx = { space, centres: input.centres, posteriors, conditioned }
   const cache = input.previous.verified
   const out: Lives = {
     rows: [], confirmLives: [], checked: 0, flagged: [], mismatched: [], mismatchedRows: [], unscored: {}, verdicts: {},
@@ -327,13 +350,16 @@ async function readLives(input: MetaInput, calibration: CalibrationState): Promi
     const birth = birthOf(life.files)
     // Search and confirmation draws are verified; newborn and legacy lives are not draws and never rows. Other genome
     // schemas cannot be recomputed against this space, and are never rows of this fit.
-    if (!birth || !isDraw(birth.meta) || birth.meta.genomeSchema !== space.schemaVersion) continue
+    if (!birth || !isChecked(birth.meta, space.schemaVersion)) continue
     const widthsClass = widthsClassOf(birth.file.widths)
     // A life's birth verdict is computed once (verified.json); scoring and rows below are recomputed every build.
     const checked: Checked = cachedVerdict(cache, life.learnerId, birth.meta.posteriorSha) ?? await verify(life.learnerId, birth.meta, widthsClass, ctx)
-    out.verdicts[life.learnerId] = { posteriorSha: birth.meta.posteriorSha, reason: checked.reason, genomeMismatch: checked.genomeMismatch }
+    out.verdicts[life.learnerId] = { posteriorSha: birth.meta.posteriorSha, ...checked }
     out.checked++
-    if (checked.reason !== null) { out.flagged.push({ learnerId: life.learnerId, reason: checked.reason }); continue }
+    // The design is the calibration state's, not the birth's: checked every build, after the cache, so a calibration
+    // restart with another design flags the same lives with or without the cache.
+    const reason = checked.reason ?? (birth.meta.method === "calibrate" && !design.has(birth.meta.genomeSha) ? "calibrate genome not in the calibration design" : null)
+    if (reason !== null) { out.flagged.push({ learnerId: life.learnerId, reason }); continue }
     if (checked.genomeMismatch) out.mismatched.push(life.learnerId)
     // Confirmation lives are never rows, and search rows never confirmation lives (spec §4.3, §4.5).
     if (birth.meta.role === "confirm") { out.confirmLives.push({ life, meta: birth.meta }); continue }
@@ -343,7 +369,7 @@ async function readLives(input: MetaInput, calibration: CalibrationState): Promi
       && (ROW_METHODS as readonly string[]).includes(birth.meta.method) && birth.meta.inheritance.filters === "none"
       && life.files.every(f => !isV2(f) || !f.meta || f.meta.genomeSchema === space.schemaVersion)
     if (isRow) {
-      out.rows.push({ life, meta: birth.meta, out: scored })
+      out.rows.push({ life, meta: birth.meta, out: scored, searchEra: checked.posteriorMode === "search" })
       if (checked.genomeMismatch) out.mismatchedRows.push(life.learnerId)
     } else { const why = scored.eligible ? "not a row of this fit" : scored.reason ?? "ineligible"; out.unscored[why] = (out.unscored[why] ?? 0) + 1 }
 
@@ -404,7 +430,7 @@ interface SearchState { model: GpModel | null; reason: string | null; run: Model
  * The model on the rows and the incumbent. y is the search evaluator's targets over every row, then rowSubset keeps at
  * most MAX_ROWS of them. The previous posterior's model is reused when its data are the same (search.ts buildModel).
  */
-async function searchState(input: MetaInput, lives: Lives, calibration: CalibrationState): Promise<SearchState> {
+async function searchState(input: MetaInput, lives: Lives): Promise<SearchState> {
   const search = getEvaluator(input.config.search)
   if (!search.targets) throw new Error(`${input.config.search} has no targets transform`)
   const y = search.targets(lives.rows.map(r => r.out))
@@ -413,9 +439,9 @@ async function searchState(input: MetaInput, lives: Lives, calibration: Calibrat
   const prev = input.previous.posteriorText === null ? null : parsePosterior(input.previous.posteriorText)
   const built = buildModel(kept.map(({ learnerId, genome }) => ({ learnerId, genome })), kept.map(k => k.y), input.space, prev?.models.gpu ?? null)
   const incumbent = built.model === null ? null : await incumbentFor(built.model, input.space, input.centre)
-  // Counted since the signal look until a confirmation is declared (plan conflict 5; Task 9 adds declarations).
-  const signalLook = calibration.looks[calibration.looks.length - 1]!
-  return { ...built, incumbent, rowsSinceDeclaration: Math.max(0, lives.rows.length - signalLook.lives) }
+  // Rows born under a search posterior: none before the signal look (plan conflict 5; controller ruling, Task 8
+  // review). Task 9 counts from the last declaration's rowsAtDeclaration.
+  return { ...built, incumbent, rowsSinceDeclaration: lives.rows.filter(r => r.searchEra).length }
 }
 
 /**
@@ -436,7 +462,7 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
   calibration = nextLook(calibration, lives.rows, input)
   const mode = modeOf(calibration)
   // The mode guard (the user's "inert until signal"): nothing of the search is computed in any other mode.
-  const s = mode === "search" ? await searchState(input, lives, calibration) : null
+  const s = mode === "search" ? await searchState(input, lives) : null
   const calibRows = lives.rows.filter(r => r.meta.method === "calibrate").length
   const n = calibration.looks.length
   const posterior = {

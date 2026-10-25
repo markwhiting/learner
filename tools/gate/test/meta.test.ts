@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -15,8 +16,9 @@ import { CPU, checkup, endedLife, lid, scoredLife, typicalLife } from "../../../
 import { collectLives } from "../../eval/lives.ts"
 import { FIXTURE_ENV, makeFixture, type Fixture } from "./git-fixture.ts"
 import { serialise } from "../serialise.ts"
+import { triggered } from "../search.ts"
 import {
-  buildMeta, parseCalibration, parseVerified, posteriorHistory, wantedPosteriors, type CalibrationState, type MetaFiles, type MetaInput, type VerifiedCache,
+  buildMeta, parseCalibration, parseVerified, posteriorHistory, VERIFIER, wantedPosteriors, type CalibrationState, type MetaFiles, type MetaInput, type VerifiedCache,
 } from "../meta.ts"
 import {
   bornLife, build, BUILT_AT, resetK, CALIBRATION, CENTRE, commit, CONFIG, DIAGNOSTICS, grow, noise, planted, POSTERIOR, put, REFS, REPO, runsDir,
@@ -120,6 +122,7 @@ describe("buildMeta (spec §4.6, §7.2, §7.4)", () => {
   })
 
   it("30 calibration rows with a planted effect → look 1 appended, outcome signal, mode search; a second build appends nothing", async () => {
+    resetK(19) // 05a's numbering of these lives, whatever ran before
     const w = await world()
     await build(w)
     await grow(w, 29, planted)
@@ -701,7 +704,7 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
 
     await grow(w, 3, noise)
     // The history walk is wanted only for the new lives' posterior.
-    expect([...wantedPosteriors(runsDir(), cache)]).toEqual([await shaOf(w.previous.posteriorText!)])
+    expect([...wantedPosteriors(runsDir(), SPACE.schemaVersion, cache)]).toEqual([await shaOf(w.previous.posteriorText!)])
     drawSpy.mockClear()
     const second = await build(w)
     expect(drawSpy).toHaveBeenCalledTimes(3)
@@ -721,8 +724,67 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     expect(drawSpy).toHaveBeenCalledTimes(16)
     // A cached verdict holds for its posteriorSha only; a malformed cache parses as none.
     expect(parseVerified("{}")).toBeNull()
-    expect(parseVerified(JSON.stringify({ schemaVersion: 1, verifier: 2, lives: { nope: { posteriorSha: null, reason: null, genomeMismatch: false } } }))).toBeNull()
+    expect(parseVerified(JSON.stringify({ schemaVersion: 1, verifier: 2, lives: { nope: { posteriorSha: null, posteriorMode: null, reason: null, genomeMismatch: false } } }))).toBeNull()
+    // Another verifier's cache is no cache.
+    expect(parseVerified(JSON.stringify({ ...JSON.parse(second[VERIFIED]) as object, verifier: 1 }))).toBeNull()
+    expect(parseVerified(second[VERIFIED])).not.toBeNull()
   }, 60_000)
+
+  it("rowsSinceDeclaration counts only rows born under a search posterior: centre rows from before the signal never count", async () => {
+    const w = await world()
+    await build(w)
+    for (let i = 0; i < 10; i++) await bornLife(null, { effect: planted }) // offline centre rows, before the signal
+    await grow(w, 30, planted)
+    const signal = await build(w)
+    expect(posteriorOf(signal).page).toMatchObject({ eligibleLives: 40, rowsSinceDeclaration: 0 })
+    await grow(w, 99, planted)
+    for (let i = 0; i < 5; i++) await bornLife(null, { effect: planted }) // offline during search: no search posterior
+    let p = posteriorOf(await build(w))
+    expect(p.page).toMatchObject({ eligibleLives: 144, rowsSinceDeclaration: 99 })
+    expect(triggered(p.incumbent && { ...p.incumbent, pBeatsCentre: 1 }, p.centre.genomeSha, p.page.rowsSinceDeclaration, false)).toBe(false)
+    await grow(w, 1, planted)
+    p = posteriorOf(await build(w))
+    expect(p.page).toMatchObject({ eligibleLives: 145, rowsSinceDeclaration: 100 })
+    expect(triggered(p.incumbent && { ...p.incumbent, pBeatsCentre: 1 }, p.centre.genomeSha, p.page.rowsSinceDeclaration, false)).toBe(p.incumbent!.genomeSha !== p.centre.genomeSha)
+  }, 240_000)
+
+  it("a calibration restart with another design flags old calibrate lives the same way with and without the cache", async () => {
+    const w = await world()
+    await build(w)
+    // Calibration lives, at least one of them on design genome 0 (the centre, which the restart below moves).
+    const born = await grow(w, 12, noise)
+    while (!born.some(b => b.draw.calibrationIndex === 0)) born.push(...await grow(w, 1, noise))
+    await build(w) // the cache now holds these lives' verdicts
+    expect(verifyOf(w.last!).ineligible).toEqual([])
+    // A recorded decision restarts calibration around another centre: calibration.json is gone, the design moves.
+    const moved = { ...CENTRE, lr: 1e-3 }
+    w.centres.set(await shaOfGenome(moved), moved)
+    const restart = { ...w.previous, calibration: null }
+    const input = (verified: VerifiedCache | null): MetaInput => ({
+      runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: moved, sourceCommit: commit(50), builtAt: BUILT_AT,
+      previous: { ...restart, verified }, posteriorsBySha: w.history, centres: w.centres,
+    })
+    const cached = await buildMeta(input(w.previous.verified))
+    const fresh = await buildMeta(input(null))
+    const flagged = verifyOf(cached).ineligible
+    expect(flagged.length).toBeGreaterThan(0)
+    expect(flagged.every(f => f.reason === "calibrate genome not in the calibration design")).toBe(true)
+    expect(fresh[DIAGNOSTICS]).toBe(cached[DIAGNOSTICS])
+    expect(fresh[POSTERIOR]).toBe(cached[POSTERIOR])
+    expect(fresh[VERIFIED]).toBe(cached[VERIFIED])
+    // The cached verdicts stay the birth's: the design flag is not written into them.
+    expect(Object.values(parseVerified(cached[VERIFIED])!.lives).every(v => v.reason === null)).toBe(true)
+  }, 60_000)
+
+  it("the verifier's code is pinned to VERIFIER: a change between its markers without a VERIFIER bump fails here", () => {
+    const text = readFileSync(join(REPO, "tools/gate/meta.ts"), "utf8")
+    const begin = text.indexOf("// ---- verifier: begin"), end = text.indexOf("// ---- verifier: end ----")
+    expect(begin).toBeGreaterThan(0)
+    expect(end).toBeGreaterThan(begin)
+    const sha = createHash("sha256").update(text.slice(begin, end), "utf8").digest("hex")
+    // On a deliberate change: bump VERIFIER in meta.ts (every cached verdict is then re-verified) and pin the new pair.
+    expect({ verifier: VERIFIER, sha }).toEqual({ verifier: 2, sha: "0a23230fbab1343ade5abcad0693fec8f3a2445c200f8bb83cb461dbc8b10e5a" })
+  })
 
   it("a life born under the last v1 posterior verifies under 05b code", async () => {
     const text = readFileSync(join(GOLDEN, "last-v1-posterior.json"), "utf8") // main's data/meta/posterior.json under 05a
@@ -767,12 +829,15 @@ describe("posteriorHistory", () => {
     expect(calls).toEqual([]) // nothing wanted: no git at all
   })
 
-  it("wantedPosteriors lists the posteriorShas lives were born with", async () => {
+  it("wantedPosteriors lists the posteriorShas the lives buildMeta checks were born with (the space's schema only)", async () => {
     const w = await world()
     const first = await build(w)
     await bornLife(first[POSTERIOR])
     await bornLife(null)
-    expect([...wantedPosteriors(runsDir())]).toEqual([await shaOf(first[POSTERIOR])])
+    const otherText = first[POSTERIOR] + " " // other bytes, so another sha
+    await bornLife(otherText, { alter: m => ({ ...m, genomeSchema: 2 }) }) // another schema: never checked, never wanted
+    expect([...wantedPosteriors(runsDir(), SPACE.schemaVersion)]).toEqual([await shaOf(first[POSTERIOR])])
+    expect([...wantedPosteriors(runsDir(), 2)]).toEqual([await shaOf(otherText)])
   })
 })
 
@@ -803,7 +868,7 @@ describe("meta-cli (a checkout of main in a temp git repo)", () => {
     expect(index).toHaveLength(1)
     expect(JSON.parse(index[0]!).posteriorSha).toBe(await shaOf(posterior))
     // Each life's birth verdict is recorded (the offline life verified against genome.json from main's history).
-    expect(parseVerified(inWork(VERIFIED))?.lives).toEqual({ [offline.learnerId]: { posteriorSha: null, reason: null, genomeMismatch: false } })
+    expect(parseVerified(inWork(VERIFIED))?.lives).toEqual({ [offline.learnerId]: { posteriorSha: null, posteriorMode: null, reason: null, genomeMismatch: false } })
     expect(cli()).toBe("changed=false")
 
     // The gate commits data/meta (Task 11); a tab is born under that posterior and its log merges.

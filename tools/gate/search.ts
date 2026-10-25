@@ -67,7 +67,8 @@ export interface ModelRun {
  * The model the tabs sample from (spec §4.3), on rows already subset (rowSubset) and their targets y. x is the logged
  * genome in the unit cube, rounded to 6 decimals (and kept in [0, 1]). No model, with the reason, below MIN_ROWS(d),
  * when fitGp throws (malformed data) or finds nothing, or when the fitted model cannot be conditioned. `previous`
- * (the last posterior's model) is reused, hyper and fit, when its genes, rows, x and y are identical.
+ * (the last posterior's model) is reused, hyper and fit, when its genes, rows, x and y are identical. FIT_ROWS is not
+ * in that key: a change of it takes effect at the next change of the rows (decision 0024 "Rows and the fit").
  */
 export function buildModel(
   rows: { learnerId: string; genome: Genome }[], y: number[], space: GenomeSpace, previous: GpModel | null,
@@ -92,7 +93,11 @@ export function buildModel(
     modelRows.forEach((r, i) => { if (fitIds.has(r.learnerId)) { fx.push(r.x); fy.push(y[i]!) } })
     run.fitRows = fx.length
     let result: FitResult | null
-    try { result = fitGp({ x: fx, y: fy }) } catch (e) { return none(`the fit threw: ${e instanceof Error ? e.message : String(e)}`) }
+    try { result = fitGp({ x: fx, y: fy }) } catch (e) {
+      // fitGp's own refusal of its data (more searched genes than Sobol dimensions): no model. Anything else is a bug.
+      if (e instanceof RangeError && e.message.startsWith("fitGp:")) return none(`the fit threw: ${e.message}`)
+      throw e
+    }
     run.refit = true
     if (result === null) return none("no fit start had a finite objective")
     fit = result

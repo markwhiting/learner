@@ -41,7 +41,7 @@ const files = await buildMeta({
   builtAt: new Date().toISOString(), // the one clock read that reaches a file: it goes into the index line only
   previous: { calibration: calibrationText === null ? null : parseCalibration(calibrationText), posteriorText, verified },
   // Only the versions some not-yet-verified life was born under.
-  posteriorsBySha: posteriorHistory(git, wantedPosteriors(runsDir, verified)),
+  posteriorsBySha: posteriorHistory(git, wantedPosteriors(runsDir, space.schemaVersion, verified)),
   centres,
 })
 console.error(`buildMeta took ${((Date.now() - started) / 1000).toFixed(1)} s`)

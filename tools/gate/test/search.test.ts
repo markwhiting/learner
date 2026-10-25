@@ -105,6 +105,12 @@ describe("buildModel (spec §4.3)", () => {
     expect(buildModel(ok, y.map((v, i) => (i === 0 ? NaN : v)), SPACE, null)).toMatchObject({ model: null, reason: "a target is not finite" })
   })
 
+  it("an error of fitGp other than its own data refusal is a bug, and is thrown", () => {
+    const { rows, y } = rowsOf(20)
+    fitSpy.mockImplementationOnce(() => { throw new TypeError("boom") })
+    expect(() => buildModel(rows, y, SPACE, null)).toThrow("boom")
+  })
+
   it("above FIT_ROWS rows the hyperparameters are fitted on the FIT_ROWS rows with the largest subset hash; the model keeps every row", () => {
     const n = FIT_ROWS + 40
     const { rows, y } = rowsOf(n, "fit-rows")

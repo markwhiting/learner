@@ -457,6 +457,22 @@ describe("05b branches", () => {
     expect(seen).toEqual(new Set(["candidate", "centre", "newborn"]))
   })
 
+  it("conditioned: a caller's memoised modelPosterior gives the same draws, and is called only on the ts branch", () => {
+    const plainFile = v2({ confirmation: null })
+    const once = modelPosterior(parsePosterior(JSON.stringify(plainFile))!.models.gpu!)
+    let calls = 0
+    const conditioned = () => { calls++; return once }
+    let ts = 0
+    for (const id of ids(40, "memo")) {
+      const i = inputOfFile(id, plainFile)
+      const d = birthDraw({ ...i, conditioned })
+      expect(d).toEqual(birthDraw(i))
+      if (d.method === "ts") ts++
+    }
+    expect(ts).toBeGreaterThan(20)
+    expect(calls).toBe(ts) // uniform draws never condition
+  })
+
   it("20 ts/confirm draws equal fixtures/draws-05b.json", () => {
     const plainFile = v2({ confirmation: null }), confFile = v2()
     const cases: DrawInput[] = []

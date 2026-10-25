@@ -22,6 +22,7 @@
 // `centre` with a `reason`. drawSeed and posteriorSha are still recorded, so the gate recomputes the same fallback.
 import { createRng, hashSeed } from "@blanktab/detmath"
 import { checkGenome, fromUnit, searched, type Genome, type GenomeSpace } from "./genome"
+import type { GpPosterior } from "./gp"
 import type { ArmName, Posterior } from "./posterior"
 import { candidateSet, modelPosterior, thompsonPick } from "./thompson"
 
@@ -33,6 +34,12 @@ export interface DrawInput {
   centreSha: string
   /** null together: offline, absent or malformed. */
   posterior: Posterior | null; posteriorSha: string | null
+  /**
+   * Optional, for a caller that draws many lives under one posterior (the gate's re-verification): returns
+   * modelPosterior(posterior.models.gpu), computed once and memoised by the caller. Called only when the ts branch is
+   * reached. It must return exactly modelPosterior's result for this posterior; absent, the draw computes it itself.
+   */
+  conditioned?: () => GpPosterior | null
 }
 export interface Draw {
   role: Role; method: Method; drawSeed: number | null; posteriorSha: string | null
@@ -146,13 +153,13 @@ export function birthDraw(input: DrawInput): Draw {
     }
     // This arm is full: the birth is a ts draw, its rng continuing after j.
   }
-  return tsDraw(space, centre, posterior, rng, base, fallback)
+  return tsDraw(space, centre, posterior, rng, base, fallback, input.conditioned)
 }
 
 /** The ts branch: the gpu model's GP posterior, a Thompson pick on candidateSet(post, rng), and its genome. */
 function tsDraw(
   space: GenomeSpace, centre: Genome, posterior: Posterior, rng: () => number,
-  base: Omit<Draw, "method" | "genome">, fallback: (reason: string) => Draw,
+  base: Omit<Draw, "method" | "genome">, fallback: (reason: string) => Draw, conditioned: (() => GpPosterior | null) | undefined,
 ): Draw {
   const model = posterior.models.gpu
   if (model === undefined) {
@@ -163,7 +170,7 @@ function tsDraw(
   const names = searched(space).map(g => g.name)
   if (model.genes.length !== names.length || model.genes.some((g, j) => g !== names[j]))
     return fallback("the model's genes are not the space's searched genes")
-  const post = modelPosterior(model)
+  const post = conditioned ? conditioned() : modelPosterior(model)
   if (post === null) return fallback("no GP posterior from the model")
   const pick = thompsonPick(post, candidateSet(post, rng), rng)
   if (pick === null) return fallback("no Thompson pick")

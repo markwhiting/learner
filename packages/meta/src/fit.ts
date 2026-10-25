@@ -47,7 +47,7 @@ export function fitGp(data: GpData): FitResult | null {
   for (let s = 0; s < starts.length; s++) {
     const r = minimise(negLogPosterior, starts[s]!, { memory: LBFGS_MEMORY, maxIters: FIT_MAX_ITERS, tol: FIT_TOL })
     iterations.push(r.iterations)
-    if (r.value === Infinity) continue
+    if (!Number.isFinite(r.value)) continue // a start that never left an infinite (or NaN) objective
     if (best === null || r.value < best.value) best = { x: r.x, value: r.value, start: s }
   }
   if (best === null) return null

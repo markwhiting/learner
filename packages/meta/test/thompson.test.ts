@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync, writeFileSync } from "node:fs"
-import { createRng, hashSeed, normInv } from "@blanktab/detmath"
+import { createRng, hashSeed, normCdf, normInv } from "@blanktab/detmath"
 import { fromUnit, genomeSha, parseCentre, parseGenomeSpace, parsePosterior, searched, sha256Hex, toUnit, type GpModel } from "@blanktab/meta"
 import { conditionGp, predict, type GpData, type GpPosterior } from "../src/gp"
 import { fitGp } from "../src/fit"
@@ -149,6 +149,23 @@ describe("thompsonPick", () => {
     expect(near / 2000).toBeGreaterThanOrEqual(0.8)
     expect(outside).toBeGreaterThan(0)
   }, 120_000)
+
+  it("thompsonPick samples jointly: between two correlated candidates it picks the first at Φ(Δμ/σΔ) ± 0.03 over 4,000 seeds, not at the marginal rate", () => {
+    const post = peaked1d()
+    const cands = [[0.66], [0.67]] // close together: f(0.66) and f(0.67) are strongly correlated
+    const p = predict(post, cands, true)!
+    const c = p.cov!
+    const dm = p.mean[0]! - p.mean[1]!
+    // The sampled Σ carries TS_JITTER on its diagonal (cholesky's first step), so the difference's variance gains 2·TS_JITTER.
+    const joint = normCdf(dm / Math.sqrt(c[0]! + c[3]! - 2 * c[1]! + 2 * TS_JITTER))
+    const marginal = normCdf(dm / Math.sqrt(c[0]! + c[3]! + 2 * TS_JITTER))
+    expect(Math.abs(joint - marginal)).toBeGreaterThan(0.1) // the test can tell the two apart
+    const N = 4000
+    let first = 0
+    for (let s = 0; s < N; s++) if (thompsonPick(post, cands, createRng(hashSeed(s, "ts-joint")))!.index === 0) first++
+    // ±0.03 is about 4 binomial standard deviations at N = 4,000 (probabilistic, but the seeds are fixed).
+    expect(Math.abs(first / N - joint)).toBeLessThanOrEqual(0.03)
+  })
 
   it("thompsonPick is a pure function of (model, seed): same seed → same index; 20 picks equal fixtures/ts-picks.json", () => {
     const posterior = parsePosterior(readFileSync(POSTERIOR_FIXTURE, "utf8"))

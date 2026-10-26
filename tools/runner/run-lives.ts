@@ -10,6 +10,7 @@
 // The runner turns the short-lives switch on (it only ends lives born after it is on, or confirmed in the page), keeps
 // macOS awake with caffeinate while it runs, and reloads the tab if it crashes or its compute stops advancing.
 import { spawn } from "node:child_process"
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -32,6 +33,23 @@ export function parseArgs(argv: readonly string[]): RunnerArgs {
     setup: argv.includes("--setup"),
     headed: argv.includes("--headed") || argv.includes("--setup"),
   }
+}
+
+/**
+ * Claims the profile for this process: one runner per profile. Two browsers on one profile are two tabs sending one
+ * outbox, and the second can reset a branch the first just opened a PR on (GitHub then closes it and the page drops
+ * its files: 2026-10-26, lrn_7a6495cac26a7170's 0.json). A claim whose process is gone is taken over.
+ */
+export function claimProfile(profile: string, pid: number, alive: (pid: number) => boolean): () => void {
+  const path = `${profile}.pid`
+  const other = existsSync(path) ? Number(readFileSync(path, "utf8")) : NaN
+  if (Number.isInteger(other) && other !== pid && alive(other)) throw new Error(`another runner (pid ${other}) is using ${profile}`)
+  writeFileSync(path, `${pid}\n`)
+  return () => { if (existsSync(path) && Number(readFileSync(path, "utf8")) === pid) rmSync(path) }
+}
+
+export const isAlive = (pid: number): boolean => {
+  try { process.kill(pid, 0); return true } catch (e) { return (e as NodeJS.ErrnoException).code === "EPERM" }
 }
 
 /** A compute reading's CU as the page shows it ("1,234.5 CU", "…" before the first step), or null. */
@@ -60,6 +78,8 @@ async function main(): Promise<void> {
   const log = (s: string) => console.log(`${new Date().toISOString()} ${s}`)
   // Keep the machine awake (idle sleep) for exactly as long as this process lives.
   if (process.platform === "darwin") spawn("caffeinate", ["-i", "-w", String(process.pid)], { stdio: "ignore", detached: true }).unref()
+  const release = claimProfile(resolve(args.profile), process.pid, isAlive)
+  for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { release(); process.exit(1) })
   const { chromium } = await import("@playwright/test")
   const context = await chromium.launchPersistentContext(resolve(args.profile), {
     headless: !args.headed, args: ["--enable-unsafe-webgpu", "--use-angle=metal", "--enable-features=Vulkan"],
@@ -102,6 +122,7 @@ async function main(): Promise<void> {
     log(`--hours ${args.hours} reached; ${seen.size} lives seen`)
   } finally {
     await context.close()
+    release()
   }
 }
 

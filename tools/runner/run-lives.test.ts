@@ -1,5 +1,8 @@
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { SITE, cuOf, parseArgs, stallWatch } from "./run-lives"
+import { SITE, claimProfile, cuOf, parseArgs, stallWatch } from "./run-lives"
 
 describe("run-lives", () => {
   it("parses its arguments, with the live site and a 16 h run by default", () => {
@@ -20,5 +23,16 @@ describe("run-lives", () => {
     expect(s("a", 1, 1001)).toBe(true)
     expect(s("a", 2, 1002)).toBe(false)
     expect(s("b", 2, 5000)).toBe(false)
+  })
+  it("claims a profile for one runner at a time, taking over a claim whose process is gone", () => {
+    const profile = join(mkdtempSync(join(tmpdir(), "runner-")), "profile")
+    const release = claimProfile(profile, 10, () => true)
+    expect(() => claimProfile(profile, 11, pid => pid === 10)).toThrow(/another runner \(pid 10\)/)
+    expect(claimProfile(profile, 11, () => false)).toBeTypeOf("function") // pid 10 gone: 11 takes it
+    release() // 10's release leaves 11's claim
+    expect(existsSync(`${profile}.pid`)).toBe(true)
+    writeFileSync(`${profile}.pid`, "garbage")
+    claimProfile(profile, 12, () => true)()
+    expect(existsSync(`${profile}.pid`)).toBe(false)
   })
 })

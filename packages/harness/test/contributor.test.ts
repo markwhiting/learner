@@ -12,7 +12,7 @@ const TOKEN = "ghp_SECRET_token_1234567890"
 const ID = "lrn_0123456789abcdef"
 const NOW = new Date(1_700_000_000_000)
 
-async function setup(opts: { canPush?: boolean; withToken?: boolean; files?: number; existingForkAs?: string; onLocalOnly?: (id: string) => void } = {}) {
+async function setup(opts: { canPush?: boolean; withToken?: boolean; files?: number; existingForkAs?: string; onLocalOnly?: (id: string) => void; lock?: <T>(fn: () => Promise<T>) => Promise<T> } = {}) {
   const idb = new IDBFactory()
   const queue: Queue = await openQueue(idb)
   const n = opts.files ?? 6
@@ -26,6 +26,7 @@ async function setup(opts: { canPush?: boolean; withToken?: boolean; files?: num
   const c = createContributor({
     queue, ls, fetchFn: gh.fetchFn, now: () => NOW, onStatus: s => statuses.push(s),
     ...(opts.onLocalOnly ? { onLocalOnly: opts.onLocalOnly } : {}),
+    ...(opts.lock ? { lock: opts.lock } : {}),
     sleep: async () => {},
     schedule: (fn, ms) => { scheduled.push(ms); timers.push(fn) },
   })
@@ -823,6 +824,52 @@ describe("contributor: re-review fixes", () => {
     expect(t.gh.prFiles(t.gh.pulls[0]!)).toEqual(logPaths(ID, [0, 1, 2]))
     expect(await t.queue.pending()).toEqual([])
     expect(await t.queue.contribution(ID)).toMatchObject({ closedInARow: 0, localOnly: false })
+  })
+
+  it("both PR lists lag behind a PR this browser just opened: it is found by number, the branch is not reset, no second PR (2026-10-26)", async () => {
+    // Live: a newborn's first PR was 9 s old when the next send listed none (open or all), reset its branch to main, so
+    // GitHub closed it as empty and its 0.json was dropped as rejected, on almost every life.
+    const t = await setup({ files: 1 })
+    await t.c.flush()
+    await t.queue.put(mkFile(ID, 1))
+    t.gh.interceptors.push(r => {
+      const u = new URL(r.url)
+      return r.method === "GET" && u.pathname === `/repos/${UP}/pulls` ? new Response("[]", { status: 200 }) : undefined
+    })
+    t.gh.requests.length = 0
+    await t.c.flush()
+    expect(t.gh.requests.some(r => r.method === "PATCH" && JSON.parse(r.body!).force === true)).toBe(false)
+    expect(t.gh.requests.some(r => r.method === "POST" && new URL(r.url).pathname === `/repos/${UP}/pulls`)).toBe(false)
+    expect(t.gh.pulls).toHaveLength(1)
+    expect(t.gh.prFiles(t.gh.pulls[0]!)).toEqual(logPaths(ID, [0, 1]))
+    expect(await t.queue.pending()).toEqual([])
+    expect(await t.queue.contribution(ID)).toMatchObject({ closedInARow: 0, localOnly: false })
+  })
+
+  it("the remembered PR was merged or closed: the next send starts afresh (a new branch from main, a new PR)", async () => {
+    const t = await setup({ files: 1 })
+    await t.c.flush()
+    t.gh.pulls[0]!.state = "closed"
+    t.gh.pulls[0]!.merged = true
+    await t.queue.put(mkFile(ID, 1))
+    await t.c.flush()
+    expect(t.gh.pulls).toHaveLength(2)
+    expect(t.gh.prFiles(t.gh.pulls[1]!)).toEqual(logPaths(ID, [1]))
+    expect(await t.queue.pending()).toEqual([])
+  })
+
+  it("sends run under the cross-tab lock it is given, one at a time", async () => {
+    const order: string[] = []
+    let held: Promise<unknown> = Promise.resolve()
+    const lock = <T>(fn: () => Promise<T>): Promise<T> => {
+      const run = held.then(async () => { order.push("in"); try { return await fn() } finally { order.push("out") } })
+      held = run.catch(() => {})
+      return run
+    }
+    const t = await setup({ files: 2, lock })
+    await t.c.flush()
+    expect(order).toEqual(["in", "out"])
+    expect(t.gh.pulls).toHaveLength(1)
   })
 
   it("a failure while reporting idle with nothing pending is a status, not a rejected flush", async () => {

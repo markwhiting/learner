@@ -323,6 +323,8 @@ async function main(ui: Ui): Promise<void> {
   let current: Ctx | null = null
   const contributor = createContributor({
     queue, ls: localStorage, fetchFn, now: () => new Date(),
+    // One tab of this browser sends at a time (they share one outbox). Without the Locks API every tab simply sends.
+    ...("locks" in navigator ? { lock: <T>(fn: () => Promise<T>) => navigator.locks.request("blanktab:send", fn) as Promise<T> } : {}),
     onLocalOnly: id => { if (current?.life?.id === id) ui.notice(LOCAL_ONLY_MESSAGE) },
     onStatus: s => {
       ui.contribution(s)

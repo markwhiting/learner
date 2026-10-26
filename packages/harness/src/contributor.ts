@@ -16,6 +16,11 @@ export interface ContributorDeps {
   /** Injectable for tests. Default: real timers. */
   sleep?: (ms: number) => Promise<void>
   schedule?: (fn: () => void, ms: number) => void
+  /**
+   * Runs a send while no other tab of this browser is sending (the page passes a Web Lock). Two tabs share one outbox:
+   * without it, one can reset a branch the other has just opened a PR on. Default: no lock.
+   */
+  lock?: <T>(fn: () => Promise<T>) => Promise<T>
 }
 
 const UPSTREAM = `${REPO.owner}/${REPO.name}`
@@ -36,6 +41,8 @@ class Wait extends Error { constructor(readonly ms: number, readonly why: string
 
 const runPath = (id: string) => `data/runs/${id}`
 const branchOf = (id: string) => `run/${id}`
+/** localStorage: the number of the learner's PR this browser last opened or found open (shared by its tabs). */
+export const prKey = (id: string): string => `blanktab:pr:${id}`
 
 export function createContributor(deps: ContributorDeps): { flush(): Promise<void>; report(): Promise<void> } {
   const { queue, ls, fetchFn, now, onStatus } = deps
@@ -96,6 +103,21 @@ export function createContributor(deps: ContributorDeps): { flush(): Promise<voi
     if (first === undefined) return null
     if (!(Number.isInteger(first.number) && (first.number as number) > 0)) throw new GitHubError(502, "unexpected pulls response", null)
     return first.number as number
+  }
+
+  /**
+   * The PR this browser last opened or found open for the learner, if it is still open, asked for by number. GitHub's
+   * PR lists (by head, open or all) lag a just-opened PR by seconds; a send that trusted them alone reset the branch of
+   * a PR it had opened moments before, GitHub closed that PR as empty, and its files were dropped as rejected
+   * (2026-10-26, on almost every life). A PR asked for by number is never stale that way.
+   */
+  async function knownOpenPr(api: Api, learnerId: string): Promise<number | null> {
+    const n = Number(ls.getItem(prKey(learnerId)))
+    if (!(Number.isSafeInteger(n) && n > 0)) return null
+    const r = await api.call("GET", `/repos/${UPSTREAM}/pulls/${n}`, undefined, [404])
+    if (r.status === 200 && (r.body as { state?: unknown } | null)?.state === "open") return n
+    ls.removeItem(prKey(learnerId))
+    return null
   }
 
   /**
@@ -230,7 +252,7 @@ export function createContributor(deps: ContributorDeps): { flush(): Promise<voi
     const owner = dest.split("/")[0]!
     for (const [id, files] of byLearner) {
       files.sort((a, b) => a.seq - b.seq)
-      let open = await openPr(api, owner, id)
+      let open = await openPr(api, owner, id) ?? await knownOpenPr(api, id)
       if (open === null) {
         // No open PR: the last one was decided. Closed unmerged, its files are dropped; too many in a row, local-only.
         const s = await settle(api, owner, await queue.contribution(id))
@@ -250,7 +272,10 @@ export function createContributor(deps: ContributorDeps): { flush(): Promise<voi
       const commit = await commitFiles(api, dest, id, parent, files)
       let pr: number | undefined
       if (commit === null) pr = open ?? undefined // all there already: on the open PR's branch, or (no open PR) merged to main
-      else if (open === null) pr = await createPr(api, dest, owner, id)
+      else if (open === null) {
+        pr = await createPr(api, dest, owner, id)
+        ls.setItem(prKey(id), String(pr)) // at once: the next send may come before GitHub lists it
+      }
       // The gate merges (or closes) every hour and may have done so between the check above and our push. Then the
       // commit sits on a branch with no open PR: keep the files queued; the next send starts a fresh branch from main.
       // Checked on the PR itself (by number), not the open-PR list, which can lag.
@@ -270,7 +295,7 @@ export function createContributor(deps: ContributorDeps): { flush(): Promise<voi
     try {
       if (before === 0) return await idle(0)
       status("sending", `Sending ${before} session log${before === 1 ? "" : "s"} to GitHub…`, before)
-      await sendAll(token)
+      await (deps.lock ?? (fn => fn()))(() => sendAll(token))
       backoff = BACKOFF_START_MS
       await idle(await count())
     } catch (e) {

@@ -68,13 +68,14 @@ async function main(): Promise<void> {
   await context.addInitScript(([k]) => localStorage.setItem(k!, "1"), [SHORT_LIVES_KEY])
   const page = context.pages()[0] ?? await context.newPage()
   page.on("console", m => { if (m.type() === "error") log(`page error: ${m.text()}`) })
-  const read = (): Promise<Reading> => page.evaluate(([k]) => {
-    const t = (id: string) => document.querySelector(`[data-testid="${id}"]`)?.textContent?.trim().replace(/\s+/g, " ") ?? ""
+  // A string, not a function: tsx compiles functions with a __name helper the page does not have.
+  const read = (): Promise<Reading> => page.evaluate(`(() => {
+    const t = id => document.querySelector('[data-testid="' + id + '"]')?.textContent?.trim().replace(/\\s+/g, " ") ?? ""
     return {
       learner: t("learner-id"), cu: t("cu"), status: t("status"), contribution: t("contribution"), meta: t("meta-state"),
-      life: t("life"), tokenStored: localStorage.getItem(k!) !== null,
+      life: t("life"), tokenStored: localStorage.getItem(${JSON.stringify(TOKEN_KEY)}) !== null,
     }
-  }, [TOKEN_KEY])
+  })()`)
   try {
     await page.goto(args.url)
     if (args.setup) {

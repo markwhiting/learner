@@ -50,6 +50,9 @@ export function createApi(token: string, fetchFn: typeof fetch, now: () => numbe
       try {
         res = await fetchFn(BASE + path, {
           method,
+          // GitHub marks GET answers cacheable for 60 s; a send must see its own last push and PR, never a cached answer
+          // from before them (2026-10-26: cached "no open PR" closed PRs and lost files; a cached branch head gave 422s).
+          cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
             "X-GitHub-Api-Version": "2022-11-28",

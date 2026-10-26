@@ -106,10 +106,10 @@ export function createContributor(deps: ContributorDeps): { flush(): Promise<voi
   }
 
   /**
-   * The PR this browser last opened or found open for the learner, if it is still open, asked for by number. GitHub's
-   * PR lists (by head, open or all) lag a just-opened PR by seconds; a send that trusted them alone reset the branch of
-   * a PR it had opened moments before, GitHub closed that PR as empty, and its files were dropped as rejected
-   * (2026-10-26, on almost every life). A PR asked for by number is never stale that way.
+   * The PR this browser last opened for the learner, if it is still open, asked for by number. A send that found no PR
+   * in the lists resets the branch, and GitHub closes a PR whose branch is reset as empty, dropping its files as
+   * rejected: on 2026-10-26 that happened on almost every life, because the lists came from the browser's HTTP cache
+   * (now bypassed, github.ts). Asking by number keeps a PR this browser opened safe from any list that is behind.
    */
   async function knownOpenPr(api: Api, learnerId: string): Promise<number | null> {
     const n = Number(ls.getItem(prKey(learnerId)))

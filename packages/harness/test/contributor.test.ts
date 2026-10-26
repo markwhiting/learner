@@ -872,6 +872,21 @@ describe("contributor: re-review fixes", () => {
     expect(t.gh.pulls).toHaveLength(1)
   })
 
+  it("every GitHub call bypasses the browser's HTTP cache (GitHub marks GETs cacheable for 60 s; 2026-10-26)", async () => {
+    // A cached "no open PR" made a send reset the branch of a PR it had just opened (GitHub closed it, its files were
+    // dropped), and a cached branch head made the next commit not a fast-forward (a 422 until the cache expired).
+    const t = await setup({ files: 2 })
+    const modes: (RequestCache | undefined)[] = []
+    const inner = t.gh.fetchFn
+    const c = createContributor({
+      queue: t.queue, ls: t.ls, now: () => NOW, onStatus: () => {}, sleep: async () => {}, schedule: () => {},
+      fetchFn: ((url: RequestInfo | URL, init?: RequestInit) => { modes.push(init?.cache); return inner(url, init) }) as typeof fetch,
+    })
+    await c.flush()
+    expect(modes.length).toBeGreaterThan(5)
+    expect(new Set(modes)).toEqual(new Set(["no-store"]))
+  })
+
   it("a failure while reporting idle with nothing pending is a status, not a rejected flush", async () => {
     const t = await setup({ files: 0 })
     t.queue.localOnly = async () => { throw new Error("disk") }

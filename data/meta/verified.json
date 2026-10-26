@@ -6,16 +6,88 @@
    "posteriorSha": "a55026dc3378a2b48e2d84e95e79e96d2ca1b064bb6510b4806a8c3ce196aa93",
    "reason": null
   },
+  "lrn_24e9e0c38551d1c2": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_289e560dc33ef0c2": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_34cb624866797078": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_4c7ec98889ef9cbb": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_6343f9b964e16d90": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_71b858aa8d6e5215": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
   "lrn_7a6495cac26a7170": {
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
    "posteriorSha": "8e81f3f66d40fd836595322f4206845b1fde842ca15521a46a9c1338e309a928",
    "reason": null
   },
+  "lrn_7a99f3c2f8528353": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_a69c9acf6e36fb18": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_a9db94fead468df8": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_aa0a2b7aa93a77f5": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
   "lrn_b0e99e1c83edf0bf": {
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
    "posteriorSha": "41b3e8a587d7471f02ab96a2706ff144752eaf63f5103c266f5e9d45c4c55dd0",
+   "reason": null
+  },
+  "lrn_d49328278d3f7b6e": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_db9ea0fdb63f33ac": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
    "reason": null
   },
   "lrn_e90903d0871f32e5": {
@@ -28,6 +100,18 @@
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
    "posteriorSha": "41b3e8a587d7471f02ab96a2706ff144752eaf63f5103c266f5e9d45c4c55dd0",
+   "reason": null
+  },
+  "lrn_fb6608d831eccf38": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_fc6f874c15a0bde5": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
    "reason": null
   }
  },

@@ -5,6 +5,18 @@
    "posteriorMode": "calibrate",
    "posteriorSha": "a55026dc3378a2b48e2d84e95e79e96d2ca1b064bb6510b4806a8c3ce196aa93",
    "reason": null
+  },
+  "lrn_7a6495cac26a7170": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "8e81f3f66d40fd836595322f4206845b1fde842ca15521a46a9c1338e309a928",
+   "reason": null
+  },
+  "lrn_e90903d0871f32e5": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "8e81f3f66d40fd836595322f4206845b1fde842ca15521a46a9c1338e309a928",
+   "reason": null
   }
  },
  "schemaVersion": 1,

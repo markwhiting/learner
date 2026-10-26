@@ -6,11 +6,13 @@ import { SITE, claimProfile, cuOf, parseArgs, stallWatch } from "./run-lives"
 
 describe("run-lives", () => {
   it("parses its arguments, with the live site and a 16 h run by default", () => {
-    expect(parseArgs([])).toEqual({ url: SITE, profile: ".local/runner-profile", hours: 16, setup: false, headed: false })
+    expect(parseArgs([])).toEqual({ url: SITE, profile: ".local/runner-profile", hours: 16, setup: false, headed: false, whenIdle: false, idleAfterS: 600 })
     expect(parseArgs(["--hours", "2", "http://localhost:5173/", "--profile", "p"])).toMatchObject({ url: "http://localhost:5173/", profile: "p", hours: 2 })
     expect(parseArgs(["--setup"])).toMatchObject({ setup: true, headed: true })
     expect(() => parseArgs(["--hours", "0"])).toThrow(/--hours/)
     expect(() => parseArgs(["--hours", "x"])).toThrow(/--hours/)
+    expect(parseArgs(["--when-idle", "--idle-after", "60"])).toMatchObject({ whenIdle: true, idleAfterS: 60 })
+    expect(() => parseArgs(["--idle-after", "-1"])).toThrow(/--idle-after/)
   })
   it("reads the page's compute line", () => {
     expect(cuOf("1,234.5 CU")).toBe(1234.5)

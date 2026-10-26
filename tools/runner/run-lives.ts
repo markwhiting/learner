@@ -1,4 +1,4 @@
-// Usage: tsx tools/runner/run-lives.ts [pageUrl] [--profile .local/runner-profile] [--hours 16] [--setup] [--headed]
+// Usage: tsx tools/runner/run-lives.ts [pageUrl] [--profile .local/runner-profile] [--hours 16] [--when-idle [--idle-after 600]] [--setup] [--headed]
 //   (run from the repo root; pageUrl defaults to the live site)
 // Runs short lives for calibration in a headless Chromium tab that no browser can suspend in the background (the
 // 2026-10-25 Safari stall). The tab is the ordinary page: it draws its own recipes, ends each life at its budget
@@ -9,29 +9,38 @@
 //
 // The runner turns the short-lives switch on (it only ends lives born after it is on, or confirmed in the page), keeps
 // macOS awake with caffeinate while it runs, and reloads the tab if it crashes or its compute stops advancing.
+//
+// --when-idle (tools/runner/idle.ts): the learner runs only while the Mac is unattended and on AC power, frozen in
+// place otherwise; the Mac is held awake only while it runs, and not past 8 h without input.
+import type { ChildProcess } from "node:child_process"
 import { spawn } from "node:child_process"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import { DEFAULT_IDLE, readIdleSeconds, readOnAc, signalBrowser, wanted, type Wanted } from "./idle"
 
 export const SITE = "https://markwhiting.github.io/learner/"
 const TOKEN_KEY = "blanktab:githubToken" // packages/harness/src/token.ts
 const SHORT_LIVES_KEY = "blanktab:shortLives" // app/src/main.ts
 
-export interface RunnerArgs { url: string; profile: string; hours: number; setup: boolean; headed: boolean }
+export interface RunnerArgs { url: string; profile: string; hours: number; setup: boolean; headed: boolean; whenIdle: boolean; idleAfterS: number }
 
 export function parseArgs(argv: readonly string[]): RunnerArgs {
   const value = (name: string) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : undefined }
-  const valued = new Set(["--profile", "--hours"])
+  const valued = new Set(["--profile", "--hours", "--idle-after"])
   const positional = argv.filter((a, i) => !a.startsWith("--") && !valued.has(argv[i - 1] ?? ""))
   const hours = Number(value("hours") ?? 16)
   if (!(hours > 0 && hours <= 24 * 14)) throw new Error(`--hours must be in (0, 336], got ${JSON.stringify(value("hours"))}`)
+  const idleAfterS = Number(value("idle-after") ?? DEFAULT_IDLE.idleAfterS)
+  if (!(Number.isInteger(idleAfterS) && idleAfterS >= 0 && idleAfterS < DEFAULT_IDLE.awakeCapS)) throw new Error(`--idle-after must be whole seconds under the awake cap, got ${JSON.stringify(value("idle-after"))}`)
   return {
     url: positional[0] ?? SITE,
     profile: value("profile") ?? ".local/runner-profile",
     hours,
     setup: argv.includes("--setup"),
     headed: argv.includes("--headed") || argv.includes("--setup"),
+    whenIdle: argv.includes("--when-idle") && !argv.includes("--setup"),
+    idleAfterS,
   }
 }
 
@@ -76,10 +85,17 @@ interface Reading { learner: string; cu: string; status: string; contribution: s
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   const log = (s: string) => console.log(`${new Date().toISOString()} ${s}`)
-  // Keep the machine awake (idle sleep) for exactly as long as this process lives.
-  if (process.platform === "darwin") spawn("caffeinate", ["-i", "-w", String(process.pid)], { stdio: "ignore", detached: true }).unref()
+  // Keep the machine awake (idle sleep) while the learner runs; never past this process.
+  let awake: ChildProcess | null = null
+  const holdAwake = (on: boolean) => {
+    if (process.platform !== "darwin") return
+    if (on && awake === null) awake = spawn("caffeinate", ["-i", "-w", String(process.pid)], { stdio: "ignore" })
+    if (!on && awake !== null) { awake.kill(); awake = null }
+  }
+  holdAwake(true)
   const release = claimProfile(resolve(args.profile), process.pid, isAlive)
-  for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { release(); process.exit(1) })
+  // A frozen browser cannot close: thaw it on the way out.
+  for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { if (args.whenIdle) signalBrowser("SIGCONT"); release(); process.exit(1) })
   const { chromium } = await import("@playwright/test")
   const context = await chromium.launchPersistentContext(resolve(args.profile), {
     headless: !args.headed, args: ["--enable-unsafe-webgpu", "--use-angle=metal", "--enable-features=Vulkan"],
@@ -87,7 +103,15 @@ async function main(): Promise<void> {
   // Before any page script on every load (the page reloads itself onto new code): the switch is on.
   await context.addInitScript(([k]) => localStorage.setItem(k!, "1"), [SHORT_LIVES_KEY])
   const page = context.pages()[0] ?? await context.newPage()
-  page.on("console", m => { if (m.type() === "error") log(`page error: ${m.text()}`) })
+  // The browser's own line for a failed call has no URL; GitHub's answer says which call and why (method, path and
+  // GitHub's message only: never headers, so never the token).
+  page.on("console", m => { if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) log(`page error: ${m.text()}`) })
+  page.on("response", res => {
+    const u = new URL(res.url())
+    if (u.host !== "api.github.com" || res.status() < 400) return
+    void res.json().then((b: { message?: unknown }) => b?.message, () => "").then(msg =>
+      log(`GitHub ${res.status()} ${res.request().method()} ${u.pathname}${typeof msg === "string" && msg ? `: ${msg.slice(0, 200)}` : ""}`))
+  })
   // A string, not a function: tsx compiles functions with a __name helper the page does not have.
   const read = (): Promise<Reading> => page.evaluate(`(() => {
     const t = id => document.querySelector('[data-testid="' + id + '"]')?.textContent?.trim().replace(/\\s+/g, " ") ?? ""
@@ -106,12 +130,25 @@ async function main(): Promise<void> {
     }
     if (!(await read()).tokenStored) throw new Error(`no token in ${args.profile}: run once with --setup`)
     const until = Date.now() + args.hours * 3_600_000
-    const stalled = stallWatch(10 * 60_000)
+    let stalled = stallWatch(10 * 60_000)
     const seen = new Set<string>()
     let last = ""
+    let state: Wanted = "run", lastRead = 0
+    if (args.whenIdle) log(`when idle: runs after ${args.idleAfterS} s without input, on AC power, held awake at most ${DEFAULT_IDLE.awakeCapS / 3600} h`)
     page.on("crash", () => log("tab crashed"))
     while (Date.now() < until) {
-      await new Promise(r => setTimeout(r, 60_000))
+      if (args.whenIdle) {
+        const w = wanted(readIdleSeconds(), readOnAc(), { ...DEFAULT_IDLE, idleAfterS: args.idleAfterS })
+        if (w.want !== state) {
+          state = w.want
+          const n = signalBrowser(state === "run" ? "SIGCONT" : "SIGSTOP")
+          holdAwake(state === "run")
+          log(`${state === "run" ? "running" : "paused"}: ${w.why} (${n} browser processes)`)
+          stalled = stallWatch(10 * 60_000) // time frozen is not a stall
+        }
+        if (state === "pause" || Date.now() - lastRead < 60_000) { await new Promise(r => setTimeout(r, 30_000)); continue }
+      } else await new Promise(r => setTimeout(r, 60_000))
+      lastRead = Date.now()
       let r: Reading
       try { r = await read() } catch (e) { log(`read failed (${(e as Error).message.split("\n")[0]}); reloading`); await page.reload().catch(() => {}); continue }
       if (/^lrn_/.test(r.learner)) seen.add(r.learner)
@@ -121,6 +158,8 @@ async function main(): Promise<void> {
     }
     log(`--hours ${args.hours} reached; ${seen.size} lives seen`)
   } finally {
+    if (args.whenIdle) signalBrowser("SIGCONT")
+    holdAwake(false)
     await context.close()
     release()
   }

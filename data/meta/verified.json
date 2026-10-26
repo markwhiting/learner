@@ -12,10 +12,22 @@
    "posteriorSha": "8e81f3f66d40fd836595322f4206845b1fde842ca15521a46a9c1338e309a928",
    "reason": null
   },
+  "lrn_b0e99e1c83edf0bf": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "41b3e8a587d7471f02ab96a2706ff144752eaf63f5103c266f5e9d45c4c55dd0",
+   "reason": null
+  },
   "lrn_e90903d0871f32e5": {
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
    "posteriorSha": "8e81f3f66d40fd836595322f4206845b1fde842ca15521a46a9c1338e309a928",
+   "reason": null
+  },
+  "lrn_ec9e9bdc36cdd2a7": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "41b3e8a587d7471f02ab96a2706ff144752eaf63f5103c266f5e9d45c4c55dd0",
    "reason": null
   }
  },

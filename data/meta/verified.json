@@ -1,5 +1,11 @@
 {
  "lives": {
+  "lrn_04e5b12745ad2a6f": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "78a53c81fd243c8852da4505ceba3bce9879c625add7f98c44066525e10f458c",
+   "reason": null
+  },
   "lrn_0adb1fb0fabb8f49": {
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
@@ -22,6 +28,12 @@
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
    "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
+   "reason": null
+  },
+  "lrn_273c921607055c72": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "78a53c81fd243c8852da4505ceba3bce9879c625add7f98c44066525e10f458c",
    "reason": null
   },
   "lrn_289e560dc33ef0c2": {
@@ -88,6 +100,12 @@
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
    "posteriorSha": "da3d5ee370893ce3efcb2fa94ed5c3b73f206c3940c2b2d33edb81e76bde3b36",
+   "reason": null
+  },
+  "lrn_972903ab6e68c506": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "78a53c81fd243c8852da4505ceba3bce9879c625add7f98c44066525e10f458c",
    "reason": null
   },
   "lrn_99281dfece81c20a": {

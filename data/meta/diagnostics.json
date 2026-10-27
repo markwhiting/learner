@@ -45,17 +45,17 @@
   },
   {
    "abandoned": 0,
-   "born": 1,
+   "born": 2,
    "failed": 0,
    "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
-   "rows": 1
+   "rows": 2
   },
   {
    "abandoned": 0,
-   "born": 1,
+   "born": 3,
    "failed": 0,
    "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
-   "rows": 1
+   "rows": 2
   },
   {
    "abandoned": 0,
@@ -75,10 +75,10 @@
  "schemaVersion": 1,
  "unscored": {
   "abandoned": 1,
-  "no 2048 checkup": 1
+  "no 2048 checkup": 2
  },
  "verify": {
-  "checked": 30,
+  "checked": 33,
   "genomeMismatch": {
    "count": 0,
    "learnerIds": [],

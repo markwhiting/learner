@@ -22,7 +22,8 @@ This plan builds the measurement and runs it. It builds nothing that a learner s
   - `tools/probe/filters/layer.ts`: the first layer (conv + ReLU) in float64, and the streamed centred Gram matrix over all (life, state) columns.
   - `tools/probe/filters/metrics.ts`: linear CKA, unit correlation, `hungarianMax`, matched-correlation medians.
   - `tools/probe/filters/analyse.ts`: the analyses, controls, permutation tests and the pinned bar.
-  - `tools/probe/filter-convergence.ts`: the CLI.
+  - `tools/probe/filters/png.ts`: filter sheets as PNGs, for looking at (Task 7), never part of the analysis.
+  - `tools/probe/filter-convergence.ts`: the core (`runProbe`) and the CLI around it.
 - **Reads:** `data/runs/**` (committed logs), `knowledge/genome.json` (which genome is the centre). **Writes:** `.local/filter-probe/` only. The research note and its summary file are written by hand in Task 7.
 - **Imports:** `@blanktab/learner` (`createModel`, `GPU_WIDTHS`, `FIRST_LAYER_PARAMS`, `obsToInputs`), `@blanktab/tensor` (CPU backend, only to recompute init and in tests), `@blanktab/world` (`createWorld`, `ROOM_KINDS`), `@blanktab/harness/log` (`FILTER_FLOATS_PER_CONV1`, `levelAtOrBelow`, log types), `@blanktab/harness/heldout` (`uniformAction`), `@blanktab/detmath` (`hashSeed`, `createRng`), `@blanktab/meta` (`genomeSha`), `tools/gate/serialise.ts`. Nothing imports `tools/probe/`.
 
@@ -36,7 +37,11 @@ This plan builds the measurement and runs it. It builds nothing that a learner s
 05c does not depend on the signal check's answer:
 - **Its input already exists.** 05a logs `meta.filters` at 512, 1,024 and 2,048 CU for every life with a meta block, in every mode. Calibration lives have them now.
 - **It changes nothing the meta-learner reads.** No birth, posterior, gate, evaluator, log format or learner code changes. Its verdict feeds no automatic decision; only the user acts on it (Task 8).
-- **The answer changes only which lives come later.** Under `flat`, 80 % of births run the centre. Under `search`, births spread over many genomes, and the centre appears only in confirmation arms. That matters for the one-genome bar (next section), not for building or running the probe.
+- **The answer changes only which lives come later.** Under `flat`, 80 % of births run the centre. Under `search`, births spread over many genomes, and the centre is drawn mainly in confirmation arms. It is also drawn, with role `search`, in two other cases (`packages/meta/src/draw.ts`):
+  - **CPU births,** about 80 % of them in every mode. They fail this plan's GPU-width rule (Task 2), so they never count.
+  - **GPU search births that fall back.** When the `ts` path has no GPU model, a model of other genes, no GP posterior or no Thompson pick, `tsDraw` returns the centre with a reason. These are fresh GPU search lives and would count. With a healthy model they should be rare.
+
+  That matters for the one-genome bar (next section), not for building or running the probe.
 
 ## The data on `main` today (counted from the committed files at `7749ae6`)
 Every life below is `role: "search"`, `method: "calibrate"`, inheritance `none`, GPU widths (`conv1` 16), and has a filter snapshot at each of 512, 1,024 and 2,048 CU. Genomes are numbered by their position in `data/meta/calibration.json`; genome 0 is the centre (`d22c1c55…`, the same sha as `knowledge/genome.json`).
@@ -46,14 +51,19 @@ Every life below is `role: "search"`, `method: "calibrate"`, inheritance `none`,
 | Lives with all three snapshots | 4 | 4 | 4 | 2 | 3 | 4 | 2 | 4 | 4 | 3 | **34** |
 
 - **Not counted:** `lrn_c7bb5490d6c71b57` (genome 1, still running: snapshots at 512 and 1,024 only); `lrn_0adb1fb0fabb8f49` and `lrn_245f90f55bad891a` (genome 2, ended or stalled at 32 CU); one `legacy` life (failed at 268 CU); 17 pre-05a lives without a meta block. None of these has a 2,048 snapshot.
-- **The across-genome bar can be evaluated today:** 34 lives ≥ 10.
+- **One of the 34 has a frozen first layer.** `lrn_4c7ec98889ef9cbb` (genome 1, `3f8dd9b9…`) logs the same `meta.filters` string, byte for byte, in `6.json` (515.7 CU, 5,000 steps), `7.json` (1,031.5 CU, 10,000 steps) and `8.json` (2,048.0 CU, 19,906 steps). Its genome has no setting that would hold conv1 still (lr 0.00136, headLrScale 0.35). It is the only life under `data/runs` with repeated snapshots. Its 2,048 snapshot is really a 512 state, or a stale read, so Task 2 excludes it by a rule fixed now, before any run (`filters frozen after 512`). That leaves **33 eligible lives** (genome 1: 3). Why it froze is looked at separately (Task 9); the answer does not change the probe.
+- **The across-genome bar can be evaluated today:** 33 lives ≥ 10.
 - **The one-genome bar cannot, and calibration alone will never reach it.** The most lives any one genome has is 4. The calibration design stops at 6 repeats per genome (60 lives, look 3), and 6 < 10. With fewer than 5 lives the within-life permutation test cannot even reach p < 0.05: its smallest possible p is 2⁻ⁿ, and 2⁻⁴ = 0.0625.
 - **This plan does not lower the bar.** The probe reports the one-genome analysis per genome as "not evaluable (n < 10)", with its numbers shown as description only. How to get ≥ 10 lives of one genome is a question for the user, with options below.
 
 ### Open for the user: getting ≥ 10 lives of one genome
 None of these is built by this plan. The agent's recommendation is marked.
 1. **Wait for a `flat` outcome (no new code).** If look 3 answers "flat", 80 % of GPU births run the centre. The centre will have 6 lives with snapshots once calibration ends, so about 4 more centre lives (about 5 births, a few hours of runner time) reach 10. **[agent's call, not yet confirmed: the default.]**
-2. **If the check answers "signal", use confirmation centre-arm lives.** These are fresh lives of the centre genome with inheritance `none`, so their training is the same as a search life's; only their checkup worlds and learner seed rule differ. The spec says "fresh search lives", so counting them needs the user's word.
+2. **If the check answers "signal", use confirmation centre-arm lives.** These are fresh lives of the centre genome with inheritance `none`, so their training is the same as a search life's; only their checkup worlds and learner seed rule differ. The spec says "fresh search lives", so counting them needs the user's word, and two more things:
+   - **An eligibility change, recorded as a decision.** Task 2 excludes `role confirm` by design, so this option is a code change to `probeLives` as well as a ruling.
+   - **One life per learner seed.** A confirmation life's learner seed is its `evalSeed` (decision 0024, Confirmation seeds), and two centre-arm lives can share one. Their birth filters are then bit-identical: their init-pair CKA is 1, which inflates the init control, and the identification check (Task 5) would refuse the whole report. The rule would be 0024's: the lowest learnerId per `evalSeed`. Task 2's shared-seed exclusion already applies it to whatever lives are eligible.
+
+   Also counted under `search`, without any change: the GPU fallback births of the centre ("Why 05c can be built now"). They are role `search` and eligible.
 3. **A centre-only probe batch now.** About 6 more centre lives, run through a new birth mode like the newborn mode (a role that is never a row). This needs new code in the page, the log parser and the gate, and a recorded decision. It costs about 3 h of runner time on one machine, taken from calibration, which would delay looks 2 and 3. Choose this only if the within-genome answer is wanted before calibration ends.
 - **Not options:** judging the one-genome bar at n = 4–6; pooling genomes and calling it "one genome"; changing calibration's repeats mid-run (invariant 7: hold the design fixed within a run).
 
@@ -72,7 +82,9 @@ None of these is built by this plan. The agent's recommendation is marked.
   - Seeds come only from `hashSeed` with fixed salts (`"filter-probe/…"`). There is no `Math.random`, and no clock in any output.
   - Output is `serialise`d (sorted keys, one-space indent, final newline). Two runs give identical bytes (a test, and Task 7 on real data).
 - **No silent exclusions.** Every committed life the probe does not use is listed in the report with its reason.
-- **Agent's calls are labelled.** Every choice this plan makes for the user goes in a decision file, `docs/decisions/0025-filter-probe-calls.md` (the next free number at `7749ae6`; use the next free one if another plan has taken it), marked not yet confirmed. The §5.2 draft is a separate decision file (Task 8).
+- **Agent's calls are labelled.** Every choice this plan makes for the user goes in one decision file, called **the probe-calls decision** in this plan, marked not yet confirmed. The §5.2 draft is a separate decision file, called **the inherited-filter draft** (Task 8).
+  - **Numbers are assigned when each file is created,** not here: the next free number in `docs/decisions/` on the branch at that moment, after merging `main`. At `7749ae6` the last is 0024, and the unmerged `wf/gate-cadence` adds 0025, so the two are likely 0026 (`NNNN-filter-probe-calls.md`) and 0027 (`NNNN-inherited-filter-condition.md`). Never reuse a number another branch has taken.
+  - Once a file exists, cite it by its number in the code comments, the research note and the plans README.
 - **Do not edit `docs/open-questions.md`** in this plan. A user decision on Task 8's draft updates it later.
 - **Hygiene and gates.** As plan 05a: no trailing whitespace and no machine paths in any file, docs included. Every task runs `npm test && npm run typecheck && npm run lint`. **After any push**, open the CI run and check it is green.
 
@@ -83,7 +95,7 @@ None of these is built by this plan. The agent's recommendation is marked.
    - on real data, every life's 512 CU filters are closer to its own recomputed init than to any other life's (Task 7).
 2. **Choices made after seeing the data.** The order of tasks is the guard: everything is fixed, tested and committed before Task 7's first real run. Any later change is a recorded decision, and both results are kept. (Tasks 5, 7)
 3. **Probe frames that a life has seen, or that leak to a life.**
-   - A test checks that no committed life's training world, held-out world or checkup variant has a seed in 20,000–20,015.
+   - A test checks that no committed life (under `data/runs` and `data/newborns`) has a training world, held-out world or checkup variant with a seed in 20,000–20,015.
    - A test checks that nothing in `packages/` or `app/` imports `tools/probe/`.
 
    (Task 1)
@@ -96,8 +108,9 @@ None of these is built by this plan. The agent's recommendation is marked.
 
 **Files:**
 - Create: `tools/probe/filters/probe-set.ts`, `tools/probe/filter-probe-set.json` (generated, then committed)
+- Create: `tools/probe/filter-convergence.ts` with only `--write-manifest` and `--frames-png` (Task 6 adds the run)
 - Test: `tools/probe/test/probe-set.test.ts`, `tools/probe/test/isolation.test.ts`
-- Create: `docs/decisions/0025-filter-probe-calls.md` (from `0000-template.md`; later tasks add sections)
+- Create: the probe-calls decision, `docs/decisions/NNNN-filter-probe-calls.md` (the next free number; Global Constraints), from `0000-template.md`. Later tasks add sections.
 
 **Interfaces:**
 - Produces:
@@ -108,6 +121,8 @@ None of these is built by this plan. The agent's recommendation is marked.
   export interface ProbeManifest { schemaVersion: 1; seeds: number[]; steps: number; startRoom: "seed mod 4"; frames: ProbeFrameEntry[]; sha256: string }
   export function buildManifest(): Promise<ProbeManifest>                   // renders, draws the actions; used only by --write-manifest
   export function renderProbeSet(m: ProbeManifest): Promise<Observation[]>  // replays m's actions; throws on any frame sha mismatch
+  export function writeFramePngs(frames: readonly Observation[], m: ProbeManifest, dir: string): Promise<string[]>
+    // the periphery and fovea of 8 frames (two per start room, the first two of each room's first seed) as PNGs; returns the paths
   ```
 - **The frames.**
   - For each seed s in 20,000–20,015: `createWorld({ seed: s, canvas: createCanvas(320, 200), start: ROOM_KINDS[s % 4] })`.
@@ -124,11 +139,14 @@ None of these is built by this plan. The agent's recommendation is marked.
     - `"renderProbeSet reproduces every committed frame sha (256 frames)"`.
     - `"a manifest with one frame sha changed makes renderProbeSet throw, naming the seed and step"`.
     - `"buildManifest run twice gives identical bytes"`.
-    - `"no committed life has seen a probe world: for every life under data/runs, its training world seed (parseInt of learnerId hex 4–12, the page's seedsOf rule), hashSeed(learnerSeed, 'heldout'), and its checkup variant seeds (panelSeed, confirmSeed or checkupSeed, by its meta block) lie outside 20000–20015"`. This reads `data/runs`, which only grows; the property must hold for every life, so it is not a pinned fixture.
+    - `"no committed life has seen a probe world: for every life under data/runs and data/newborns, its training world seed (parseInt of learnerId hex 4–12, the page's seedsOf rule), hashSeed(learnerSeed, 'heldout'), and its checkup variant seeds lie outside 20000–20015"`.
+      - The variant seeds come from `variantSeedOf(meta)` (`packages/harness/src/checkup.ts`: `panelSeed` for a panel reference, `confirmSeed` for a confirmation life or newborn) and from `checkupSeed(learnerId, …)` for a life without a panel or `evalSeed`. That is the same rule the page and `runNewborn` use, so newborn references are covered by their own rule.
+      - It scans both trees: spec §5.1 says the probe frames are "never seen by any life", and newborn references act in worlds too (their held-out set and checkups).
+      - It reads `data/runs` and `data/newborns`, which only grow. The property must hold for every life, so it is not a pinned fixture.
   - `isolation.test.ts`: `"no file under packages/ or app/ imports tools/probe (static or dynamic)"`, scanning `trackedFiles()`.
 - [ ] **Step 2: Run them; they fail.** `npx vitest run tools/probe/test`. Expected: FAIL (no module).
-- [ ] **Step 3: Implement**, then write the manifest once: `npx tsx tools/probe/filter-convergence.ts --write-manifest`. Look at 8 of the frames as PNGs written to `.local/filter-probe/frames/` (two per room), and check that they show the rooms and differ from each other.
-- [ ] **Step 4: Run them; they pass.** Start **0025** with: the probe frames (start room rule, frames after each step, Node rendering) and where the manifest lives.
+- [ ] **Step 3: Implement**, then write the manifest once: `npx tsx tools/probe/filter-convergence.ts --write-manifest`. Then `npx tsx tools/probe/filter-convergence.ts --frames-png .local/filter-probe/frames` (it calls `writeFramePngs` and exits; Task 6 keeps the flag). Open the 8 PNGs, and check that they show the four rooms and differ from each other.
+- [ ] **Step 4: Run them; they pass.** Create the probe-calls decision and start it with: the probe frames (start room rule, frames after each step, Node rendering) and where the manifest lives.
 - [ ] **Step 5: Commit** `feat(probe): the filter probe set: 256 frames from reserved world seeds, fixed by a committed manifest; isolation guards`
 
 ### Task 2: Lives, their first-layer filters, and the birth state
@@ -152,7 +170,12 @@ None of these is built by this plan. The agent's recommendation is marked.
   export function initFirstLayer(seed: number, widths: Widths): FirstLayer         // createModel(cpu, seed, widths), FIRST_LAYER_PARAMS
   export function weightMotion(at: FirstLayer, init: FirstLayer, e: Encoder): number // ‖(w,b) − (w₀,b₀)‖ / ‖(w₀,b₀)‖, float64
   ```
-- **Eligible** [agent's call, following spec §5.1 "fresh search lives"]: every file has a meta block with `role: "search"` and `inheritance.filters: "none"`; GPU widths (`conv1` 16) in every snapshot file; one snapshot each at 512, 1,024 and 2,048 (by `levelAtOrBelow(cu)`); and an integer `settings.seed`. Otherwise the life is excluded, with the first failing reason, in this order: `no meta`, `role <r>`, `inheritance <x>`, `widths conv1 <c>`, `no snapshot at <level>`, `no seed`.
+- **Eligible** [agent's call, following spec §5.1 "fresh search lives"]: every file has a meta block with `role: "search"` and `inheritance.filters: "none"`; GPU widths (`conv1` 16) in every snapshot file; one snapshot each at 512, 1,024 and 2,048 (by `levelAtOrBelow(cu)`); an integer `settings.seed`; no lower learnerId among the candidates with the same `settings.seed`; and a first layer that moved between every pair of consecutive states. Otherwise the life is excluded, with the first failing reason, in this order: `no meta`, `role <r>`, `inheritance <x>`, `widths conv1 <c>`, `no snapshot at <level>`, `no seed`, `seed shared with <learnerId>`, `filters frozen after <state>`.
+- **Shared seeds** [agent's call]. Two lives with one learner seed start from bit-identical first layers. Their init pair would inflate the init control, and the identification check (Task 5) could not tell them apart. So only the lowest learnerId per seed is kept, as decision 0024 does for confirmation lives that share an `evalSeed`. No search life at `7749ae6` shares a seed; the rule is fixed now so that a later one fails with a clear reason, not an identification abort.
+- **Frozen filters** [agent's call; fixed before any run, Review Focus 2]. The states in order are init (recomputed), 512, 1,024 and 2,048. If any state's `FirstLayer` (all four arrays) is bit-identical to the one before it, the life is excluded with `filters frozen after <the earlier state>`.
+  - **Why exclude, not keep and flag.** A float32 first layer trained with a non-zero learning rate does not repeat itself bit for bit over 5,000 steps. A repeat means either no gradient reached conv1 or the snapshot was a stale read. In both cases the logged 2,048 state is not a 2,048 CU learned state, which is what the probe compares.
+  - **Only bit-identical repeats.** Slow but non-zero motion is a finding, not a fault, so it is kept: a kept life whose weight motion does not grow from 512 to 2,048 is listed in the report's `flags` (Task 5), never excluded. A threshold on "near zero" would be one more guessed constant, and bit identity needs none.
+  - **At `7749ae6` it excludes one life:** `lrn_4c7ec98889ef9cbb`, `filters frozen after 512` (its 512, 1,024 and 2,048 snapshots are one string). Why it froze is Task 9's question.
 - **Files are read through `collectLives`** (`tools/eval/lives.ts`), so every file has passed `parseLogFile`, including its `meta.filters` length check.
 - **Weight motion** covers weights and biases together, per encoder [agent's call].
 
@@ -160,9 +183,12 @@ None of these is built by this plan. The agent's recommendation is marked.
   - `"initFirstLayer(seed, GPU_WIDTHS) equals FIRST_LAYER_PARAMS of a newborn learner's readParams() before any step (createLearner on the CPU backend), bit for bit, for 3 seeds"` (spec §5.1).
   - `"decodeFilters of a real committed 2048 snapshot re-encodes (float32 LE, base64) to the same string, and has 16·104 values"`. The test picks the first eligible life under `data/runs` at run time; it does not pin an id.
   - `"probeLives on fixture lives: a legacy life, a life without meta, a CPU-width life, a running life with no 2048 snapshot, and a confirm-role life are each excluded with their reason; an eligible life is kept"`.
+  - `"probeLives excludes the higher learnerId of two lives with the same settings.seed as 'seed shared with <lower id>', and keeps the lower"`.
+  - `"probeLives excludes a life whose 1024 and 2048 snapshots are the same string as 'filters frozen after 1024', one whose 512 snapshot equals its recomputed init as 'filters frozen after init', and keeps a life whose snapshots differ by one ulp in one weight"`.
+  - `"probeLives on the committed lives excludes lrn_4c7ec98889ef9cbb as 'filters frozen after 512'"`. It is skipped, and says so, if that life's files are ever absent; it pins the one known case, not a count.
   - `"weightMotion is 0 at init and 1 for w = 2·w₀, b = 2·b₀"`.
 - [ ] **Step 2: Run them; they fail.** `npx vitest run tools/probe/test/lives.test.ts`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Add to **0025**: eligibility, the exclusion order, and weight motion over weights and biases.
+- [ ] **Step 3: Implement.** Add to the probe-calls decision: eligibility, the exclusion order, the shared-seed rule, the frozen-filters rule (exclude bit-identical repeats, flag slow motion; with the one life it excludes at `7749ae6`), and weight motion over weights and biases.
 - [ ] **Step 4: Run them; they pass.**
 - [ ] **Step 5: Commit** `feat(probe): eligible lives, decoded filter snapshots and the recomputed birth state`
 
@@ -185,12 +211,12 @@ None of these is built by this plan. The agent's recommendation is marked.
 - **Which activation** [agent's call]: the post-ReLU output of conv1, which is what the next layer receives. Pre-ReLU values are not computed, so no second set of numbers is available to choose between later.
 - **The samples.** Every (frame, output position) pair is one sample: 256 × 1,000 = 256,000 for the periphery and 256 × 256 = 65,536 for the fovea.
 - **The Gram.**
-  - The columns are 16 units × every (life, state) with state ∈ {init, 2048}. At 34 lives that is 1,088 columns, a 1,088² float64 matrix of about 9.5 MB.
+  - The columns are 16 units × every (life, state) with state ∈ {init, 2048}. At 33 lives that is 1,056 columns, a 1,056² float64 matrix of about 8.9 MB.
   - **Two passes over the frames.** Pass 1 computes every column's mean. Pass 2 accumulates the centred products (upper triangle, then mirrored).
   - Only the Gram is kept, never the activations: those would be about 2 GB.
   - A column whose variance is exactly 0 (a dead unit) is flagged in `varZero`.
   - 512 and 1,024 snapshots get weight motion only. Activations are compared at init and 2,048, as the spec says.
-- **Cost [estimate]:** about 1.5e11 multiply-adds for the periphery at 34 lives, so a few minutes in Node. Task 7 measures it.
+- **Cost [estimate]:** about 1.5e11 multiply-adds for the periphery at 33 lives, so a few minutes in Node. Task 7 measures it.
 
 - [ ] **Step 1: Write the failing tests**
   - `"firstLayer equals relu(conv2d(...)) from the CPU backend on 3 seeded inputs and filters, for both encoders, to 1e-5 absolute"` (the weight order must be the learner's).
@@ -199,7 +225,7 @@ None of these is built by this plan. The agent's recommendation is marked.
   - `"a state whose bias is −100 has every unit flagged varZero"`.
   - `"centredGram run twice gives identical bytes"`.
 - [ ] **Step 2: Run them; they fail.** Expected: FAIL.
-- [ ] **Step 3: Implement.** Add to **0025**: post-ReLU activations, and activations at init and 2,048 only.
+- [ ] **Step 3: Implement.** Add to the probe-calls decision: post-ReLU activations, and activations at init and 2,048 only.
 - [ ] **Step 4: Run them; they pass.**
 - [ ] **Step 5: Commit** `feat(probe): the first layer in float64 and a streamed centred Gram over all lives and states`
 
@@ -230,7 +256,7 @@ None of these is built by this plan. The agent's recommendation is marked.
   - `"matchedMedian of a state against a unit-permuted copy of itself is 1"`.
   - `"a dead unit's correlations are 0 and it is matched like any other unit"`.
 - [ ] **Step 2: Run them; they fail.** Expected: FAIL.
-- [ ] **Step 3: Implement.** Add to **0025**: signed matching, dead units at 0, and the tie rule.
+- [ ] **Step 3: Implement.** Add to the probe-calls decision: signed matching, dead units at 0, and the tie rule.
 - [ ] **Step 4: Run them; they pass.**
 - [ ] **Step 5: Commit** `feat(probe): linear CKA, unit correlation and deterministic Hungarian matching in float64`
 
@@ -247,23 +273,28 @@ None of these is built by this plan. The agent's recommendation is marked.
   export const BAR = Object.freeze({ minLives: 10, ckaDelta: 0.1, matched: 0.5, alpha: 0.05 })
   export const PERMUTATIONS = 9_999            // Monte Carlo draws when exact enumeration exceeds 2^16
   export interface PairStats { learned: { cka: number; matched: number }; init: { cka: number; matched: number }; n: number; pairs: number; skipped: number }
-  export interface Verdict { evaluable: boolean; reasons: string[]; converged: boolean | null; ckaDelta: number; matched: number; p: number | null; pFloor: number }
+  export interface Verdict {
+    evaluable: boolean; reasons: string[]; converged: boolean | null; ckaDelta: number; matched: number; p: number | null; pFloor: number
+    pHolm: number | null; convergedHolm: boolean | null   // Holm over the analysis's two encoders; reported, never the bar
+  }
   export interface Analysis { name: string; encoder: Encoder; learnerIds: string[]; stats: PairStats; verdict: Verdict }
   export interface ProbeReport {
     schemaVersion: 1; manifestSha: string; centreSha: string; lives: number; excluded: Excluded[]
     convergence: Analysis[]                       // "pooled" and "genome:<sha>" (every genome with ≥ 2 lives), per encoder
     recipe: { encoder: Encoder; within: number; between: number; p: number; genomes: number }[]  // the between-genome control
     motion: { learnerId: string; genomeSha: string; periphery: number[]; fovea: number[] }[]     // at 512, 1024, 2048
+    flags: { learnerId: string; flag: string }[]  // kept lives worth a look, e.g. "periphery motion did not grow 512→2048"
     identification: { learnerId: string; ownInit: number; bestOther: number }[]                  // Review Focus 1
   }
   export function analyse(lives: ProbeLife[], grams: Record<Encoder, Gram>, centreSha: string, manifestSha: string): ProbeReport
   export function permutationP(t: (s: Uint8Array) => number, n: number, how: "exact" | "monteCarlo", seed: number): { p: number; floor: number }
     // analyse uses "exact" when n ≤ 16, else "monteCarlo"
   ```
-- **The convergence analyses.** Run for both encoders, each separately:
+- **The convergence analyses.** Run for both encoders, each separately, and each with its own verdict [agent's call; the spec gives one bar and does not say per encoder]:
   - **"pooled"** (across genomes): every eligible life.
   - **One per genome** with ≥ 2 lives.
   - **The primary one-genome analysis is the centre's** [agent's call]. Other genomes reaching 10 are reported beside it, not instead of it.
+  - **No combined verdict** [agent's call]. The periphery and fovea are different layers on different inputs, so one can converge while the other does not. The report and the note give each encoder's verdict on its own line; neither is folded into an "overall" answer. Task 8's gate ("converged for at least the periphery") is a use of these verdicts, and is part of the same call: the periphery sees the whole frame, so it is the first candidate for a shared start.
 - **Statistics, over the pairs (i < j) of an analysis's lives.**
   - The learned value is the mean CKA at 2,048 and the median over pairs of `matchedMedian` at 2,048.
   - The init value is the same, on the same pairs at init.
@@ -284,7 +315,7 @@ None of these is built by this plan. The agent's recommendation is marked.
   - p is one-sided, from 9,999 seeded shuffles of the genome labels (group sizes kept), seed `"filter-probe/recipe/" + encoder`.
   - It is reported, never part of the bar. It tells "everyone converges" apart from "the same recipe converges".
 - **Identification** (Review Focus 1). For each life: `ownInit` is the correlation of its flattened 512 CU weights with its own recomputed init, and `bestOther` is the largest correlation with any other life's init. The CLI refuses to write a report if any life has `ownInit ≤ bestOther`: that would mean a seed or decoding bug, not a finding. If a failure turns out to be genuine weight motion rather than a bug, relaxing the check is a recorded decision, not a code edit.
-- **Multiplicity.** There are up to four verdict-bearing tests: two encoders × (pooled, centre). Raw p is used for the bar, as the spec says. A Holm-adjusted p over the two encoders of each analysis is reported beside it, as a diagnostic.
+- **Multiplicity.** There are up to four verdict-bearing tests: two encoders × (pooled, centre). Raw p is used for the bar [agent's call; the spec says "p < 0.05" for one bar and does not address multiplicity, since it does not split by encoder]. A Holm-adjusted p over the two encoders of each analysis is reported beside it, with the verdict that p would give. The note states both verdicts whenever they differ.
 
 - [ ] **Step 1: Write the failing tests**
   - `"BAR is exactly { minLives 10, ckaDelta 0.1, matched 0.5, alpha 0.05 } (spec §5.1)"`.
@@ -294,36 +325,63 @@ None of these is built by this plan. The agent's recommendation is marked.
   - `"permutationP exact and monteCarlo agree within 0.01 on the same 14-life fixture"`.
   - `"the recipe control finds within > between on planted genome-specific filters, and p ≥ 0.05 when filters ignore the genome"`.
   - `"identification: a life whose seed is swapped with another's is caught (ownInit ≤ bestOther)"`.
+  - `"a kept life whose periphery motion at 2048 is not above its motion at 512 is listed in flags, and stays in every analysis"`.
+  - `"each verdict carries its Holm-adjusted p and the verdict at that p, beside the raw one"`.
   - `"analyse run twice gives identical serialised bytes"`.
 - [ ] **Step 2: Run them; they fail.** Expected: FAIL.
-- [ ] **Step 3: Implement.** Add to **0025**: the centre as the primary one-genome analysis, the permutation scheme, the recipe control's statistic, Holm as a diagnostic, and the rule that no constant may change after the first real run without a new decision.
+- [ ] **Step 3: Implement.** Add to the probe-calls decision: per-encoder verdicts with no combined verdict (and that Task 8's periphery gate rests on it), the centre as the primary one-genome analysis, the permutation scheme, the recipe control's statistic, raw p for the bar with the Holm verdict reported beside it, the `flags` list, and the rule that no constant may change after the first real run without a new decision.
 - [ ] **Step 4: Run them; they pass.**
 - [ ] **Step 5: Commit** `feat(probe): convergence analyses, init and between-genome controls, permutation tests and the pinned bar`
 
 ### Task 6: The CLI and the golden test
 
 **Files:**
-- Create: `tools/probe/filter-convergence.ts`, `tools/probe/test/fixtures/filter-probe-golden.json`
-- Test: `tools/probe/test/filter-convergence.test.ts`
+- Modify: `tools/probe/filter-convergence.ts` (Task 1 created it)
+- Create: `tools/probe/filters/png.ts`, `tools/probe/test/fixtures/filter-probe-golden.json`
+- Test: `tools/probe/test/filter-convergence.test.ts`, `tools/probe/test/fixture-lives.ts` (a test helper, not a test file)
 
 **Interfaces:**
+- Produces:
+  ```ts
+  // tools/probe/filter-convergence.ts: one core that the CLI and the tests both call; main only gathers its inputs
+  export interface ProbeInputs { frames: readonly Observation[]; manifestSha: string; lives: readonly LifeInput[]; centreSha: string }
+  export class ProbeRefusal extends Error { readonly why: "identification" | "no eligible lives" }
+  export function runProbe(inp: ProbeInputs): { report: ProbeReport; summary: string }
+    // probeLives → both Grams → analyse → summary.md text; throws ProbeRefusal; writes nothing
+  export function writeProbe(out: { report: ProbeReport; summary: string }, dir: string): void  // report.json (serialise), summary.md
+  export function main(argv: readonly string[]): Promise<number>  // the exit code; the file's entry point is process.exit(await main(...))
+  // tools/probe/filters/png.ts
+  export function writeFilterPngs(life: ProbeLife, states: readonly ("init" | 512 | 1024 | 2048)[], dir: string): Promise<string[]>
+    // the 16 periphery filters (5×5 RGB, each scaled to its own min..max) per state, one 4×4 sheet per state; returns the paths
+  ```
 - **Usage:**
-  - `npx tsx tools/probe/filter-convergence.ts [--runs data/runs] [--out .local/filter-probe]`.
+  - `npx tsx tools/probe/filter-convergence.ts [--runs data/runs] [--out .local/filter-probe] [--manifest tools/probe/filter-probe-set.json] [--genome knowledge/genome.json]`. The defaults are shown; the tests point `--manifest` and `--out` at temp files.
   - `npx tsx tools/probe/filter-convergence.ts --write-manifest` (Task 1 only).
-- **What it does.**
-  1. Loads and checks the manifest, then renders the probe set (`renderProbeSet` throws on any mismatch).
-  2. Reads the lives, and gets `centreSha` from `knowledge/genome.json` through `genomeSha`.
-  3. Builds both Grams, then runs `analyse`.
-  4. Writes `report.json` (`serialise`) and `summary.md` (one table per analysis, with the excluded lives).
-  5. Prints the stage timings to stdout only, never into a file.
-- **Exit codes.** It exits non-zero, writing nothing, on a manifest mismatch, a failed identification, or zero eligible lives.
-- **The golden fixture.** 3 genomes × 4 lives with seeded synthetic filters, 8 seeded synthetic frames, so it runs in seconds and needs no canvas. Its `report.json` is compared byte for byte with `fixtures/filter-probe-golden.json`. Regenerate with `FILTER_PROBE_WRITE=1`, and review the diff by eye.
+  - `npx tsx tools/probe/filter-convergence.ts --frames-png <dir>` (Task 1 Step 3): renders the probe set, calls `writeFramePngs`, and exits.
+  - `npx tsx tools/probe/filter-convergence.ts --filters-png <dir>` (Task 7 Step 3): reads the lives, calls `writeFilterPngs` at init and 2,048 for the lowest eligible learnerId of each genome, and exits.
+  - The PNG flags write only under `<dir>`, never `report.json`, and are not part of the analysis.
+- **What `main` does** for a run.
+  1. Loads `--manifest` and renders the probe set. `renderProbeSet` throws on any frame mismatch.
+  2. Reads the lives with `collectLives(--runs)`, and gets `centreSha` from `--genome` through `genomeSha`.
+  3. Calls `runProbe`, then `writeProbe` into `--out`. Nothing is written before `runProbe` returns.
+  4. Prints the stage timings to stdout only, never into a file.
+- **Exit codes.** `main` returns 1 and writes nothing on a manifest mismatch (the `renderProbeSet` throw), a `ProbeRefusal` (a failed identification or zero eligible lives), or a bad flag. Any other throw is a bug and is not caught.
+- **The fixture lives** (`fixture-lives.ts`), so that synthetic lives take the same path as real ones:
+  - `fixtureLife({ learnerId, genomeSha, seed, noise })` builds a `LifeInput` whose files pass `parseLogFile`: role `search`, inheritance `none`, GPU widths, and snapshots at 512, 1,024 and 2,048 CU. A test asserts that every fixture file parses.
+  - Each snapshot is `initFirstLayer(seed, GPU_WIDTHS)` plus seeded noise from `createRng(hashSeed(seed, "filter-probe/fixture/" + level))`, growing with the level. So identification passes, motion grows, and no two states are bit-identical.
+  - The 3 genome shas are fixed fixture strings, `centreSha` is the first of them, and `manifestSha` is a fixed fixture string. Nothing is read from `knowledge/` or `data/`.
+  - The 8 frames are seeded synthetic `Observation`s (bytes from `createRng(hashSeed(0, "filter-probe/fixture-frames"))`), so no canvas is needed.
+- **The golden fixture.** 3 genomes × 4 lives through `runProbe`, in seconds. `writeProbe`'s `report.json` is compared byte for byte with `fixtures/filter-probe-golden.json`. Regenerate with `FILTER_PROBE_WRITE=1`, and review the diff by eye.
 
 - [ ] **Step 1: Write the failing tests**
+  - `"every fixture life's files pass parseLogFile, and probeLives keeps all 12"`.
   - `"the fixture run's report.json equals filter-probe-golden.json byte for byte"`.
   - `"two fixture runs write identical report.json and summary.md bytes"`.
-  - `"a manifest mismatch, a failed identification, or zero eligible lives each exit non-zero and write nothing"`.
-  - `"the run writes only under --out"`. Compare `git status --porcelain` before and after, against a temp `--out`.
+  - `"runProbe throws ProbeRefusal('identification') when two fixture lives' snapshots are swapped, and ProbeRefusal('no eligible lives') on lives that are all excluded"`.
+  - `"main with --manifest pointing at a temp copy with one frame sha changed returns 1 and leaves --out empty"`. It renders frames up to the first mismatch, so it needs the canvas, as Task 1's tests do.
+  - `"main returns 1 and writes nothing when runProbe refuses"`. The refusal is reached through `--runs` pointing at a temp dir of fixture lives written as files.
+  - `"the run writes only under --out"`. Compare `git status --porcelain` before and after a fixture run of `main` against a temp `--out`.
+  - `"writeFilterPngs writes one 4×4 sheet per state, and the same bytes twice"`.
 - [ ] **Step 2: Run them; they fail.** Expected: FAIL.
 - [ ] **Step 3: Implement.** Generate the golden file, and read it: are the planted genome effects visible in `recipe`, and are all four-life genomes "not evaluable"?
 - [ ] **Step 4: Run the full gates.** `npm test && npm run typecheck && npm run lint`. Expected: PASS.
@@ -331,29 +389,30 @@ None of these is built by this plan. The agent's recommendation is marked.
 
 ### Task 7: Run it on the committed lives, check it against the real artifacts, and write it up
 
-- [ ] **Step 1: Run it on `main`.** Wrap the run in `caffeinate -i`. Run `npx tsx tools/probe/filter-convergence.ts` twice, then `cmp` the two `report.json` files: they must be identical. Record the stage timings and the commit sha of `data/runs` used.
-- [ ] **Step 2: Check it against the artifacts** (Review Focus 1, invariant 8). Each item is checked by running something, not by reading code:
-  - **The life counts** equal a fresh count from the files: 34 eligible lives at `7749ae6` per the table above, or more if more have merged since. List each excluded life and its reason.
+- [ ] **Step 1: Merge Tasks 1–6 to `main`, and check that CI is green.** Merge `main` into the branch first. If another branch has meanwhile taken the probe-calls decision's number, renumber the file and every citation of it in that merge (Global Constraints). Then merge the branch to `main` and push. Open the CI run on the pushed commit and wait for green. The probe is fixed from this commit on; record its sha.
+- [ ] **Step 2: Run it on `main`.** Wrap the run in `caffeinate -i`. Run `npx tsx tools/probe/filter-convergence.ts` twice, then `cmp` the two `report.json` files: they must be identical. Record the stage timings, and the commit sha whose `data/runs` was read.
+- [ ] **Step 3: Check it against the artifacts** (Review Focus 1, invariant 8). Each item is checked by running something, not by reading code:
+  - **The life counts** equal a fresh count from the files: 33 eligible lives at `7749ae6` (the table above, less `lrn_4c7ec98889ef9cbb`), or more if more have merged since. List each excluded life and its reason.
   - **Identification:** every life has `ownInit > bestOther`. Report the smallest margin.
-  - **Weight motion** is finite and non-zero at every level, and grows from 512 to 2,048 for most lives. Report any life where it does not.
-  - **Look at the filters.** Write PNGs of the 16 periphery filters (5×5 RGB, scaled per filter) for one life per genome, at init and at 2,048, to `.local/filter-probe/filters/`, and look at them. Do they have structure (edges, colour blobs) or only noise?
-- [ ] **Step 3: Write `docs/research/2026-10-2x-filter-convergence.md`.** Keep it short:
+  - **Weight motion** is finite and non-zero at every level. Every life in the report's `flags` is named in the note; the rule that keeps them was fixed in Task 2, so nothing is excluded here.
+  - **Look at the filters.** Run `npx tsx tools/probe/filter-convergence.ts --filters-png .local/filter-probe/filters` (one life per genome, at init and at 2,048), and open the PNGs. Do they have structure (edges, colour blobs) or only noise?
+- [ ] **Step 4: Write `docs/research/2026-10-2x-filter-convergence.md`.** Keep it short:
   - **The question.**
   - **The data:** the lives, the per-genome counts and the exclusions.
-  - **A table per encoder:** pooled and centre, plus each genome as description. Columns: n, learned and init CKA, ckaDelta, learned and init matched, p, pFloor, verdict.
+  - **A table per encoder:** pooled and centre, plus each genome as description. Columns: n, learned and init CKA, ckaDelta, learned and init matched, p, Holm p, pFloor, verdict, and the verdict under Holm.
   - **The recipe control and weight motion.**
-  - **The answer in one line, favourable or not.** For example: "Across genomes, periphery filters converge / do not converge by the spec's bar; the one-genome bar is not evaluable (centre n = 4)".
+  - **The answer, favourable or not: one line per encoder,** with no combined verdict (Task 5). For example: "Across genomes, periphery filters converge / do not converge by the spec's bar; fovea filters converge / do not converge; the one-genome bar is not evaluable (centre n = 4)". Where the Holm verdict differs from the raw one, the line says so.
   - **Caveats:** Node-rendered frames; a probe set biased to start states; one machine; the bar is a guess; the multiplicity.
   - **What follows**, per spec §5.1. If the filters do not converge, the next candidates are a distilled frame set, then a shared replay or curriculum file. If they converge across genomes, the §5.2 condition goes to the user (Task 8). In both cases, the one-genome options above go to the user.
 
-  Commit `report.json`'s top-level summary (without the per-pair arrays) beside the note, as `docs/research/2026-10-2x-filter-convergence/summary.json`. The full report can be rebuilt from the committed logs at the recorded sha.
-- [ ] **Step 4: Set row 05c in `docs/plans/README.md`** to "done" with a link to the note, and its one-line result.
-- [ ] **Step 5: Commit, push and check that CI is green.** Message: `docs: Plan 05c — the filter-convergence probe on <n> committed lives`.
+  Commit `report.json` itself, byte for byte, beside the note, as `docs/research/2026-10-2x-filter-convergence/report.json`. It holds no per-pair arrays: per-analysis aggregates, and per-life rows for `excluded`, `motion`, `flags` and `identification`, so it stays small. It can be rebuilt from the committed logs at the recorded sha.
+- [ ] **Step 5: Set row 05c in `docs/plans/README.md`** to "done" with a link to the note, and its one-line result.
+- [ ] **Step 6: Commit, push and check that CI is green.** Message: `docs: Plan 05c — the filter-convergence probe on <n> committed lives`.
 
 ### Task 8: Draft the §5.2 inherited-filter condition as a decision for the user (proposed, not accepted)
 
 **Files:**
-- Create: `docs/decisions/0026-inherited-filter-condition.md` (the next free number after 0025), from `0000-template.md`
+- Create: the inherited-filter draft, `docs/decisions/NNNN-inherited-filter-condition.md` (the next free number on `main` when it is written; Global Constraints), from `0000-template.md`
 - **Status:** `proposed`. **Decided by:** `agent proposal awaiting the user's decision`. Nothing in it is built or switched on.
 
 **Contents** (spec §5.2, written as the decision the user would be taking):
@@ -383,17 +442,33 @@ None of these is built by this plan. The agent's recommendation is marked.
   4. Is a per-filter norm match enough for C, or should C also match the artifact's spatial frequency spectrum?
 
 - [ ] **Step 1: Write the draft.** Link it from the research note's "What follows" section.
-- [ ] **Step 2: Check it.** It contradicts no accepted decision (0018–0024). Every agent's call in it is labelled. It names the code paths that would change, and changes none of them: `git diff --stat main` shows only `docs/`.
+- [ ] **Step 2: Check it.** It contradicts no accepted decision (0018–0024, and any accepted since). Every agent's call in it is labelled. It names the code paths that would change, and changes none of them:
+  - `git diff --stat` and `git diff --stat --cached` before the commit, then `git show --stat HEAD` after it, list only the draft and the research note's link.
+  - `git diff --stat <the Task 7 Step 1 merge commit> HEAD -- packages app knowledge config .github` is empty: nothing the learner, page, gate or knowledge reads has changed since the probe was fixed.
 - [ ] **Step 3: Run the hygiene tests:** `npx vitest run tools/no-trailing-whitespace.test.ts tools/no-machine-paths.test.ts tools/tracked.test.ts`. Expected: PASS.
-- [ ] **Step 4: Commit** `docs: draft decision 0026, the inherited-filter condition (proposed, for the user)`, then push and check that CI is green.
+- [ ] **Step 4: Commit** `docs: draft decision <NNNN>, the inherited-filter condition (proposed, for the user)`, then push and check that CI is green.
+
+### Task 9: Separate from the probe — why `lrn_4c7ec98889ef9cbb`'s first layer froze
+
+The probe's rule for this life is fixed in Task 2 and does not wait on this task. This task asks whether the freeze is a learner or snapshot fault that could touch other lives, or other parameters. It may run any time after Task 2 is committed, beside Tasks 3–8. It changes no probe code.
+
+- [ ] **Step 1: Read the life's own record.** For files 1–9, list `codeSha`, `hostSig`, `stepsTotal`, `cu`, `restores`, `skippedUpdates`, `lostCU` and the curve's predLoss. Did the rest of the model keep learning while conv1 held still? Did a restore or a code change fall between 512 and 1,024 CU?
+- [ ] **Step 2: Test the two candidate mechanisms on the CPU backend,** each as a failing-first test in the package it concerns:
+  - **A stale read.** `readParams()` after k steps differs from `readParams()` at step 0, in `FIRST_LAYER_PARAMS`, for the genome's values (`packages/learner`). Also that `filtersAt` in `packages/harness/src/session.ts` reads the learner live at each crossing, and does not reuse an earlier result.
+  - **No gradient to conv1.** One step with this genome's settings gives a non-zero conv1 gradient (`packages/learner`).
+
+  If neither fails on the CPU, say so: the life ran on a GPU tab, and a GPU-only fault needs a WebGPU probe in Playwright, recorded as such.
+- [ ] **Step 3: Write it up** as a short section in the research note (Task 7), favourable or not: the cause if found, or what was ruled out. A fault found here is fixed under its own plan or decision, not in this one. Any fix changes future lives only; the committed logs and the probe's exclusion stay as they are.
 
 **After this plan.**
-- **When a genome reaches ≥ 10 eligible lives** (by whichever option the user picks above), re-run the probe unchanged. Add a dated section to the note with the one-genome verdict, keep the first result, and update 0026's context.
-- **The decision on 0026 is the user's.** Building the I and C arms is a later plan, and only on an accepted decision.
+- **When a genome reaches ≥ 10 eligible lives** (by whichever option the user picks above), re-run the probe unchanged. Add a dated section to the note with the one-genome verdict, and keep the first result.
+  - **If the inherited-filter draft is still `proposed`,** amend its context with the new result.
+  - **If the user has decided it,** do not edit it: decisions are append-only (AGENTS.md). Write a new decision that cites the new result and, if it changes the outcome, supersedes the old one.
+- **The decision on the inherited-filter draft is the user's.** Building the I and C arms is a later plan, and only on an accepted decision.
 
 ---
 
-## Spec conflicts and gaps found while planning (resolutions adopted above; each goes into 0025 as an agent's call)
+## Spec conflicts and gaps found while planning (resolutions adopted above; each goes into the probe-calls decision as an agent's call)
 1. **"≥ 10 lives of one genome" is out of reach of the calibration design** (at most 6 per genome). Resolution: no relaxation. The one-genome analysis is reported as "not evaluable", and getting the data is a question for the user, with options.
 2. **The permutation test is unspecified.** Resolution: a within-life swap of init and 2,048 labels, exact up to n = 16. It cannot reach p < 0.05 below n = 5, which is one more reason to keep the spec's minimum of 10.
 3. **"Activations"** could be before or after the ReLU. Resolution: after, and only that is computed.
@@ -401,7 +476,10 @@ None of these is built by this plan. The agent's recommendation is marked.
 5. **A probe set of 16 random steps from the default start** would all be one room. Resolution: start room = seed mod 4.
 6. **Memory.** The activations of 68 states would be about 2 GB. Resolution: a streamed two-pass centred Gram; every metric comes from it.
 7. **512 and 1,024 snapshots.** The spec compares at init and 2,048. Resolution: activations at those two only; weight motion at all three levels.
-8. **The reserved world seeds 20,000–20,015 and confirmation learner seeds.** Confirmation id 10 would use learner seeds 20,000–20,999. Those are learner seeds, not world seeds (a confirmation life's world is its learnerId's, 0024 conflict 9). Resolution: the guard test checks the world seeds every committed life actually used.
+8. **The reserved world seeds 20,000–20,015 and confirmation learner seeds.** Confirmation id 10 would use learner seeds 20,000–20,999. Those are learner seeds, not world seeds (a confirmation life's world is its learnerId's: plan 05b conflict 9; decision 0024, Confirmation seeds). Resolution: the guard test checks the world seeds every committed life actually used, under `data/runs` and `data/newborns`.
+9. **One bar, two encoders.** The spec gives one "converged" bar and does not say whether it applies per encoder, nor how many tests carry it. Resolution: a verdict per encoder, with no combined verdict; raw p for the bar, with the Holm-adjusted p and its verdict reported beside it. Task 8's periphery gate is part of the same call.
+10. **A life whose first layer stops changing** (`lrn_4c7ec98889ef9cbb`, found while planning). The spec says nothing about it. Resolution: bit-identical consecutive states exclude the life, with the reason; slow motion is flagged and kept. Fixed before any run, so the choice is not made after seeing results.
+11. **Lives that share a learner seed** start from the same filters. Resolution: the lowest learnerId per seed, as decision 0024 does for confirmation lives.
 
 ## Self-review
 - **Spec coverage, §5.1 and §10 05c:**
@@ -411,8 +489,9 @@ None of these is built by this plan. The agent's recommendation is marked.
   - the init-pair and between-genome controls → Task 5;
   - the bar over ≥ 10 lives of one genome, and separately across genomes → Task 5, applied in Task 7;
   - the write-up, favourable or not → Task 7;
-  - the §5.2 condition drafted as a decision, not built → Task 8.
+  - the §5.2 condition drafted as a decision, not built → Task 8;
+  - the one frozen life: its rule → Task 2, its cause → Task 9 (outside the spec).
 - **Invariants:** 1 (nothing inherited; Task 8 is a draft); 2 (harness-only; isolation test, Task 1); 5 (Task 8 asks for build cost beside gain); 7 (fixed before the run, pinned bar, no relaxation); 8 (identification, artifact checks, note either way).
-- **Names across tasks:** `PROBE_SEEDS`, `ProbeManifest`, `renderProbeSet`; `ProbeLife`, `FirstLayer`, `probeLives`, `decodeFilters`, `initFirstLayer`, `weightMotion`; `LAYER`, `firstLayer`, `Gram`, `centredGram`; `cka`, `unitCorrelation`, `hungarianMax`, `matchedMedian`; `BAR`, `Verdict`, `Analysis`, `ProbeReport`, `analyse`.
-- **Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Tasks 3 and 4 can run side by side after Task 2. Task 7 must not start until Task 6 is committed.
+- **Names across tasks:** `PROBE_SEEDS`, `ProbeManifest`, `renderProbeSet`, `writeFramePngs`; `ProbeLife`, `FirstLayer`, `probeLives`, `decodeFilters`, `initFirstLayer`, `weightMotion`; `LAYER`, `firstLayer`, `Gram`, `centredGram`; `cka`, `unitCorrelation`, `hungarianMax`, `matchedMedian`; `BAR`, `Verdict`, `Analysis`, `ProbeReport`, `analyse`; `ProbeInputs`, `ProbeRefusal`, `runProbe`, `writeProbe`, `main`, `writeFilterPngs`.
+- **Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Tasks 3 and 4 can run side by side after Task 2. Task 7 must not start until Task 6 is committed; its Step 1 merges Tasks 1–6 to `main`. Task 9 runs any time after Task 2 and blocks nothing.
 - **Proportion:** signatures, constants and test names only. Detail is given only where the tests do not fix it: the frames, eligibility, the permutation scheme, the verdict rules and the identification check.

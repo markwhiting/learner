@@ -1035,9 +1035,10 @@ describe("meta-cli (a checkout of main in a temp git repo)", () => {
     expect(outputs.map(inWork)).toEqual(before)
     expect(Object.keys(parseVerified(inWork(VERIFIED))!.lives)).toHaveLength(30 + VERIFY_BUDGET)
 
-    // commit-meta commits verified.json alone, so the progress is on main for the next run.
+    // commit-meta commits verified.json alone, so the progress is on main for the next run; verified-only, so gate.yml
+    // does not deploy a site it leaves unchanged.
     const rebuild = async (): Promise<boolean> => { throw new Error("no rebuild without a rejected push") }
-    expect(await commitMeta({ git, installedLock: git(["rev-parse", "HEAD:package-lock.json"]).trim(), rebuild, log: () => {} })).toBe("committed")
+    expect(await commitMeta({ git, installedLock: git(["rev-parse", "HEAD:package-lock.json"]).trim(), rebuild, log: () => {} })).toBe("verified-only")
     expect(git(["log", "-1", "--format=%s"]).trim()).toBe(`meta: verified.json only, ${30 + VERIFY_BUDGET} lives verified; outputs unchanged`)
     expect(git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]).trim()).toBe(VERIFIED)
 

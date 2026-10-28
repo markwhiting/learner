@@ -51,7 +51,8 @@ jobs:
   # Merges and pushes made with GITHUB_TOKEN do not trigger other workflows, so the gate calls deploy itself: after a
   # merge, or after a data/meta commit (decision 0019). meta == 'committed' covers a promotion too: its commit carries
   # knowledge/genome.json, which deploy.yml copies with knowledge/*.json, so the deployed knowledgeSha changes by
-  # design (0019) and open tabs reload onto the new centre (0014).
+  # design (0019) and open tabs reload onto the new centre (0014). A commit of verified.json alone (meta ==
+  # 'verified-only': a verification checkpoint, decision 0026) deploys nothing: deploy.yml never copies the cache.
   deploy:
     needs: gate
     if: ${{ !cancelled() && ((needs.gate.outputs.merged != '' && needs.gate.outputs.merged != '0') || needs.gate.outputs.meta == 'committed') }}

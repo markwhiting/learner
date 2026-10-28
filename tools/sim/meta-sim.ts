@@ -93,8 +93,13 @@ const byGenome = (space: GenomeSpace): Effect => (k, _i, g) => {
 
 export async function runSim(opts: SimOptions): Promise<SimReport> {
   const { log } = opts
+  // One clock for every commit and build, an hour a gate pass: without it, each run's commit times change main's shas,
+  // every posterior's sourceCommit, and so every draw, and a run's outcome would vary (a "noise" run found a false
+  // signal at look 2 about one run in twenty, 2026-10-28).
+  let clock = Date.parse("2026-01-01T00:00:00.000Z")
+  const dates = (): NodeJS.ProcessEnv => { const t = new Date(clock).toISOString(); return { GIT_AUTHOR_DATE: t, GIT_COMMITTER_DATE: t } }
   const env = isolatedEnv()
-  const fx = makeFixture(opts.dir)
+  const fx = makeFixture(opts.dir, dates)
   const work = fx.work
   const origin = (...args: string[]) => execFileSync("git", ["--git-dir", join(opts.dir, "origin.git"), ...args], { encoding: "utf8", env }).trim()
   const inWork = (args: string[]) => execFileSync("git", args, { cwd: work, encoding: "utf8", env, maxBuffer: 64 * 1024 * 1024 })
@@ -163,9 +168,10 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
   const stages: SimStage[] = []
   const gate = async (name: string): Promise<SimStage> => {
     const t0 = Date.now()
+    clock += 3_600_000
     const before = origin("rev-parse", "main")
-    const built = tsx("tools/gate/meta-cli.ts")
-    const committed = tsx("tools/gate/commit-meta.ts", { LOCK_BLOB: lockBlob })
+    const built = tsx("tools/gate/meta-cli.ts", { META_BUILT_AT: new Date(clock).toISOString() })
+    const committed = tsx("tools/gate/commit-meta.ts", { LOCK_BLOB: lockBlob, ...dates() })
     const commit = forwardOnly(before, `${name}: gate`)
     if (inWork(["rev-parse", "HEAD"]).trim() !== commit) fail(`${name}: the gate's checkout is not main after commit-meta`)
     const moved = commit !== before

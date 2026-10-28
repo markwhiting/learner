@@ -1,7 +1,7 @@
 // The gate's direct commit of data/meta/** (decision 0019; invariant 7): only the gate's own files, never forced.
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { chmodSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { afterEach, describe, expect, it } from "vitest"
@@ -569,6 +569,8 @@ describe("workflows", () => {
     const steps = gate.split("\n").filter(l => !/^\s*#/.test(l)).join("\n")
     // A PR's branch, title or sha from the event never reaches a step, and no PR code is checked out.
     expect(steps).not.toMatch(/github\.event|github\.head_ref|pull_request_target/)
+    // The simulation's pinned clock (meta-cli.ts) never reaches a real build: the gate's builtAt is the clock.
+    for (const f of readdirSync(join(REPO, ".github/workflows"))) expect(readFileSync(join(REPO, ".github/workflows", f), "utf8"), f).not.toContain("META_BUILT_AT")
     const gateJob = gate.slice(gate.indexOf("  gate:"), gate.indexOf("  deploy:"))
     expect(gateJob).not.toMatch(/^ {4}if:/m) // a run skipped at job level would still take the concurrency slot
     const checkouts = gate.split("uses: actions/checkout@").slice(1)

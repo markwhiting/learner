@@ -57,10 +57,18 @@ const runsDir = join(root, RUNS_DIR)
 const open = confirmations.length > 0 && confirmations[confirmations.length - 1]!.result === null
 const arrivals = open ? runArrivals(git) : null
 const started = Date.now() // timing for the log only, never for a file
+// The build's time: the clock, except in a simulation (tools/sim/meta-sim.ts), which pins it with META_BUILT_AT so its
+// main's history (the index line, a confirmation's times, and so the next posterior's sourceCommit and every draw
+// seeded from its bytes) replays byte for byte. The gate's workflow never sets it (commit-meta.test.ts "workflows").
+const pinned = process.env.META_BUILT_AT
+if (pinned !== undefined && !(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(pinned) && new Date(pinned).toISOString() === pinned)) {
+  throw new Error(`META_BUILT_AT must be an ISO time like 2026-01-01T00:00:00.000Z, got ${JSON.stringify(pinned)}`)
+}
+const builtAt = pinned ?? new Date().toISOString()
 const built = await buildOrCheckpoint({
   runsDir, config, refs: loadReferences(root, config), space, centre,
   sourceCommit: git(["rev-parse", "HEAD"]).trim(),
-  builtAt: new Date().toISOString(), // the one clock read that reaches a file: it goes into the index line only
+  builtAt, // the one clock read that reaches a file: the index line and a confirmation's declaredAt, deadline, decidedAt
   previous: { calibration: calibrationText === null ? null : parseCalibration(calibrationText), posteriorText, verified, confirmations },
   // Only the versions some not-yet-verified life was born under.
   posteriorsBySha: posteriorHistory(git, wantedPosteriors(runsDir, space.schemaVersion, verified)),

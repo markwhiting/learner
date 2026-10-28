@@ -13,7 +13,7 @@ import { loadEvalConfig, loadReferences } from "../eval/config.ts"
 import { loadGenomeSpace, mainSpaces } from "./gate.ts"
 import { git, isShallow } from "./github.ts"
 import { confirmationPath, GENOME_PATH, parseConfirmation, PROMOTIONS_PATH, type ConfirmationFile } from "./confirm.ts"
-import { centresBySha } from "./history.ts"
+import { centresBySha, RUNS_DIR, runArrivals } from "./history.ts"
 import {
   buildOrCheckpoint, CALIBRATION_PATH, DIAGNOSTICS_PATH, parseCalibration, parseVerified, POSTERIOR_INDEX_PATH, POSTERIOR_PATH, posteriorHistory,
   VERIFIED_PATH, VERIFY_BUDGET, wantedPosteriors,
@@ -51,7 +51,11 @@ if (verifiedText !== null && verified === null) console.error(`::warning::${VERI
 const centres = centresBySha(git, mainSpaces(root, git))
 centres.set(await genomeSha(space.schemaVersion, centre), centre)
 
-const runsDir = join(root, "data/runs")
+const runsDir = join(root, RUNS_DIR)
+// When each run file reached main, read only while a confirmation is open: past its deadline, the gate decides it on
+// main as it was then (confirm.ts asOfDeadline; decision 0026), whenever this build runs.
+const open = confirmations.length > 0 && confirmations[confirmations.length - 1]!.result === null
+const arrivals = open ? runArrivals(git) : null
 const started = Date.now() // timing for the log only, never for a file
 const built = await buildOrCheckpoint({
   runsDir, config, refs: loadReferences(root, config), space, centre,
@@ -60,7 +64,7 @@ const built = await buildOrCheckpoint({
   previous: { calibration: calibrationText === null ? null : parseCalibration(calibrationText), posteriorText, verified, confirmations },
   // Only the versions some not-yet-verified life was born under.
   posteriorsBySha: posteriorHistory(git, wantedPosteriors(runsDir, space.schemaVersion, verified)),
-  centres,
+  centres, arrivals,
 }, VERIFY_BUDGET)
 console.error(`buildMeta took ${((Date.now() - started) / 1000).toFixed(1)} s`)
 

@@ -3,7 +3,7 @@
 // state between builds. Search mode is reached only through data: planted calibration lives through the real signal
 // check (ruling 1), never a code switch.
 import { afterEach, beforeEach } from "vitest"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -55,11 +55,24 @@ export const world = async (): Promise<World> => ({
   centres: new Map([[await shaOfGenome(CENTRE), CENTRE]]), last: null, built: 0,
 })
 
-/** One gate run on `w`'s state at a new main commit; the result becomes main's data/meta. */
+/**
+ * MetaInput.arrivals for the files in `dir` now: each at `at`, or at `late(path)` where that gives a time
+ * ("<learnerId>/<seq>.json", as history.ts runArrivals keys them).
+ */
+export function arrivalsIn(dir: string, at: string, late: (rel: string) => string | undefined = () => undefined): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const id of readdirSync(dir).sort()) for (const f of readdirSync(join(dir, id)).sort()) out.set(`${id}/${f}`, late(`${id}/${f}`) ?? at)
+  return out
+}
+
+/**
+ * One gate run on `w`'s state at a new main commit; the result becomes main's data/meta. Unless `over` gives arrivals,
+ * every file in the runs dir reached main at BUILT_AT (no later than any deadline the tests declare).
+ */
 export async function build(w: World, over: Partial<MetaInput> = {}): Promise<MetaFiles> {
   const out = await buildMeta({
     runsDir: runs, config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(++w.built), builtAt: BUILT_AT,
-    previous: w.previous, posteriorsBySha: w.history, centres: w.centres, ...over,
+    previous: w.previous, posteriorsBySha: w.history, centres: w.centres, ...over, arrivals: over.arrivals !== undefined ? over.arrivals : arrivalsIn(runs, BUILT_AT),
   })
   // The confirmation files this build declared or decided replace main's copies (ids 0..n−1).
   const confirmations = [...(over.previous ?? w.previous).confirmations]

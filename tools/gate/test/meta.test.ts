@@ -111,7 +111,7 @@ describe("buildMeta (spec §4.6, §7.2, §7.4)", () => {
     await grow(w, 5, planted) // born under the second posterior, so the history has two entries
     const input: MetaInput = {
       runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(99), builtAt: BUILT_AT,
-      previous: w.previous, posteriorsBySha: w.history, centres: w.centres,
+      previous: w.previous, posteriorsBySha: w.history, centres: w.centres, arrivals: null,
     }
     const a = await buildMeta(input)
     const b = await buildMeta(input)
@@ -565,7 +565,7 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     await grow(w, 10, planted)
     const input: MetaInput = {
       runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(77), builtAt: BUILT_AT,
-      previous: w.previous, posteriorsBySha: w.history, centres: w.centres,
+      previous: w.previous, posteriorsBySha: w.history, centres: w.centres, arrivals: null,
     }
     const a = await buildMeta(input)
     const b = await buildMeta(input)
@@ -715,7 +715,7 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     // The cache saves work only: the same files as a build from no cache.
     const fresh = await buildMeta({
       runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(w.built), builtAt: BUILT_AT,
-      previous: { ...w.previous, verified: null }, posteriorsBySha: w.history, centres: w.centres,
+      previous: { ...w.previous, verified: null }, posteriorsBySha: w.history, centres: w.centres, arrivals: null,
     })
     expect(drawSpy).toHaveBeenCalledTimes(3 + 16)
     expect(fresh[DIAGNOSTICS]).toBe(second[DIAGNOSTICS])
@@ -771,7 +771,7 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
     const restart = { ...w.previous, calibration: null }
     const input = (verified: VerifiedCache | null): MetaInput => ({
       runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: moved, sourceCommit: commit(50), builtAt: BUILT_AT,
-      previous: { ...restart, verified }, posteriorsBySha: w.history, centres: w.centres,
+      previous: { ...restart, verified }, posteriorsBySha: w.history, centres: w.centres, arrivals: null,
     })
     const cached = await buildMeta(input(w.previous.verified))
     const fresh = await buildMeta(input(null))
@@ -837,7 +837,7 @@ describe("the verification-time bound: a build that cannot verify every life is 
     await bornLife(null, { effect: planted })
     const input: MetaInput = {
       runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(90), builtAt: BUILT_AT,
-      previous: { ...w.previous, verified: null }, posteriorsBySha: w.history, centres: w.centres,
+      previous: { ...w.previous, verified: null }, posteriorsBySha: w.history, centres: w.centres, arrivals: null,
     }
     const picks: string[] = [], cheap: string[] = []
     for (const life of collectLives(runsDir())) {

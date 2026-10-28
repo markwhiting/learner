@@ -93,6 +93,12 @@ export interface MetaInput {
   posteriorsBySha: ReadonlyMap<string, string>
   /** Every centre main has had (knowledge/genome.json's history, history.ts centresBySha), by genomeSha. */
   centres: ReadonlyMap<string, Genome>
+  /**
+   * When each run file reached main ("<learnerId>/<seq>.json" under runsDir → ISO time; history.ts runArrivals), or
+   * null when the caller did not read it. Only a build past an open confirmation's deadline needs it (confirm.ts
+   * asOfDeadline: the deadline is judged on main as it was then), and such a build stops without it.
+   */
+  arrivals: ReadonlyMap<string, string> | null
 }
 export interface MetaFiles {
   "data/meta/posterior.json": string; "data/meta/calibration.json": string; "data/meta/diagnostics.json": string

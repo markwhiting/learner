@@ -1,9 +1,9 @@
 import { afterEach, describe, it, expect } from "vitest"
 import { execFileSync } from "node:child_process"
-import { readFileSync } from "node:fs"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { genomeSha, parseCentre, parseGenomeSpace } from "@blanktab/meta"
-import { centresBySha, fileHistory, genomeShaSync, spacesBySchema } from "../history.ts"
+import { centresBySha, fileHistory, genomeShaSync, runArrivals, spacesBySchema } from "../history.ts"
 import { mainSpaces } from "../gate.ts"
 import { FIXTURE_ENV, SPACE_JSON, makeFixture, type Fixture } from "./git-fixture.ts"
 
@@ -71,5 +71,31 @@ describe("history.ts: earlier versions of the knowledge files (plan 05b Task 7)"
     expect(centres.get(await genomeSha(1, CENTRE))).toEqual(CENTRE)
     expect(centres.get(await genomeSha(1, moved))).toEqual(parseCentre(JSON.parse(file(moved)), SPACE))
     for (const g of [CENTRE, moved, { b: "x", a: 2 }]) expect(genomeShaSync(3, g)).toBe(await genomeSha(3, g))
+  })
+
+  it("runArrivals: each run file at the committer time of the main commit that added it; a PR's own commit times never count, only its merge's on main's first-parent line", () => {
+    fx = makeFixture()
+    const git = gitIn(fx)
+    expect(runArrivals(git).size).toBe(0) // no run files yet
+    const timeOf = (sha: string) => new Date(git(["log", "-1", "--format=%cI", sha]).trim()).toISOString()
+    const a = fx.commitMain({ "data/runs/lrn_a/0.json": "{}\n", "data/runs/lrn_a/1.json": "{}\n", "README.md": "y\n" })
+    const b = fx.commitMain({ "data/runs/lrn_b/0.json": "{}\n", "data/runs/lrn_a/2.json": "{}\n" })
+    fx.commitMain({ "data/meta/posterior.json": "{}\n" }) // no run file: no arrival
+    expect(runArrivals(git)).toEqual(new Map([
+      ["lrn_b/0.json", timeOf(b)], ["lrn_a/2.json", timeOf(b)], ["lrn_a/0.json", timeOf(a)], ["lrn_a/1.json", timeOf(a)],
+    ]))
+    // A branch commit dated long ago (as a PR's commits may claim), merged into main: the file arrives with the merge.
+    const run = (env: Record<string, string>, ...args: string[]) => execFileSync("git", args, { cwd: fx!.work, encoding: "utf8", env: { ...process.env, ...FIXTURE_ENV, ...env }, stdio: ["ignore", "pipe", "pipe"] }).trim()
+    run({}, "checkout", "-q", "-b", "side")
+    mkdirSync(join(fx.work, "data/runs/lrn_c"), { recursive: true })
+    writeFileSync(join(fx.work, "data/runs/lrn_c/0.json"), "{}\n")
+    run({}, "add", "data/runs/lrn_c/0.json")
+    const old = "2001-01-01T00:00:00.000Z"
+    run({ GIT_COMMITTER_DATE: old, GIT_AUTHOR_DATE: old }, "commit", "-q", "-m", "side")
+    run({}, "checkout", "-q", "main")
+    run({}, "merge", "-q", "--no-ff", "-m", "merge", "side")
+    const arrived = runArrivals(git).get("lrn_c/0.json")
+    expect(arrived).toBe(timeOf("HEAD"))
+    expect(arrived).not.toBe(old)
   })
 })

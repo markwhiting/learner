@@ -5,7 +5,9 @@ name: gate
 # "look now". Every conclusion counts (no job-level if): the gate re-validates every PR itself, a failed validate is
 # closed sooner, and a run skipped at job level would still take the concurrency slot below and could displace a
 # pending run that had work to do. Nothing from github.event.workflow_run (a PR's branch or title) is used: the run
-# reads the open PRs itself.
+# reads the open PRs itself. The cost: a failure on main's side (no valid genome space, a lockfile mismatch, meta-cli)
+# now repeats after every validate completion, not once an hour, until main is fixed; the next completion then picks
+# everything up (0025, Consequences). Its API calls share the repo's 1,000/h token pool with validate and deploy (0025).
 on:
   schedule:
     - cron: "17 * * * *"

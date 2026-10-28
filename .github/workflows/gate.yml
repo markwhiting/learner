@@ -1,10 +1,25 @@
 name: gate
+# Soon after a session PR is validated, plus the hourly backstop (decision 0025). GitHub's scheduler skips cron runs
+# under load (gaps of 6-8 h were measured, 2026-10-20..28); merges and the meta-learner's counts waited on them.
+# workflow_run always runs this file as it is on main, with main's token, whatever the PR changed: the PR only says
+# "look now". Every conclusion counts (no job-level if): the gate re-validates every PR itself, a failed validate is
+# closed sooner, and a run skipped at job level would still take the concurrency slot below and could displace a
+# pending run that had work to do. Nothing from github.event.workflow_run (a PR's branch or title) is used: the run
+# reads the open PRs itself. The cost: a failure on main's side (no valid genome space, a lockfile mismatch, meta-cli)
+# now repeats after every validate completion, not once an hour, until main is fixed; the next completion then picks
+# everything up (0025, Consequences). Its API calls share the repo's 1,000/h token pool with validate and deploy (0025).
 on:
   schedule:
     - cron: "17 * * * *"
+  workflow_run:
+    workflows: [validate]
+    types: [completed]
   workflow_dispatch:
 # Nothing by default; each job asks for exactly what it needs.
 permissions: {}
+# One run at a time (its merges and data/meta commit never race each other), and at most one waiting: a newer trigger
+# replaces the waiting run, which is all it would have done anyway, since every run decides every open PR. A burst of
+# validations therefore queues one run, not one per push.
 concurrency:
   group: gate
   cancel-in-progress: false

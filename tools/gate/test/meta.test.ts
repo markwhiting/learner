@@ -19,8 +19,10 @@ import { serialise } from "../serialise.ts"
 import { triggered } from "../search.ts"
 import { parseConfirmation } from "../confirm.ts"
 import {
-  buildMeta, parseCalibration, parseVerified, posteriorHistory, VERIFIER, wantedPosteriors, type CalibrationState, type MetaFiles, type MetaInput, type VerifiedCache,
+  buildMeta, buildOrCheckpoint, parseCalibration, parseVerified, posteriorHistory, VERIFIER, VERIFY_BUDGET, wantedPosteriors,
+  type CalibrationState, type MetaCheckpoint, type MetaFiles, type MetaInput, type VerifiedCache,
 } from "../meta.ts"
+import { commitMeta } from "../commit-meta.ts"
 import {
   bornLife, build, BUILT_AT, resetK, CALIBRATION, CENTRE, commit, CONFIG, DIAGNOSTICS, grow, noise, planted, POSTERIOR, put, REFS, REPO, runsDir,
   searchWorld, shaOf, shaOfGenome, SPACE, useTempRuns, VERIFIED, world,
@@ -818,6 +820,110 @@ describe("buildMeta in 05b: the search, only in mode search (plan 05b Task 8)", 
   }, 60_000)
 })
 
+describe("the verification-time bound: a build that cannot verify every life is a checkpoint (decision 0026)", () => {
+  /**
+   * A search world as a VERIFIER bump leaves it (no usable cache): 30 calibration lives under calibrate posteriors, 8
+   * lives under each of two search posteriors (ts and uniform), one forged life under the second (its drawSeed moved, so
+   * it is flagged) and one offline life. `picks` are the lives that may make a Thompson pick (born under a posterior
+   * with a gpu model), in learnerId order; `cheap` the others.
+   */
+  async function bumpedWorld() {
+    resetK(0x2000)
+    const { w } = await searchWorld()
+    await grow(w, 8, planted)
+    await build(w)
+    await grow(w, 8, planted)
+    const forged = await bornLife(w.previous.posteriorText, { effect: planted, alter: m => ({ ...m, drawSeed: (m.drawSeed! + 1) >>> 0 }) })
+    await bornLife(null, { effect: planted })
+    const input: MetaInput = {
+      runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(90), builtAt: BUILT_AT,
+      previous: { ...w.previous, verified: null }, posteriorsBySha: w.history, centres: w.centres,
+    }
+    const picks: string[] = [], cheap: string[] = []
+    for (const life of collectLives(runsDir())) {
+      const sha = life.files.find((f): f is LogFileV2 => f.schemaVersion === 2 && f.meta !== undefined)!.meta!.posteriorSha
+      const text = sha === null ? undefined : w.history.get(sha)
+      ;(text !== undefined && parsePosterior(text)!.models.gpu ? picks : cheap).push(life.learnerId)
+    }
+    return { w, input, forged, picks, cheap }
+  }
+  const isCheckpoint = (r: MetaFiles | MetaCheckpoint): r is MetaCheckpoint => "checkpoint" in r
+
+  it("repeated bounded builds write only verified.json until verification completes, then exactly the files one unbounded build gives, byte for byte", async () => {
+    const { input, forged, picks, cheap } = await bumpedWorld()
+    expect(picks).toHaveLength(17)
+    expect(cheap).toHaveLength(31)
+    const full = await buildMeta(input)
+    const fullVerdicts = parseVerified(full[VERIFIED])!.lives
+    expect(fullVerdicts[forged.learnerId]!.reason).toMatch(/^drawSeed /)
+
+    fitSpy.mockClear()
+    const budget = 4
+    let verified: VerifiedCache | null = null
+    let last: MetaFiles | MetaCheckpoint
+    let builds = 0
+    for (;;) {
+      last = await buildOrCheckpoint({ ...input, previous: { ...input.previous, verified } }, budget)
+      builds++
+      if (!isCheckpoint(last)) break
+      // A checkpoint carries verified.json and nothing else: no posterior, calibration, diagnostics, index line,
+      // confirmation, promotion or genome.json, so every output stays as main has it; and nothing after verification ran.
+      expect(Object.keys(last).sort()).toEqual(["checkpoint", VERIFIED])
+      expect(fitSpy).not.toHaveBeenCalled()
+      const cache = parseVerified(last[VERIFIED])!
+      // The verdicts so far: every cheap life, and the first `budget` lives per build that may make a pick.
+      const done = Math.min(picks.length, budget * builds)
+      expect(Object.keys(cache.lives)).toEqual([...cheap, ...picks.slice(0, done)].sort())
+      expect(last.checkpoint).toEqual({ fresh: (builds === 1 ? cheap.length : 0) + budget, verified: cheap.length + done, pending: picks.length - done })
+      // The cache never decides: each checkpointed verdict is the one a fresh, unbounded verification gives.
+      for (const [id, v] of Object.entries(cache.lives)) expect(v, id).toEqual(fullVerdicts[id])
+      verified = cache
+    }
+    expect(builds).toBe(Math.ceil(picks.length / budget)) // 5: four checkpoints, then the build that completes
+    expect(last).toEqual(full)
+    for (const k of [POSTERIOR, CALIBRATION, DIAGNOSTICS, VERIFIED] as const) expect(last[k], k).toBe(full[k])
+    expect(last.indexLine).toBe(full.indexLine)
+  }, 240_000)
+
+  it("the bound is deterministic: the same input verifies the same subset, whatever the history map's order; exactly `budget` pending lives completes", async () => {
+    const { w, input, picks } = await bumpedWorld()
+    const a = await buildOrCheckpoint(input, 5)
+    const b = await buildOrCheckpoint(input, 5)
+    const c = await buildOrCheckpoint({ ...input, posteriorsBySha: new Map([...w.history].reverse()) }, 5)
+    expect(isCheckpoint(a)).toBe(true)
+    expect(b).toEqual(a)
+    expect(c).toEqual(a)
+    // Resumed from a's verdicts: the next 5, the same each time.
+    const resumed = { ...input, previous: { ...input.previous, verified: parseVerified((a as MetaCheckpoint)[VERIFIED]) } }
+    expect(await buildOrCheckpoint(resumed, 5)).toEqual(await buildOrCheckpoint(resumed, 5))
+    // A budget of exactly the uncached lives that may pick completes in one build; one fewer leaves one pending.
+    const short = await buildOrCheckpoint(input, picks.length - 1)
+    expect(isCheckpoint(short) && short.checkpoint.pending).toBe(1)
+    expect(await buildOrCheckpoint(input, picks.length)).toEqual(await buildMeta(input))
+    // The pinned budget: these 17 lives are far under it.
+    expect(await buildOrCheckpoint(input)).toEqual(await buildMeta(input))
+    expect(VERIFY_BUDGET).toBe(200)
+    for (const bad of [0, -1, 1.5, Number.NaN]) await expect(buildOrCheckpoint(input, bad)).rejects.toThrow(/budget must be an integer >= 1/)
+  }, 240_000)
+
+  it("a checkpoint resumed under another verifier, or with a verdict cached under another posteriorSha, verifies those lives again: a cache entry never decides a verdict", async () => {
+    const { input, forged, picks } = await bumpedWorld()
+    const first = await buildOrCheckpoint(input, 4) as MetaCheckpoint
+    const cache = parseVerified(first[VERIFIED])!
+    // Another verifier's checkpoint is no cache: the same first checkpoint as from none.
+    const old = { ...cache, verifier: 1 } as unknown as VerifiedCache
+    expect(await buildOrCheckpoint({ ...input, previous: { ...input.previous, verified: old } }, 4)).toEqual(first)
+    // A "clean" verdict for the forged life, cached under a posteriorSha it was not born under: ignored, and the life is
+    // verified fresh and flagged, exactly as a build from no cache flags it.
+    const planted: VerifiedCache = { ...cache, lives: { ...cache.lives, [forged.learnerId]: { posteriorSha: "0".repeat(64), posteriorMode: "search", reason: null, genomeMismatch: false } } }
+    const full = await buildMeta(input)
+    const out = await buildMeta({ ...input, previous: { ...input.previous, verified: planted } })
+    expect(out).toEqual(full)
+    expect(parseVerified(out[VERIFIED])!.lives[forged.learnerId]!.reason).toMatch(/^drawSeed /)
+    expect(picks).toContain(forged.learnerId)
+  }, 240_000)
+})
+
 describe("posteriorHistory", () => {
   it("resolves only the wanted shas, newest first, stopping once all are found; skips commits that delete the file", async () => {
     const texts: Record<string, string> = { c1: '{"a":1}\n', c2: '{"a":2}\n', c3: '{"a":3}\n' }
@@ -902,6 +1008,46 @@ describe("meta-cli (a checkout of main in a temp git repo)", () => {
     expect(inWork("data/meta/posterior-index.jsonl").split("\n").filter(Boolean)).toHaveLength(1)
     expect(cli()).toBe("changed=false")
   }, 60_000)
+
+  it("a run left with more lives to verify than VERIFY_BUDGET writes only verified.json, commit-meta commits it alone, and the next run resumes and completes (decision 0026)", async () => {
+    resetK(0x3000)
+    const { w } = await searchWorld()
+    // One more life than the budget, each born under the signal posterior (it carries a gpu model): each may pick.
+    await grow(w, VERIFY_BUDGET + 1, planted)
+    const signal = w.last!
+    const runs = Object.assign({}, ...collectLives(runsDir()).map(l => runFiles(l.learnerId))) as Record<string, string>
+    fx.commitMain({
+      "package-lock.json": "{\"lockfileVersion\":3}\n",
+      "config/evaluation.json": readFileSync(join(REPO, "config/evaluation.json"), "utf8"),
+      "knowledge/genome.json": readFileSync(join(REPO, "knowledge/genome.json"), "utf8"),
+      // main's data/meta as the signal build left it: its cache holds the 30 calibration lives only.
+      [POSTERIOR]: signal[POSTERIOR], [CALIBRATION]: signal[CALIBRATION], [DIAGNOSTICS]: signal[DIAGNOSTICS], [VERIFIED]: signal[VERIFIED],
+      "data/meta/posterior-index.jsonl": signal.indexLine + "\n",
+      ...runs,
+    })
+    const outputs = [POSTERIOR, CALIBRATION, DIAGNOSTICS, "data/meta/posterior-index.jsonl"]
+    const before = outputs.map(inWork)
+    const git = (args: string[]) => execFileSync("git", args, { cwd: fx.work, encoding: "utf8", env: { ...process.env, ...FIXTURE_ENV }, stdio: ["ignore", "pipe", "pipe"] })
+
+    // The checkpoint: verified.json gains the budget's verdicts; every output keeps main's bytes, and nothing else is written.
+    expect(cli()).toBe("changed=true")
+    expect(git(["status", "--porcelain=v1", "--untracked-files=all"])).toBe(` M ${VERIFIED}\n`)
+    expect(outputs.map(inWork)).toEqual(before)
+    expect(Object.keys(parseVerified(inWork(VERIFIED))!.lives)).toHaveLength(30 + VERIFY_BUDGET)
+
+    // commit-meta commits verified.json alone, so the progress is on main for the next run.
+    const rebuild = async (): Promise<boolean> => { throw new Error("no rebuild without a rejected push") }
+    expect(await commitMeta({ git, installedLock: git(["rev-parse", "HEAD:package-lock.json"]).trim(), rebuild, log: () => {} })).toBe("committed")
+    expect(git(["log", "-1", "--format=%s"]).trim()).toBe(`meta: verified.json only, ${30 + VERIFY_BUDGET} lives verified; outputs unchanged`)
+    expect(git(["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]).trim()).toBe(VERIFIED)
+
+    // The next run verifies the one life left, and only now do the outputs move.
+    expect(cli()).toBe("changed=true")
+    expect(Object.keys(parseVerified(inWork(VERIFIED))!.lives)).toHaveLength(30 + VERIFY_BUDGET + 1)
+    expect(JSON.parse(inWork(DIAGNOSTICS)).verify).toMatchObject({ checked: 30 + VERIFY_BUDGET + 1, ineligible: [] })
+    expect(inWork("data/meta/posterior-index.jsonl").split("\n").filter(Boolean)).toHaveLength(inWork(POSTERIOR) === before[0] ? 1 : 2)
+    expect(cli()).toBe("changed=false")
+  }, 600_000)
 
   it("refuses confirmation files with a gap in their ids (1.json without 0.json), writing nothing", () => {
     fx.commitMain({

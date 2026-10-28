@@ -273,6 +273,24 @@ describe("commitMeta", { timeout: 30_000 }, () => {
     })
   }
 
+  it("verified.json alone (a verification checkpoint, decision 0026) → committed, its message naming the verdicts, on a main with or without posterior.json", async () => {
+    const verified = (n: number) => JSON.stringify({ schemaVersion: 1, verifier: 2, lives: Object.fromEntries(Array.from({ length: n }, (_, i) => [`lrn_${i.toString(16).padStart(16, "0")}`, {}])) }) + "\n"
+    const rebuild = async () => { throw new Error("no rebuild without a rejected push") }
+    // main has no data/meta yet: the first build's verification was already incomplete.
+    const t = setup()
+    t.write({ "data/meta/verified.json": verified(3) })
+    expect(await commitMeta({ git: t.git, installedLock: t.installedLock, rebuild, log: t.log })).toBe("committed")
+    expect(t.origin("diff-tree", "--no-commit-id", "--name-only", "-r", "main")).toBe("data/meta/verified.json")
+    expect(t.origin("log", "-1", "--format=%s", "main")).toBe("meta: verified.json only, 3 lives verified; outputs unchanged")
+    // main's outputs stay as they are; the next checkpoint adds verdicts.
+    t.fx.commitMain(META("a"))
+    t.write({ "data/meta/verified.json": verified(5) })
+    expect(await commitMeta({ git: t.git, installedLock: t.installedLock, rebuild, log: t.log })).toBe("committed")
+    expect(t.origin("diff-tree", "--no-commit-id", "--name-only", "-r", "main")).toBe("data/meta/verified.json")
+    expect(t.origin("log", "-1", "--format=%s", "main")).toBe("meta: verified.json only, 5 lives verified; outputs unchanged")
+    expect(t.origin("show", "main:data/meta/posterior.json") + "\n").toBe(META("a")["data/meta/posterior.json"])
+  })
+
   it("nothing changed → unchanged, no commit", async () => {
     const t = setup()
     t.fx.commitMain(META("a"))

@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url"
 import { isDeepStrictEqual } from "node:util"
 import { parseCentre, parseGenomeSpace } from "@blanktab/meta"
 import { confirmationPath, GENOME_PATH, parseConfirmation, PROMOTIONS_PATH, type ConfirmationFile } from "./confirm.ts"
-import { POSTERIOR_INDEX_PATH } from "./meta.ts"
+import { POSTERIOR_INDEX_PATH, VERIFIED_PATH } from "./meta.ts"
 
 /**
  * The files meta-cli.ts writes, and nothing else: meta.ts POSTERIOR_PATH, CALIBRATION_PATH, DIAGNOSTICS_PATH,
@@ -203,12 +203,22 @@ export async function commitMeta(
     if (recordErrors.length > 0) throw new Error(`refusing to commit: ${recordErrors.join("; ")}`)
 
     // 4. Commit as the Actions bot (author and committer).
-    const posteriorText = git(["show", `:${POSTERIOR}`])
-    const posterior = JSON.parse(posteriorText) as { mode?: unknown; page?: { eligibleLives?: unknown } }
-    const n = posterior.page?.eligibleLives
-    if (typeof posterior.mode !== "string" || !Number.isSafeInteger(n)) throw new Error(`${POSTERIOR} has no mode or page.eligibleLives`)
-    const sha8 = createHash("sha256").update(posteriorText, "utf8").digest("hex").slice(0, 8)
-    let message = `meta: ${posterior.mode}, ${n} eligible lives, posterior ${sha8}`
+    let message: string
+    if (staged.length === 1 && staged[0] === VERIFIED_PATH) {
+      // verified.json alone: a verification checkpoint (decision 0026: every output stays main's until verification
+      // completes, and main may have no posterior.json yet), or a cache rebuilt with no output changed. Its message
+      // names the verdicts, not a posterior this commit does not change.
+      const lives = jsonObject(show(VERIFIED_PATH) ?? "")?.lives
+      if (typeof lives !== "object" || lives === null) throw new Error(`${VERIFIED_PATH} has no lives`)
+      message = `meta: verified.json only, ${Object.keys(lives).length} lives verified; outputs unchanged`
+    } else {
+      const posteriorText = git(["show", `:${POSTERIOR}`])
+      const posterior = JSON.parse(posteriorText) as { mode?: unknown; page?: { eligibleLives?: unknown } }
+      const n = posterior.page?.eligibleLives
+      if (typeof posterior.mode !== "string" || !Number.isSafeInteger(n)) throw new Error(`${POSTERIOR} has no mode or page.eligibleLives`)
+      const sha8 = createHash("sha256").update(posteriorText, "utf8").digest("hex").slice(0, 8)
+      message = `meta: ${posterior.mode}, ${n} eligible lives, posterior ${sha8}`
+    }
     for (const p of staged.filter(x => CONFIRMATION_RE.test(x))) {
       const c = parseConfirmation(show(p)!)
       message += atHead(p) === null ? `; declare confirmation ${c.id}` : `; confirmation ${c.id} ${c.result!.outcome}`

@@ -36,6 +36,24 @@ export const VERIFIED_PATH = "data/meta/verified.json"
  * with any change between the verifier markers below; meta.test.ts pins their sha256 to this number.
  */
 export const VERIFIER = 2
+/**
+ * The verification-time bound (decision 0026; decision 0024's planned mitigation, "The verification-time bound"): at
+ * most this many fresh verifications per build of lives that may make a Thompson pick (`mayPick`: born under a
+ * posterior that carries a gpu model). A deterministic count of work, not a wall clock: it decides only how much is
+ * verified in one build, never what any verdict or output is. With more such lives uncached, the build is a checkpoint
+ * (`buildOrCheckpoint`): it records the verdicts it has in verified.json and changes no other file, and the next build
+ * resumes from them; posterior.json and every other output change only in the build whose verification is complete.
+ *
+ * Sized from decision 0024's measurement [agent's call, not yet confirmed]: re-verifying ts lives at the 1,000-row cap
+ * costs 0.33 s each memoised (the candidate set and the Thompson pick) plus at most one conditioning per distinct
+ * posterior (about 0.17 s: 500 s unmemoised against 331 s memoised for 1,000 lives), so at most 0.5 s per life on the
+ * laptop and 1.5 s on a CI runner (3×). 200 lives are then at most 5 min per build, and commit-meta's up to 3 builds (a
+ * moved main) at most 15 min, with the fit's under a minute each on top: under 20 of gate.yml's 30 minutes, with room
+ * for checkout, npm ci and the gate's merges. Lives under a posterior with no model (calibrate, flat, paused, offline)
+ * never condition a GP and cost milliseconds: they are not counted, so a lost cache of calibration lives still
+ * completes in one build. A lost cache of 1,000 ts lives completes in 5 builds (hourly: about 5 hours).
+ */
+export const VERIFY_BUDGET = 200
 
 /** The calibration design's Sobol seed (spec §4.6). */
 const CALIB_SEED = "calib/1"
@@ -87,6 +105,20 @@ export interface MetaFiles {
   promotionLine: string | null
   /** The new knowledge/genome.json on a pass (in the same commit as the result), else null. */
   "knowledge/genome.json": string | null
+}
+/**
+ * A build whose verification is incomplete (decision 0026): verified.json with every verdict it has (the cached ones
+ * and this build's fresh ones), and nothing else. Every other file stays exactly as main has it, so no output is ever
+ * computed from a part of the lives; the next build resumes from these verdicts.
+ */
+export interface MetaCheckpoint {
+  "data/meta/verified.json": string
+  checkpoint: {
+    /** Lives verified fresh in this build (all of them, counted against VERIFY_BUDGET or not). */
+    fresh: number
+    /** Lives with a verdict in this verified.json, and lives left unverified for the next build. */
+    verified: number; pending: number
+  }
 }
 
 const isV2 = (f: LogFile): f is LogFileV2 => f.schemaVersion === 2
@@ -351,9 +383,21 @@ interface Lives {
   unscored: Record<string, number>
   /** Every checked life's verdict: the next verified.json. */
   verdicts: Record<string, Verdict>
+  /** Lives verified fresh in this build, and lives left unverified because VERIFY_BUDGET was spent (decision 0026). */
+  fresh: number; pending: number
 }
 
-async function readLives(input: MetaInput, calibration: CalibrationState): Promise<Lives> {
+/**
+ * Whether verifying `meta`'s life fresh may condition a GP and make a Thompson pick (birthDraw's ts branch, the cost
+ * decision 0024 measured): only when its birth posterior is known, readable and carries a gpu model. Every other
+ * verification costs milliseconds. It decides how many lives one build verifies (VERIFY_BUDGET), never a verdict, so
+ * it lives outside the verifier markers. A forged block naming such a posterior is counted too (it may reach the pick).
+ */
+function mayPick(meta: MetaBlock, posteriors: ReadonlyMap<string, Posterior | null>): boolean {
+  return meta.posteriorSha !== null && posteriors.get(meta.posteriorSha)?.models.gpu !== undefined
+}
+
+async function readLives(input: MetaInput, calibration: CalibrationState, budget: number): Promise<Lives> {
   const { space, refs, config } = input
   const search = getEvaluator(config.search)
   if (search.kind !== "life" || !search.evaluateLife) throw new Error(`${config.search} is not a life evaluator`)
@@ -370,9 +414,10 @@ async function readLives(input: MetaInput, calibration: CalibrationState): Promi
   const ctx = { space, centres: input.centres, posteriors, conditioned: conditionedBySha() }
   const cache = input.previous.verified
   const out: Lives = {
-    rows: [], confirmLives: [], checked: 0, flagged: [], mismatched: [], mismatchedRows: [], unscored: {}, verdicts: {},
+    rows: [], confirmLives: [], checked: 0, flagged: [], mismatched: [], mismatchedRows: [], unscored: {}, verdicts: {}, fresh: 0, pending: 0,
     perGenome: designShas.map(genomeSha => ({ genomeSha, born: 0, rows: 0, failed: 0, abandoned: 0, failedRows: 0 })),
   }
+  let picks = 0 // fresh verifications that may make a Thompson pick, against `budget`
   for (const life of collectLives(input.runsDir)) { // sorted by learnerId
     const birth = birthOf(life.files)
     // Search and confirmation draws are verified; newborn and legacy lives are not draws and never rows. Other genome
@@ -380,7 +425,16 @@ async function readLives(input: MetaInput, calibration: CalibrationState): Promi
     if (!birth || !isChecked(birth.meta, space.schemaVersion)) continue
     const widthsClass = widthsClassOf(birth.file.widths)
     // A life's birth verdict is computed once (verified.json); scoring and rows below are recomputed every build.
-    const checked: Checked = cachedVerdict(cache, life.learnerId, birth.meta.posteriorSha) ?? await verify(life.learnerId, birth.meta, widthsClass, ctx)
+    const cached = cachedVerdict(cache, life.learnerId, birth.meta.posteriorSha)
+    // The bound (decision 0026): once `budget` lives that may make a Thompson pick are verified fresh, every further
+    // such uncached life waits for the next build (learnerId order, so the same input verifies the same subset). It
+    // has no verdict here, so this build is a checkpoint and buildOrCheckpoint writes nothing but verified.json.
+    if (cached === null && mayPick(birth.meta, posteriors)) {
+      if (picks >= budget) { out.pending++; continue }
+      picks++
+    }
+    const checked: Checked = cached ?? await verify(life.learnerId, birth.meta, widthsClass, ctx)
+    if (cached === null) out.fresh++
     out.verdicts[life.learnerId] = { posteriorSha: birth.meta.posteriorSha, ...checked }
     out.checked++
     // The design is the calibration state's, not the birth's: checked every build, after the cache, so a calibration
@@ -473,11 +527,29 @@ async function searchState(input: MetaInput, lives: Lives): Promise<SearchState>
 
 /**
  * data/meta/posterior.json, calibration.json, diagnostics.json and verified.json from main's merged logs, and the
- * index line when the posterior changed. The posterior holds only what follows from the rows (and the mode, looks and
- * design). The model, the incumbent and the confirmation exist only in mode search: in every other mode no fit runs,
- * and the posterior is 05a's with schemaVersion 2 and page.rowsSinceDeclaration 0.
+ * index line when the posterior changed, with every life verified in this one build (no VERIFY_BUDGET): what
+ * buildOrCheckpoint's checkpoints converge to. The gate itself calls buildOrCheckpoint.
  */
 export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
+  const out = await buildOrCheckpoint(input, Infinity)
+  if ("checkpoint" in out) throw new Error("buildMeta: an unbounded build left lives unverified") // unreachable
+  return out
+}
+
+/**
+ * The gate's build (meta-cli.ts). With every life verified (at most `budget` of them fresh that may make a Thompson
+ * pick), the files as buildMeta gives them: the posterior holds only what follows from the rows (and the mode, looks
+ * and design). The model, the incumbent and the confirmation exist only in mode search: in every other mode no fit
+ * runs, and the posterior is 05a's with schemaVersion 2 and page.rowsSinceDeclaration 0.
+ *
+ * With lives left unverified, a checkpoint (decision 0026): verified.json with the verdicts this build has, and no
+ * other file. Nothing after verification runs, so no output is ever computed from a part of the lives; each build
+ * verifies the next `budget`, and the build that verifies the last one writes exactly what one unbounded build would,
+ * since a cached verdict is the verdict a fresh verification gives (the cache never decides; decision 0024).
+ */
+export async function buildOrCheckpoint(input: MetaInput, budget: number = VERIFY_BUDGET): Promise<MetaFiles | MetaCheckpoint> {
+  // A budget of 0 would never verify a ts life, and so never complete: refused, as is anything but a count.
+  if (budget !== Infinity && !(Number.isSafeInteger(budget) && budget >= 1)) throw new Error(`buildOrCheckpoint: budget must be an integer >= 1, got ${budget}`)
   const { space, centre, config } = input
   const centreSha = await genomeSha(space.schemaVersion, centre)
   const prevCal = input.previous.calibration
@@ -485,7 +557,11 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
     ? await keptCalibration(prevCal, config, space)
     : { schemaVersion: 1, genomeSchema: space.schemaVersion, evaluator: config.search, signal: config.signal, seed: CALIB_SEED, genomes: await design(space, centre), repeats: REPEATS_FIRST, looks: [], outcome: "pending" }
 
-  const lives = await readLives(input, calibration)
+  const lives = await readLives(input, calibration, budget)
+  const verified: VerifiedCache = { schemaVersion: 1, verifier: VERIFIER, lives: lives.verdicts }
+  if (lives.pending > 0) {
+    return { [VERIFIED_PATH]: serialise(verified), checkpoint: { fresh: lives.fresh, verified: lives.checked, pending: lives.pending } }
+  }
   calibration = nextLook(calibration, lives.rows, input)
   const mode = modeOf(calibration)
   // The mode guard (the user's "inert until signal"): nothing of the search is computed in any other mode.
@@ -544,7 +620,6 @@ export async function buildMeta(input: MetaInput): Promise<MetaFiles> {
     // A trigger that declared nothing, and why (confirm.ts MAX_CONFIRMATIONS_PER_CANDIDATE).
     ...(step?.skipped ? { confirmationSkipped: step.skipped } : {}),
   }
-  const verified: VerifiedCache = { schemaVersion: 1, verifier: VERIFIER, lives: lives.verdicts }
   return {
     [POSTERIOR_PATH]: posteriorText, [CALIBRATION_PATH]: serialise(calibration), [DIAGNOSTICS_PATH]: serialise(diagnostics),
     [VERIFIED_PATH]: serialise(verified), indexLine,

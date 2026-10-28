@@ -169,7 +169,7 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
     const commit = forwardOnly(before, `${name}: gate`)
     if (inWork(["rev-parse", "HEAD"]).trim() !== commit) fail(`${name}: the gate's checkout is not main after commit-meta`)
     const moved = commit !== before
-    if (moved !== /^meta=committed$/m.test(committed.out)) fail(`${name}: commit-meta said ${committed.out.trim()}, main ${moved ? "moved" : "did not move"}`)
+    if (moved !== /^meta=(committed|verified-only)$/m.test(committed.out)) fail(`${name}: commit-meta said ${committed.out.trim()}, main ${moved ? "moved" : "did not move"}`)
     const paths = moved ? origin("diff-tree", "--no-commit-id", "--name-only", "-r", commit).split("\n").filter(Boolean) : []
     const stray = paths.filter(p => !META_PATH_RE.test(p))
     if (stray.length > 0) fail(`${name}: the gate committed ${stray.join(", ")}`)

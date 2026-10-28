@@ -273,6 +273,27 @@ describe("commitMeta", { timeout: 30_000 }, () => {
     })
   }
 
+  it("verified.json alone (a verification checkpoint, decision 0026) → verified-only, its message naming the verdicts, on a main with or without posterior.json", async () => {
+    const verified = (n: number) => JSON.stringify({ schemaVersion: 1, verifier: 2, lives: Object.fromEntries(Array.from({ length: n }, (_, i) => [`lrn_${i.toString(16).padStart(16, "0")}`, {}])) }) + "\n"
+    const rebuild = async () => { throw new Error("no rebuild without a rejected push") }
+    // main has no data/meta yet: the first build's verification was already incomplete.
+    const t = setup()
+    t.write({ "data/meta/verified.json": verified(3) })
+    expect(await commitMeta({ git: t.git, installedLock: t.installedLock, rebuild, log: t.log })).toBe("verified-only")
+    expect(t.origin("diff-tree", "--no-commit-id", "--name-only", "-r", "main")).toBe("data/meta/verified.json")
+    expect(t.origin("log", "-1", "--format=%s", "main")).toBe("meta: verified.json only, 3 lives verified; outputs unchanged")
+    // main's outputs stay as they are; the next checkpoint adds verdicts.
+    t.fx.commitMain(META("a"))
+    t.write({ "data/meta/verified.json": verified(5) })
+    expect(await commitMeta({ git: t.git, installedLock: t.installedLock, rebuild, log: t.log })).toBe("verified-only")
+    expect(t.origin("diff-tree", "--no-commit-id", "--name-only", "-r", "main")).toBe("data/meta/verified.json")
+    expect(t.origin("log", "-1", "--format=%s", "main")).toBe("meta: verified.json only, 5 lives verified; outputs unchanged")
+    expect(t.origin("show", "main:data/meta/posterior.json") + "\n").toBe(META("a")["data/meta/posterior.json"])
+    // verified.json with an output beside it is an ordinary commit, which deploys.
+    t.write({ "data/meta/verified.json": verified(6), ...META("b") })
+    expect(await commitMeta({ git: t.git, installedLock: t.installedLock, rebuild, log: t.log })).toBe("committed")
+  })
+
   it("nothing changed → unchanged, no commit", async () => {
     const t = setup()
     t.fx.commitMain(META("a"))
@@ -510,6 +531,15 @@ describe("workflows", () => {
     expect(deployJob).toMatch(/^ {4}needs: gate\n {4}if: \$\{\{ !cancelled\(\) && \(\(needs\.gate\.outputs\.merged != '' && needs\.gate\.outputs\.merged != '0'\) \|\| needs\.gate\.outputs\.meta == 'committed'\) \}\}\n {4}uses: \.\/\.github\/workflows\/deploy\.yml$/m)
     expect(gate).toMatch(/meta: \$\{\{ steps\.meta\.outputs\.meta \}\}/)
     expect(deploy).toContain("if [ -f data/meta/posterior.json ]; then cp data/meta/posterior.json app/dist/knowledge/posterior.json; fi")
+  })
+  it("a verified-only commit deploys nothing: gate.yml's deploy condition does not name it, and deploy.yml never reads verified.json (so such a commit changes no deployed byte)", () => {
+    const deployJob = gate.slice(gate.indexOf("\n  deploy:\n"))
+    expect(deployJob).not.toMatch(/verified-only/)
+    expect(deployJob).not.toMatch(/outputs\.meta != /) // a negated test would let verified-only through
+    // Every data/meta path deploy.yml names is posterior.json: no glob or directory copy can bring the cache along.
+    const named = deploy.match(/data\/meta[^\s;"']*/g) ?? []
+    expect(named.length).toBeGreaterThan(0)
+    expect(named.filter(p => p !== "data/meta/posterior.json")).toEqual([])
   })
   it("gate.yml pulls main, builds data/meta and commits it after the gate step, with only contents and pull-requests write", () => {
     const at = (s: string) => { const i = gate.indexOf(s); expect(i, s).toBeGreaterThan(-1); return i }

@@ -4,6 +4,8 @@
 // promotion line on a pass, and prints `changed=true|false`. It reads config/ and never writes it. knowledge/genome.json
 // it writes only on a confirmation's pass, with the gate-computed content buildMeta returns (spec §4.5); committing is
 // commit-meta.ts's. It prints the build's time on stderr, so a slow fit shows in the gate's log.
+// A build whose verification is incomplete (VERIFY_BUDGET; decision 0026) writes verified.json only: every other file
+// stays exactly as main has it until a later run completes verification.
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { genomeSha, parseCentre } from "@blanktab/meta"
@@ -11,10 +13,10 @@ import { loadEvalConfig, loadReferences } from "../eval/config.ts"
 import { loadGenomeSpace, mainSpaces } from "./gate.ts"
 import { git, isShallow } from "./github.ts"
 import { confirmationPath, GENOME_PATH, parseConfirmation, PROMOTIONS_PATH, type ConfirmationFile } from "./confirm.ts"
-import { centresBySha } from "./history.ts"
+import { centresBySha, RUNS_DIR, runArrivals } from "./history.ts"
 import {
-  buildMeta, CALIBRATION_PATH, DIAGNOSTICS_PATH, parseCalibration, parseVerified, POSTERIOR_INDEX_PATH, POSTERIOR_PATH, posteriorHistory,
-  VERIFIED_PATH, wantedPosteriors,
+  buildOrCheckpoint, CALIBRATION_PATH, DIAGNOSTICS_PATH, parseCalibration, parseVerified, POSTERIOR_INDEX_PATH, POSTERIOR_PATH, posteriorHistory,
+  VERIFIED_PATH, VERIFY_BUDGET, wantedPosteriors,
 } from "./meta.ts"
 
 const root = git(["rev-parse", "--show-toplevel"]).trim()
@@ -49,17 +51,21 @@ if (verifiedText !== null && verified === null) console.error(`::warning::${VERI
 const centres = centresBySha(git, mainSpaces(root, git))
 centres.set(await genomeSha(space.schemaVersion, centre), centre)
 
-const runsDir = join(root, "data/runs")
+const runsDir = join(root, RUNS_DIR)
+// When each run file reached main, read only while a confirmation is open: past its deadline, the gate decides it on
+// main as it was then (confirm.ts asOfDeadline; decision 0026), whenever this build runs.
+const open = confirmations.length > 0 && confirmations[confirmations.length - 1]!.result === null
+const arrivals = open ? runArrivals(git) : null
 const started = Date.now() // timing for the log only, never for a file
-const files = await buildMeta({
+const built = await buildOrCheckpoint({
   runsDir, config, refs: loadReferences(root, config), space, centre,
   sourceCommit: git(["rev-parse", "HEAD"]).trim(),
   builtAt: new Date().toISOString(), // the one clock read that reaches a file: it goes into the index line only
   previous: { calibration: calibrationText === null ? null : parseCalibration(calibrationText), posteriorText, verified, confirmations },
   // Only the versions some not-yet-verified life was born under.
   posteriorsBySha: posteriorHistory(git, wantedPosteriors(runsDir, space.schemaVersion, verified)),
-  centres,
-})
+  centres, arrivals,
+}, VERIFY_BUDGET)
 console.error(`buildMeta took ${((Date.now() - started) / 1000).toFixed(1)} s`)
 
 let changed = false
@@ -69,10 +75,18 @@ const write = (rel: string, text: string) => {
   writeFileSync(join(root, rel), text)
   changed = true
 }
-for (const rel of [POSTERIOR_PATH, CALIBRATION_PATH, DIAGNOSTICS_PATH, VERIFIED_PATH] as const) write(rel, files[rel])
-for (const [rel, text] of Object.entries(files.confirmations)) write(rel, text)
-// Only a passing confirmation's result brings these, in the same build (and so the same gate commit) as that result.
-if (files[GENOME_PATH] !== null) write(GENOME_PATH, files[GENOME_PATH])
-if (files.promotionLine !== null) { mkdirSync(dirname(join(root, PROMOTIONS_PATH)), { recursive: true }); appendFileSync(join(root, PROMOTIONS_PATH), files.promotionLine + "\n"); changed = true }
-if (files.indexLine !== null) { appendFileSync(join(root, POSTERIOR_INDEX_PATH), files.indexLine + "\n"); changed = true }
+if ("checkpoint" in built) {
+  // The checkpoint: the verdicts so far, and nothing else (no posterior, calibration, diagnostics, index line,
+  // confirmation, promotion or genome.json), so main's outputs never reflect a part of the lives.
+  const { fresh, verified, pending } = built.checkpoint
+  console.error(`::notice::verification incomplete: ${fresh} lives verified fresh, ${verified} with a verdict, ${pending} left for the next run (VERIFY_BUDGET ${VERIFY_BUDGET}); only ${VERIFIED_PATH} is written`)
+  write(VERIFIED_PATH, built[VERIFIED_PATH])
+} else {
+  for (const rel of [POSTERIOR_PATH, CALIBRATION_PATH, DIAGNOSTICS_PATH, VERIFIED_PATH] as const) write(rel, built[rel])
+  for (const [rel, text] of Object.entries(built.confirmations)) write(rel, text)
+  // Only a passing confirmation's result brings these, in the same build (and so the same gate commit) as that result.
+  if (built[GENOME_PATH] !== null) write(GENOME_PATH, built[GENOME_PATH])
+  if (built.promotionLine !== null) { mkdirSync(dirname(join(root, PROMOTIONS_PATH)), { recursive: true }); appendFileSync(join(root, PROMOTIONS_PATH), built.promotionLine + "\n"); changed = true }
+  if (built.indexLine !== null) { appendFileSync(join(root, POSTERIOR_INDEX_PATH), built.indexLine + "\n"); changed = true }
+}
 console.log(`changed=${changed}`)

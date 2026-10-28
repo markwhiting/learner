@@ -70,3 +70,32 @@ export function centresBySha(git: (args: string[]) => string, spaces: ReadonlyMa
   }
   return out
 }
+
+/** Where main's session logs live (validate.ts: data/runs/<learnerId>/<seq>.json). */
+export const RUNS_DIR = "data/runs"
+
+/**
+ * When each run file on main reached it, by "<learnerId>/<seq>.json" (relative to data/runs): the committer time, as
+ * an ISO string, of the commit on main's first-parent line that added it (decision 0026; confirm.ts asOfDeadline).
+ * First parent, so a file arrives when its PR's squash (or merge) commit lands on main, which GitHub stamps when it
+ * merges, never at a time a PR's own commits claim. A run file is only ever added (validate.ts: seq above main's);
+ * should one be added again after a deletion, the present copy's arrival, the newest, is the one kept.
+ */
+export function runArrivals(git: (args: string[]) => string): Map<string, string> {
+  const out = new Map<string, string>()
+  const log = git(["log", "--first-parent", "--diff-filter=A", "--no-renames", "--format=format:@%cI", "--name-only", "HEAD", "--", RUNS_DIR])
+  let at: string | null = null
+  for (const line of log.split("\n")) {
+    if (line === "") continue
+    if (line.startsWith("@")) {
+      const ms = Date.parse(line.slice(1))
+      if (Number.isNaN(ms)) throw new Error(`runArrivals: not a commit time: ${JSON.stringify(line.slice(1))}`)
+      at = new Date(ms).toISOString()
+      continue
+    }
+    if (at === null || !line.startsWith(`${RUNS_DIR}/`)) throw new Error(`runArrivals: unexpected git log line ${JSON.stringify(line)}`)
+    const rel = line.slice(RUNS_DIR.length + 1)
+    if (!out.has(rel)) out.set(rel, at) // newest first: the first seen is the present copy's
+  }
+  return out
+}

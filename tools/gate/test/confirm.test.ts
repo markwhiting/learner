@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync, rmSync } from "node:fs"
+import { readdirSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { NEWBORN_LEVELS, type LogFileV2 } from "@blanktab/harness/log"
 import { birthDraw, parseCentre, parsePosterior, toUnit, type ArmName, type Genome, type Posterior } from "@blanktab/meta"
@@ -12,7 +12,7 @@ import { buildMeta, type MetaFiles, type MetaInput } from "../meta.ts"
 import { incumbentFor } from "../search.ts"
 import { serialise } from "../serialise.ts"
 import {
-  bornLife, build, BUILT_AT, CENTRE, commit, CONFIG, grow, POSTERIOR, put, REFS, runsDir, shaOf, shaOfGenome, SPACE, useTempRuns, world,
+  arrivalsIn, bornLife, build, BUILT_AT, CENTRE, commit, CONFIG, grow, POSTERIOR, put, REFS, runsDir, shaOf, shaOfGenome, SPACE, useTempRuns, world,
   type Effect, type World,
 } from "./meta-fixture.ts"
 
@@ -311,6 +311,46 @@ describe("confirmations (spec §4.5; plan 05b Task 9)", () => {
     expect(serialise(w.previous.confirmations[0])).toBe(out.confirmations[C0])
   }, 240_000)
 
+  it("past the deadline only what main held at it decides (decision 0026): arms filled by lives or files merged after it stay incomplete however late the build, so a delayed build cannot turn incomplete into pass; arms full by it still pass", async () => {
+    const { w, Q } = await declaredWorld()
+    const c = w.previous.confirmations[0]!
+    const early = await confirmLives(Q, { candidate: 3, centre: 2, newborn: 5 }, { advantage: true })
+    const inTime = new Set(arrivalsIn(runsDir(), BUILT_AT).keys())
+    // The rest of every arm (with room for evalSeeds the early lives hold), merged after the deadline; and one early
+    // candidate life's last file with them.
+    await confirmLives(Q, { candidate: 30, centre: 30, newborn: 70 }, { advantage: true })
+    const id = early.candidate[0]!
+    const lastFile = `${id}/${Math.max(...readdirSync(join(runsDir(), id)).map(f => parseInt(f, 10)))}.json`
+    const afterDeadline = at(DEADLINE_DAYS * 24 * HOUR + HOUR)
+    const late = (rel: string) => (!inTime.has(rel) || rel === lastFile ? afterDeadline : undefined)
+    // The build that finally decides runs 30 days after the deadline (a checkpoint each hour until then, say).
+    const builtAt = at((DEADLINE_DAYS + 30) * 24 * HOUR)
+    const prev = w.previous
+
+    // Every file on main by the deadline: the arms were full at it, and a late build still passes.
+    const full = parseConfirmation((await build(w, { builtAt, previous: prev })).confirmations[C0]!).result!
+    expect(full.outcome).toBe("pass")
+
+    // The same main, the rest merged after the deadline: incomplete, on the early lives alone, as main held them.
+    const out = await build(w, { builtAt, previous: prev, arrivals: arrivalsIn(runsDir(), BUILT_AT, late) })
+    const r = parseConfirmation(out.confirmations[C0]!).result!
+    expect(r).toMatchObject({ outcome: "incomplete", decidedAt: builtAt })
+    expect(r.lives).toEqual({ candidate: [...early.candidate].sort(), centre: [...early.centre].sort(), newborn: [...early.newborn].sort() })
+    // The early life whose last file came late was still running at the deadline: kept, but not counted.
+    const counts = r.output.diagnostics.counts as Record<ArmName, Record<string, number>>
+    expect(counts.candidate).toMatchObject({ counted: 2 })
+    expect(counts.centre).toMatchObject({ counted: 2 })
+    expect(out.promotionLine).toBeNull()
+    expect(out["knowledge/genome.json"]).toBeNull()
+
+    // Without the arrivals, or with a file of a confirmation life missing from them, the gate stops: it never guesses.
+    await expect(build(w, { builtAt, previous: prev, arrivals: null })).rejects.toThrow(/confirmation 0 is past its deadline/)
+    await expect(build(w, { builtAt, previous: prev, arrivals: new Map() })).rejects.toThrow(/no arrival on main for lrn_/)
+    // At the deadline nothing is cut: no arrivals are needed, and the arms are counted as they are.
+    const onTime = await build(w, { builtAt: c.deadline, previous: prev, arrivals: null })
+    expect(parseConfirmation(onTime.confirmations[C0]!).result!.outcome).toBe("pass")
+  }, 240_000)
+
   it("a failed candidate life counts as a non-pass; an abandoned one is excluded", async () => {
     const { w, Q } = await declaredWorld()
     const shape = (arm: ArmName, i: number): Shape => (arm !== "candidate" ? "complete" : i === 0 ? "abandoned" : i === 1 ? "failed" : "complete")
@@ -398,7 +438,7 @@ describe("confirmations (spec §4.5; plan 05b Task 9)", () => {
     await confirmLives(Q, FULL, { advantage: true })
     const input: MetaInput = {
       runsDir: runsDir(), config: CONFIG, refs: REFS, space: SPACE, centre: CENTRE, sourceCommit: commit(90), builtAt: at(5 * HOUR),
-      previous: w.previous, posteriorsBySha: w.history, centres: w.centres,
+      previous: w.previous, posteriorsBySha: w.history, centres: w.centres, arrivals: null,
     }
     const a = await buildMeta(input)
     const b = await buildMeta(input)

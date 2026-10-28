@@ -308,7 +308,7 @@ The method used (random or UCB) is logged. Rows from other `schemaVersion`s are 
     - Counters (CU, seq) only increase.
     - Plausibility: CU per wall-second is within device bounds; checkup levels match CU; numbers are finite and within the bounds in `settings-space.json`.
   - Posts a status check.
-- **`gate.yml` (hourly cron, plus manual trigger; `contents: write`, `pull-requests: write`):**
+- **`gate.yml` (hourly cron, plus manual trigger; `contents: write`, `pull-requests: write`; **amended by 0025**: also runs when validate completes, the cron kept as a backstop):**
   - **Log PRs:** merged if they are valid and either (a) the session marked itself final (§10), or (b) the heartbeat is more than **48 h** old. That is past the 24 h adoption window, so no tab can still be writing to the branch. Logs of failed runs are merged too, because unfavourable results are kept.
   - **Knowledge PRs:** merged if they are valid, and the claim is *consistent with* the cited logs (the claimed score equals the logged checkup result at that level; independent re-evaluation is impossible without weights, and dishonest contributors are a v1 non-goal), and the claimed score beats the **75th percentile** of sessions that started from the current knowledge SHA under the same condition and level (with at least 5 such sessions; before that, it must beat their median). Otherwise the PR is closed with a reason.
   - **Any PR touching code or other paths:** labelled `needs-human`. Never merged automatically.

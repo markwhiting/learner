@@ -1,4 +1,5 @@
-// Usage: tsx tools/gate/commit-meta.ts   (in the gate's checkout of main, after meta-cli.ts; prints meta=committed|unchanged)
+// Usage: tsx tools/gate/commit-meta.ts   (in the gate's checkout of main, after meta-cli.ts; prints
+// meta=committed|verified-only|unchanged)
 // The gate's one direct write to main (decision 0019; invariant 7): a commit of exactly the files meta-cli.ts computed
 // from main's merged logs (data/meta/**, and knowledge/genome.json on a promotion), never PR content, never forced. On
 // a push that main moved past, it resets to the new main and rebuilds from scratch (meta-cli.ts again), so it never
@@ -10,7 +11,7 @@ import { pathToFileURL } from "node:url"
 import { isDeepStrictEqual } from "node:util"
 import { parseCentre, parseGenomeSpace } from "@blanktab/meta"
 import { confirmationPath, GENOME_PATH, parseConfirmation, PROMOTIONS_PATH, type ConfirmationFile } from "./confirm.ts"
-import { POSTERIOR_INDEX_PATH } from "./meta.ts"
+import { POSTERIOR_INDEX_PATH, VERIFIED_PATH } from "./meta.ts"
 
 /**
  * The files meta-cli.ts writes, and nothing else: meta.ts POSTERIOR_PATH, CALIBRATION_PATH, DIAGNOSTICS_PATH,
@@ -148,6 +149,15 @@ const LOCKFILE = "package-lock.json"
 const isBehind = (e: unknown) => /\[rejected\][^\n]*\((fetch first|non-fast-forward)\)/.test(e instanceof Error ? e.message : String(e))
 
 /**
+ * What commitMeta did: pushed a commit that changes an output ("committed"), pushed one that changes verified.json
+ * alone ("verified-only": a verification checkpoint, decision 0026, or a cache rebuilt with no output changed), or
+ * pushed nothing ("unchanged"). gate.yml deploys on "committed" only: verified.json is the gate's cache, which
+ * deploy.yml never copies, so a verified-only commit leaves every deployed byte as it was (commit-meta.test.ts checks
+ * that deploy.yml does not name it) and a deploy for it would spend a runner and Pages API calls on nothing.
+ */
+export type MetaResult = "committed" | "verified-only" | "unchanged"
+
+/**
  * Stages data/meta and knowledge/genome.json, refuses anything but the gate's own files (appended to as the gate
  * appends, and a genome.json only as one promotion), commits them as the Actions bot and pushes HEAD to main.
  * A push rejected because main moved: fetch, hard reset to origin/main, drop untracked data/meta files, rebuild()
@@ -158,7 +168,7 @@ const isBehind = (e: unknown) => /\[rejected\][^\n]*\((fetch first|non-fast-forw
 export async function commitMeta(
   deps: { git: (args: string[]) => string; installedLock: string; rebuild(): Promise<boolean>; log(m: string): void },
   maxTries = 3,
-): Promise<"committed" | "unchanged"> {
+): Promise<MetaResult> {
   const { git, log } = deps
   if (!Number.isSafeInteger(maxTries) || maxTries < 1) throw new Error(`not a number of tries: ${maxTries}`)
   if (!/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(deps.installedLock)) throw new Error(`not a lockfile blob sha: ${JSON.stringify(deps.installedLock.slice(0, 80))}`)
@@ -203,12 +213,23 @@ export async function commitMeta(
     if (recordErrors.length > 0) throw new Error(`refusing to commit: ${recordErrors.join("; ")}`)
 
     // 4. Commit as the Actions bot (author and committer).
-    const posteriorText = git(["show", `:${POSTERIOR}`])
-    const posterior = JSON.parse(posteriorText) as { mode?: unknown; page?: { eligibleLives?: unknown } }
-    const n = posterior.page?.eligibleLives
-    if (typeof posterior.mode !== "string" || !Number.isSafeInteger(n)) throw new Error(`${POSTERIOR} has no mode or page.eligibleLives`)
-    const sha8 = createHash("sha256").update(posteriorText, "utf8").digest("hex").slice(0, 8)
-    let message = `meta: ${posterior.mode}, ${n} eligible lives, posterior ${sha8}`
+    let message: string
+    const verifiedOnly = staged.length === 1 && staged[0] === VERIFIED_PATH
+    if (verifiedOnly) {
+      // verified.json alone: a verification checkpoint (decision 0026: every output stays main's until verification
+      // completes, and main may have no posterior.json yet), or a cache rebuilt with no output changed. Its message
+      // names the verdicts, not a posterior this commit does not change.
+      const lives = jsonObject(show(VERIFIED_PATH) ?? "")?.lives
+      if (typeof lives !== "object" || lives === null) throw new Error(`${VERIFIED_PATH} has no lives`)
+      message = `meta: verified.json only, ${Object.keys(lives).length} lives verified; outputs unchanged`
+    } else {
+      const posteriorText = git(["show", `:${POSTERIOR}`])
+      const posterior = JSON.parse(posteriorText) as { mode?: unknown; page?: { eligibleLives?: unknown } }
+      const n = posterior.page?.eligibleLives
+      if (typeof posterior.mode !== "string" || !Number.isSafeInteger(n)) throw new Error(`${POSTERIOR} has no mode or page.eligibleLives`)
+      const sha8 = createHash("sha256").update(posteriorText, "utf8").digest("hex").slice(0, 8)
+      message = `meta: ${posterior.mode}, ${n} eligible lives, posterior ${sha8}`
+    }
     for (const p of staged.filter(x => CONFIRMATION_RE.test(x))) {
       const c = parseConfirmation(show(p)!)
       message += atHead(p) === null ? `; declare confirmation ${c.id}` : `; confirmation ${c.id} ${c.result!.outcome}`
@@ -222,7 +243,7 @@ export async function commitMeta(
     try {
       git(["push", "origin", "HEAD:main"])
       log(`pushed to main (try ${attempt})`)
-      return "committed"
+      return verifiedOnly ? "verified-only" : "committed"
     } catch (e) {
       if (!isBehind(e)) throw e
       if (attempt >= maxTries) throw new Error(`push rejected ${attempt} times because main kept moving (${maxTries} tries): giving up, the next run rebuilds`, { cause: e })

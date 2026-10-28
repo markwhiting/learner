@@ -37,14 +37,15 @@ export interface Fixture {
 }
 
 /** `base`: an empty (or absent) directory to build the fixture in, kept by the caller; default a fresh temp dir. */
-export function makeFixture(base?: string): Fixture {
+/** `env`: more git environment, read at every call (the simulation pins commit dates with it). */
+export function makeFixture(base?: string, env: () => NodeJS.ProcessEnv = () => ({})): Fixture {
   const dir = base !== undefined ? resolve(base) : mkdtempSync(join(tmpdir(), "gate-git-"))
   if (base !== undefined) {
     mkdirSync(dir, { recursive: true })
     if (readdirSync(dir).length > 0) throw new Error(`makeFixture: ${dir} is not empty`)
   }
   const bare = join(dir, "origin.git"), src = join(dir, "src"), work = join(dir, "work")
-  const run = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, ...FIXTURE_ENV }, stdio: ["ignore", "pipe", "pipe"] }).trim()
+  const run = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8", env: { ...process.env, ...FIXTURE_ENV, ...env() }, stdio: ["ignore", "pipe", "pipe"] }).trim()
   run(dir, "init", "-q", "--bare", "-b", "main", bare)
   run(bare, "config", "uploadpack.allowFilter", "true")
   run(bare, "config", "uploadpack.allowReachableSHA1InWant", "true") // GitHub serves any reachable commit by its sha

@@ -4,7 +4,7 @@
 // A confirmation file is append-only: written once when declared, once more when its result is appended, never again.
 // Its times (declaredAt, deadline, decidedAt) are the build's `builtAt`, passed in: no clock is read here, and no time
 // reaches posterior.json. Promotion writes knowledge/genome.json, and only on a pass of both tests (decision 0018).
-import type { MetaBlock } from "@blanktab/harness/log"
+import type { LogFile, MetaBlock } from "@blanktab/harness/log"
 import {
   armOfSeed, checkGenome, fromUnit, genomeSha, parseCentre, sha256Hex,
   type ArmName, type Genome, type GenomeSpace, type GpModel, type Incumbent, type ServedConfirmation,
@@ -185,6 +185,33 @@ function armCounts(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, b
   return { counted, inFlight }
 }
 
+/**
+ * Confirmation `c`'s lives as main held them at its deadline (decision 0026, "A deadline judged on main as it was"): of
+ * each life, only the files that reached main by then (`arrivals`: when each run file reached main, history.ts
+ * runArrivals), and no life whose birth file reached main after it. Past the deadline the gate decides on these alone,
+ * so the outcome is a function of main's history and never of how late the deciding build runs: a build delayed past
+ * the deadline (a verification checkpoint, which anyone can cause by merging enough draws; a failed gate run) decides
+ * exactly what a build at the deadline would have, and lives or files merged after it cannot fill an arm. A file of
+ * one of its lives with no arrival stops the gate: it cannot say when that file came, and never guesses.
+ */
+export function asOfDeadline(lives: readonly VerifiedConfirmLife[], c: ConfirmationFile, arrivals: ReadonlyMap<string, string> | null): VerifiedConfirmLife[] {
+  const deadline = Date.parse(c.deadline)
+  const out: VerifiedConfirmLife[] = []
+  for (const l of lives) {
+    if (l.meta.role !== "confirm" || l.meta.confirmation?.id !== c.id) continue // byArm's lives of c, and no others
+    if (arrivals === null) throw new Error(`confirmation ${c.id} is past its deadline: deciding it needs when each of its lives' files reached main (MetaInput.arrivals)`)
+    const arrived = (f: LogFile): boolean => {
+      const at = arrivals.get(`${f.learnerId}/${f.seq}.json`)
+      if (at === undefined) throw new Error(`confirmation ${c.id}: no arrival on main for ${f.learnerId}/${f.seq}.json`)
+      return Date.parse(at) <= deadline // decided only when builtAt is strictly later (0024): a file at the deadline is in time
+    }
+    const birth = l.life.files.find(f => f.schemaVersion === 2 && f.meta !== undefined)
+    if (birth === undefined || !arrived(birth)) continue
+    out.push({ life: { learnerId: l.life.learnerId, files: l.life.files.filter(arrived) }, meta: l.meta })
+  }
+  return out
+}
+
 const lifeIds = (groups: Record<ArmName, LifeInput[]>): Record<ArmName, string[]> =>
   ({ candidate: groups.candidate.map(l => l.learnerId), centre: groups.centre.map(l => l.learnerId), newborn: groups.newborn.map(l => l.learnerId) })
 
@@ -199,7 +226,8 @@ function resultOf(c: ConfirmationFile, groups: Record<ArmName, LifeInput[]>, out
 /**
  * The result to append, or null when it is not yet time (spec §4.5): when every arm is `full` (counted reaches its
  * target), or builtAt is past the deadline. Full: pass on score 1, fail on score 0, ineligible when the output is not
- * eligible. The deadline first: incomplete, with the output still recorded. A file with a result keeps it.
+ * eligible. The deadline first: incomplete, with the output still recorded. A file with a result keeps it. Past the
+ * deadline, `groups` and `full` are of the lives main held at it (confirmStep, asOfDeadline).
  */
 export function decide(c: ConfirmationFile, groups: Record<ArmName, LifeInput[]>, full: boolean, input: MetaInput): ConfirmationFile["result"] {
   if (c.result !== null) return c.result
@@ -297,9 +325,12 @@ export async function confirmStep(input: MetaInput, confirmLives: readonly Verif
   let decided = false
   if (last !== null && last.result === null) {
     await checkedOpen(last, input)
-    const groups = armGroups(confirmLives, last, standing)
-    const counts = armCounts(confirmLives, last, input.builtAt, standing)
-    const full = ARMS.every(a => counts.counted[a] >= last.target[a])
+    // Past the deadline, only what main held at it decides (asOfDeadline): never what merged while the build was late.
+    const deciding = Date.parse(input.builtAt) > Date.parse(last.deadline) ? asOfDeadline(confirmLives, last, input.arrivals) : confirmLives
+    const groups = armGroups(deciding, last, standing)
+    const kept = keptByArm(deciding, last, standing)
+    const full = ARMS.every(a => kept[a].counted >= last.target[a])
+    const counts = armCounts(confirmLives, last, input.builtAt, standing) // serving only: an undecided file is before its deadline
     const result = last.centre.genomeSha !== centre.genomeSha
       ? resultOf(last, groups, () => "incomplete", input)
       : decide(last, groups, full, input)

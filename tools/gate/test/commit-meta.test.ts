@@ -531,4 +531,18 @@ describe("workflows", () => {
     expect(deploy).toContain("cp knowledge/*.json app/dist/knowledge/")
     expect(gate).toMatch(/promotion/)
   })
+  it("gate.yml runs hourly, by hand and when validate completes (any conclusion), one run at a time; it reads nothing from the triggering run and checks out main (decision 0025)", () => {
+    const validate = readFileSync(join(REPO, ".github/workflows/validate.yml"), "utf8")
+    expect(gate).toMatch(/^on:\n {2}schedule:\n {4}- cron: "17 \* \* \* \*"\n {2}workflow_run:\n {4}workflows: \[validate\]\n {4}types: \[completed\]\n {2}workflow_dispatch:\n(?! )/m)
+    expect(validate).toMatch(/^name: validate$/m) // workflow_run names the workflow, not the file
+    expect(gate).toMatch(/^concurrency:\n {2}group: gate\n {2}cancel-in-progress: false$/m)
+    const steps = gate.split("\n").filter(l => !/^\s*#/.test(l)).join("\n")
+    // A PR's branch, title or sha from the event never reaches a step, and no PR code is checked out.
+    expect(steps).not.toMatch(/github\.event|github\.head_ref|pull_request_target/)
+    const gateJob = gate.slice(gate.indexOf("  gate:"), gate.indexOf("  deploy:"))
+    expect(gateJob).not.toMatch(/^ {4}if:/m) // a run skipped at job level would still take the concurrency slot
+    const checkouts = gate.split("uses: actions/checkout@").slice(1)
+    expect(checkouts.length).toBeGreaterThan(0)
+    for (const c of checkouts) expect(c).toMatch(/^v4\n\s+with:\n\s+ref: main\n/)
+  })
 })

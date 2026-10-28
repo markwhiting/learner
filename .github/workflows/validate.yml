@@ -17,7 +17,8 @@ jobs:
       # Checks out main's scripts rather than the PR's merge ref, so session data is never executed. But under
       # pull_request a PR that edits this workflow file runs its own version of it: this check proves nothing
       # about a PR that touches code, and humans must not trust it there. The enforcement is the gate, which
-      # runs from main on a schedule and re-validates every PR itself before merging.
+      # runs from main (when this workflow completes, and hourly) and re-validates every PR itself before merging.
+      # This run's outcome is not an input to it (decision 0025).
       # Full history: the PR's files are the diff from its merge base with main (github.ts loadPrViaGit).
       - uses: actions/checkout@v4
         with:

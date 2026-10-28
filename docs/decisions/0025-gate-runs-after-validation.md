@@ -59,6 +59,15 @@ The user was told the plan "trigger the gate when a learner's PR opens, as well 
   - **Races should be rarer.** A triggered run starts a minute or two after a flush, and a tab's next timed flush is 10 min away (`FLUSH_EVERY_MS`). An hourly run landed anywhere in that cycle.
   - **A run that leaves a PR for later is no worse off than before.** That covers a moved head, a base newer than the checkout, or a second PR for one learner. The next trigger or the cron decides it.
 
+## Addendum, 2026-10-28: runs at most every 5 min [agent's call, not yet confirmed]
+
+Written the same day, before the decision was confirmed, after a second review. Anyone who can open or edit a PR causes validate completions, so without a bound they set how often the gate runs.
+
+- **A triggered run waits 5 min before acting** (`gate.yml`, a `sleep 300` step that runs only when `GITHUB_EVENT_NAME` is `workflow_run`). It holds the one running slot while it waits, and newer triggers fold into the one waiting run, so triggered runs act at least 5 min apart: at most about 12 an hour plus the cron. The cron and a manual dispatch do not wait. A PR now merges about 5–7 min after its validate, not 1–2.
+- **What is bounded, and what is not.** This bounds how often the gate runs, not what one run costs. A run still reads every open `run: ` PR, so its calls grow with the number of open PRs, as they always did. That figure times 12 an hour is the gate's ceiling; at today's few open PRs it is far below the token's 1,000 an hour. The "Budget" estimates above are per run and still hold.
+- **A per-run cap on gh calls was built and rejected.** A second review confirmed that the cap changed what is merged, not only how much a run does: if the older of two PRs for a learner failed to merge, the newer valid one was never loaded; PRs that fail to load the same way every run (one with a non-UTF-8 path, which its author controls) used up the cap every run and blocked newer valid PRs for good; and it counted `gh` invocations against the REST pool, while most gate calls (`gh pr list`, `pr ready`, `pr merge`) spend the separate GraphQL pool. Bounding cost without changing decisions needs a design that cannot starve a PR; it is left open until the number of open PRs makes it matter.
+- **A main-side failure** (see Consequences) now repeats about every 5 min while PRs change, not after every validate completion.
+
 ## Alternatives considered
 
 - **Keep the cron only, or run it more often (`*/10`).** GitHub skips scheduled runs under load whatever the period, so the lag is not bounded; a shorter period mostly adds idle runs.

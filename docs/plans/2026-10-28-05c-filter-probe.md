@@ -104,7 +104,7 @@ None of these is built by this plan. The agent's recommendation is marked.
   - Output is `serialise`d (sorted keys, one-space indent, final newline). Two runs give identical bytes (a test, and Task 7 on real data).
 - **No silent exclusions.** Every committed life the probe does not use is listed in the report with its reason.
 - **Agent's calls are labelled.** Every choice this plan makes for the user goes in one decision file, called **the probe-calls decision** in this plan, marked not yet confirmed. The §5.2 draft is a separate decision file, called **the inherited-filter draft** (Task 8).
-  - **Numbers are assigned when each file is created,** not here: the next free number in `docs/decisions/` on the branch at that moment, after merging `main`. On `main` at `3ead845` the last is 0024. Two unmerged branches already take the next two: `wf/gate-cadence` adds 0025 (`0025-gate-runs-after-validation.md`) and `wf/verify-bound` adds 0026 (`0026-verification-progress-checkpoint.md`). So the two files here are likely 0027 (`NNNN-filter-probe-calls.md`) and 0028 (`NNNN-inherited-filter-condition.md`). Before creating one, check the open `wf/*` branches as well as `main` (`git diff --name-only --diff-filter=A main...<branch> -- docs/decisions`), and never reuse a number another branch has taken.
+  - **Numbers are assigned when each file is created,** not here: the next free number in `docs/decisions/` on the branch at that moment, after merging `main`. On `main` at `b87c3e5` the last is 0026 (`0025-gate-runs-after-validation.md`, `0026-verification-progress-checkpoint.md`), so the two files here are likely 0027 (`NNNN-filter-probe-calls.md`) and 0028 (`NNNN-inherited-filter-condition.md`). Before creating one, check any open branches as well as `main` (`git diff --name-only --diff-filter=A main...<branch> -- docs/decisions`), and never reuse a number another branch has taken.
   - Once a file exists, cite it by its number in the code comments, the research note and the plans README.
 - **Do not edit `docs/open-questions.md`** in this plan. A user decision on Task 8's draft updates it later.
 - **Hygiene and gates.** As plan 05a: no trailing whitespace and no machine paths in any file, docs included. Every task runs `npm test && npm run typecheck && npm run lint`. **After any push**, open the CI run and check it is green.
@@ -234,7 +234,7 @@ None of these is built by this plan. The agent's recommendation is marked.
 - **The Gram.**
   - The columns are 16 units × every (life, state) with state ∈ {init, 2048}. At 37 lives that is 1,184 columns, a 1,184² float64 matrix of about 11 MB.
   - **Two passes over the frames.** Pass 1 computes every column's mean. Pass 2 accumulates the centred products (upper triangle, then mirrored).
-  - Only the Gram is kept, never the activations: those would be about 2 GB.
+  - Only the Gram is kept, never the activations: those would be about 2.4 GB (conflict 6).
   - A column whose variance is exactly 0 (a dead unit) is flagged in `varZero`.
   - 512 and 1,024 snapshots get weight motion only. Activations are compared at init and 2,048, as the spec says.
 - **Cost [estimate]:** about 1.8e11 multiply-adds for the periphery at 37 lives, so a few minutes in Node. Task 7 measures it.

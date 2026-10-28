@@ -6,7 +6,7 @@ name: gate
 # closed sooner, and a run skipped at job level would still take the concurrency slot below and could displace a
 # pending run that had work to do. Nothing from github.event.workflow_run (a PR's branch or title) is used: the run
 # reads the open PRs itself. The cost: a failure on main's side (no valid genome space, a lockfile mismatch, meta-cli)
-# now repeats after every validate completion, not once an hour, until main is fixed; the next completion then picks
+# now repeats about every 5 min while PRs change (the wait below), not once an hour, until main is fixed; the next completion then picks
 # everything up (0025, Consequences). Its API calls share the repo's 1,000/h token pool with validate and deploy (0025).
 on:
   schedule:
@@ -36,6 +36,12 @@ jobs:
       merged: ${{ steps.gate.outputs.merged }}
       meta: ${{ steps.meta.outputs.meta }}
     steps:
+      # A run a validate completion started waits 5 min before it reads anything (decision 0025, "Runs at most every 5
+      # min"). It holds the one running slot while it waits, and newer triggers fold into the one waiting run, so
+      # triggered runs act at least 5 min apart: at most about 12 an hour plus the cron, however often PRs change. The
+      # waiting run reads every open PR, so nothing is dropped. The cron and a manual dispatch do not wait.
+      # GITHUB_EVENT_NAME is set by the runner from the trigger, never by anything in a PR.
+      - run: '[ "$GITHUB_EVENT_NAME" != workflow_run ] || sleep 300'
       # Full history: a learner belongs to the author of the PR that first put its logs on main (github.ts boundAuthor).
       - uses: actions/checkout@v4
         with:

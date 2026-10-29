@@ -347,7 +347,7 @@
    1,
    2,
    4,
-   2,
+   1,
    1,
    4,
    2,
@@ -420,7 +420,7 @@
    {
     "failed": 0,
     "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
-    "rows": 4
+    "rows": 5
    },
    {
     "failed": 0,
@@ -455,13 +455,13 @@
  "mode": "calibrate",
  "models": {},
  "page": {
-  "calibrationLives": 39,
+  "calibrationLives": 40,
   "calibrationTarget": 45,
-  "eligibleLives": 39,
+  "eligibleLives": 40,
   "lastPromotion": null,
   "looks": 1,
   "rowsSinceDeclaration": 0
  },
  "schemaVersion": 2,
- "sourceCommit": "83c8e31c8c8595331fbc58968e4b9e7ab80507ea"
+ "sourceCommit": "4a60a3193f9fe0cb633fc064fae2a101da3fc670"
 }

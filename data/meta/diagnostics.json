@@ -38,7 +38,7 @@
   },
   {
    "abandoned": 0,
-   "born": 5,
+   "born": 6,
    "failed": 0,
    "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
    "rows": 5
@@ -75,10 +75,10 @@
  "schemaVersion": 1,
  "unscored": {
   "abandoned": 2,
-  "no 2048 checkup": 1
+  "no 2048 checkup": 2
  },
  "verify": {
-  "checked": 53,
+  "checked": 54,
   "genomeMismatch": {
    "count": 0,
    "learnerIds": [],

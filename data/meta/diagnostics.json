@@ -3,7 +3,7 @@
  "perGenome": [
   {
    "abandoned": 0,
-   "born": 5,
+   "born": 6,
    "failed": 0,
    "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
    "rows": 5
@@ -37,7 +37,7 @@
    "rows": 6
   },
   {
-   "abandoned": 0,
+   "abandoned": 1,
    "born": 6,
    "failed": 0,
    "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
@@ -74,11 +74,11 @@
  ],
  "schemaVersion": 1,
  "unscored": {
-  "abandoned": 2,
+  "abandoned": 3,
   "no 2048 checkup": 2
  },
  "verify": {
-  "checked": 54,
+  "checked": 55,
   "genomeMismatch": {
    "count": 0,
    "learnerIds": [],

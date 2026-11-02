@@ -343,7 +343,7 @@
    }
   ],
   "need": [
-   1,
+   0,
    1,
    1,
    2,
@@ -400,7 +400,7 @@
    {
     "failed": 0,
     "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
-    "rows": 5
+    "rows": 6
    },
    {
     "failed": 0,
@@ -455,13 +455,13 @@
  "mode": "calibrate",
  "models": {},
  "page": {
-  "calibrationLives": 50,
+  "calibrationLives": 51,
   "calibrationTarget": 60,
-  "eligibleLives": 50,
+  "eligibleLives": 51,
   "lastPromotion": null,
   "looks": 2,
   "rowsSinceDeclaration": 0
  },
  "schemaVersion": 2,
- "sourceCommit": "78db941da020a22f0c3e0e0b3db9cf31dcd1b883"
+ "sourceCommit": "6de7accace475ae8a8af4980f78b794c955a80f3"
 }

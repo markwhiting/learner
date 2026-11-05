@@ -430,7 +430,7 @@
    {
     "failed": 0,
     "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
-    "rows": 6
+    "rows": 7
    },
    {
     "failed": 0,
@@ -455,13 +455,13 @@
  "mode": "calibrate",
  "models": {},
  "page": {
-  "calibrationLives": 53,
+  "calibrationLives": 54,
   "calibrationTarget": 60,
-  "eligibleLives": 53,
+  "eligibleLives": 54,
   "lastPromotion": null,
   "looks": 2,
   "rowsSinceDeclaration": 0
  },
  "schemaVersion": 2,
- "sourceCommit": "0ecc3668d9d7e9cedf65bce05c4da0c066c3cb6b"
+ "sourceCommit": "305dc64c31aad688c8f27fe1d2b0d57a9a09778e"
 }

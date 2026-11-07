@@ -377,6 +377,12 @@
    "posteriorMode": "calibrate",
    "posteriorSha": "1002424ae7ecafd765d2f6d5a8d5ced5bfe314f202bb0b2df4e9b87ecd3b42c2",
    "reason": null
+  },
+  "lrn_fd6bb00dcf988a5d": {
+   "genomeMismatch": false,
+   "posteriorMode": "calibrate",
+   "posteriorSha": "fdffa42f1924c7a9b4d6186502ed6bfce86dfd8851b489cd1d30ce5714fb36b8",
+   "reason": null
   }
  },
  "schemaVersion": 1,

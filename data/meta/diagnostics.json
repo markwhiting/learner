@@ -13,7 +13,7 @@
    "born": 6,
    "failed": 0,
    "genomeSha": "3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
-   "rows": 5
+   "rows": 6
   },
   {
    "abandoned": 2,
@@ -75,7 +75,7 @@
  "schemaVersion": 1,
  "unscored": {
   "abandoned": 4,
-  "no 2048 checkup": 2
+  "no 2048 checkup": 1
  },
  "verify": {
   "checked": 66,

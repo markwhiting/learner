@@ -78,7 +78,7 @@
   "no 2048 checkup": 2
  },
  "verify": {
-  "checked": 71,
+  "checked": 72,
   "genomeMismatch": {
    "count": 0,
    "learnerIds": [],

@@ -457,11 +457,11 @@
  "page": {
   "calibrationLives": 61,
   "calibrationTarget": 60,
-  "eligibleLives": 69,
+  "eligibleLives": 70,
   "lastPromotion": null,
   "looks": 3,
   "rowsSinceDeclaration": 0
  },
  "schemaVersion": 2,
- "sourceCommit": "0c63b55d97c8a329ffabb3219446047eb8f14fe4"
+ "sourceCommit": "b4fbde24c149b9b009f49f17b0509a8d31889d48"
 }

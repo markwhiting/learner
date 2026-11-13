@@ -75,10 +75,10 @@
  "schemaVersion": 1,
  "unscored": {
   "abandoned": 5,
-  "no 2048 checkup": 2
+  "no 2048 checkup": 3
  },
  "verify": {
-  "checked": 95,
+  "checked": 96,
   "genomeMismatch": {
    "count": 0,
    "learnerIds": [],

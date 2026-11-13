@@ -74,8 +74,8 @@
  ],
  "schemaVersion": 1,
  "unscored": {
-  "abandoned": 5,
-  "no 2048 checkup": 3
+  "abandoned": 6,
+  "no 2048 checkup": 2
  },
  "verify": {
   "checked": 96,

@@ -21,6 +21,15 @@ All of these were fixed, tested and committed **before** the probe first ran on 
 - **The manifest lives in `tools/probe/filter-probe-set.json`,** not `knowledge/` (tabs fetch that) or `data/` (the gate writes that). Nothing in `packages/` or `app/` imports `tools/probe/` (a test), and a test checks that no committed life under `data/runs` or `data/newborns` has a training, held-out or checkup world with a probe seed.
 - At generation, 236 of the 256 periphery frames and 124 of the 256 fovea frames are distinct (a step that does not move the cursor or change the room repeats a frame). Repeats are kept: the set is what the rule gives.
 
+### Which lives count [agent's call, not yet confirmed; following spec §5.1 "fresh search lives"]
+
+- **Eligible:** every file has a meta block with `role: "search"` and `inheritance.filters: "none"`; GPU widths (`conv1` 16, and the rest of `GPU_WIDTHS`, since the birth state depends on every width) in every snapshot file; one snapshot each at 512, 1,024 and 2,048 CU (by `levelAtOrBelow(cu)`, the lowest-seq file at a level); an integer `settings.seed`, the same in every file; no lower learnerId among the candidates with the same seed; and a first layer that changed between every pair of consecutive states.
+- **Excluded with the first failing reason,** in this order: `no meta`, `role <r>`, `inheritance <x>`, `widths conv1 <c>` (or `widths <c1>/<c2>/<enc>/<hidden>` when only a later width differs), `no snapshot at <level>`, `no seed`, `seed shared with <learnerId>`, `filters frozen after <state>`. Every excluded life is listed in the report.
+- **Shared seeds.** Two lives with one learner seed start from bit-identical first layers; their init pair would inflate the init control, and the identification check could not tell them apart. Only the lowest learnerId per seed is kept, as decision 0024 does for confirmation lives that share an `evalSeed`.
+- **Frozen filters.** The states in order are init (recomputed), 512, 1,024 and 2,048. If any state's first layer (all four arrays) is bit-identical to the one before it, the life is excluded with `filters frozen after <the earlier state>`. A float32 layer trained with a non-zero learning rate does not repeat itself bit for bit over thousands of steps; a repeat means no gradient reached conv1 or the snapshot was a stale read, and either way the logged 2,048 state is not a 2,048 CU learned state. Only bit-identical repeats exclude: slow but non-zero motion is a finding, kept, and flagged in the report when periphery motion does not grow from 512 to 2,048. Plan 05c found one such life (`lrn_4c7ec98889ef9cbb`, `filters frozen after 512`); at the time of the first run there are three (the research note lists them).
+- **Weight motion** is ‖(w, b) − (w₀, b₀)‖ / ‖(w₀, b₀)‖ per encoder, weights and biases together, in float64, at 512, 1,024 and 2,048 CU.
+- **The birth state** is recomputed with `createModel(cpu, settings.seed, GPU_WIDTHS)`'s `FIRST_LAYER_PARAMS`, and tested bit for bit against a newborn learner's `readParams()`.
+
 ## Alternatives considered
 
 Each section above names what it rejected.

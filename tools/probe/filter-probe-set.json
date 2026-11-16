@@ -1,0 +1,3098 @@
+{
+ "frames": [
+  {
+   "action": {
+    "button": 1,
+    "key": 36,
+    "move": 13,
+    "scroll": 2
+   },
+   "fovea": "1a2cb3cbf8f6d541505b7363ad6ab6f5f6c042dbbbabeb705dfee14e8184ee07",
+   "periphery": "f81ea68aa71e669a1ec73dead978cc9499921118086122dcc8cc3c5465f78e24",
+   "seed": 20000,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 4,
+    "move": 8,
+    "scroll": 2
+   },
+   "fovea": "8318bb592a26bbb648b5b47cb5a3921226004784cbca05eb5cdb829e190ba87c",
+   "periphery": "315a5c6acc6cf376a4d409709ca66a7792ff3c38188daa165face899d9841537",
+   "seed": 20000,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 38,
+    "move": 5,
+    "scroll": 2
+   },
+   "fovea": "8e9062f1609f71ac7863faee4fb9ae521f67f1ee06c8cbb0b793132b94a94030",
+   "periphery": "9d58411e50046f1a62a4ec8210c94ba661fd8e4be840bdf5d4b11d11990a3ba9",
+   "seed": 20000,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 6,
+    "move": 21,
+    "scroll": 0
+   },
+   "fovea": "ab1aa93e6e98c3137c2b1808a77665641ab1d48312ea88d454189179a77b35f9",
+   "periphery": "98818a6ceac70f8be6d83d2a342d40b7a925fe056753fbb405bbb7b16306e265",
+   "seed": 20000,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 7,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "f86411a89302a3484c56f478351084e0df90963e239d36209d76084c05f4e92d",
+   "periphery": "8ec1c297b23c96903a1950b9d64dc66d76e9f9658eccce35e35467c34e76bbde",
+   "seed": 20000,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 29,
+    "move": 2,
+    "scroll": 1
+   },
+   "fovea": "f16b8b29381494e3b3a15a22022ed5bf827c62874acf280e190c1ceecdcd6bb2",
+   "periphery": "ca86a01c10554641a5fa14c7482d95ce0e08b5806e32c4f1a8b06abf23b5143a",
+   "seed": 20000,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 35,
+    "move": 10,
+    "scroll": 0
+   },
+   "fovea": "47088a47cc97295378ef64708923ab18dfe8389d7eab2fb4d8382bcbdaa62e1f",
+   "periphery": "c831b4f3967ff8b3e29163459fdd530dd56d048e7210255d1d338bd208e61c99",
+   "seed": 20000,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 4,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "73c3483c37a049a34a1e39b45b77803935c04df52c0fe6eabf3fad938cbf7351",
+   "periphery": "df470ae28edabb2dbbd93c2615c1a392f3e50a934020b097a626c6768d2a304b",
+   "seed": 20000,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 9,
+    "move": 20,
+    "scroll": 1
+   },
+   "fovea": "3f00a4397a16428afb13f7b4e8b58499654e8b4412f4b0e741e784ac587a5e6e",
+   "periphery": "37d083c0007260a4da1ffd6674b71a9c7d2a2621f9b4c094cb56c0b8beaec0b2",
+   "seed": 20000,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 12,
+    "move": 20,
+    "scroll": 1
+   },
+   "fovea": "aa817b1904ecfd41bf5078e667a533f3a1149cbd44025af3595a127934e3ed1a",
+   "periphery": "9c06af645f303cc2dbf48f21bacdf59813941feed9d97d9d6afa97d8503e553a",
+   "seed": 20000,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 18,
+    "move": 6,
+    "scroll": 0
+   },
+   "fovea": "328c58827a1924b5a22dba5f773f55d3a86c7dd9917935dfac4d0f92b47c292c",
+   "periphery": "277d14c5f6867be05418de26a0918de5a73732c943a7e1b692b846061694a34a",
+   "seed": 20000,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 23,
+    "move": 3,
+    "scroll": 1
+   },
+   "fovea": "37f3e928e0dcf53b0e7b5df199b666a0c44ebdf9a9c1647218a051f56886b72b",
+   "periphery": "7f0af860f9971e33280d4aa4c8a0100c45ab195d68fac85f2829f0f5f7edd3bf",
+   "seed": 20000,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 9,
+    "move": 21,
+    "scroll": 2
+   },
+   "fovea": "e6b04a3f7ff334327618390b9bde28bb0fc08602e1860c1249884d4cc929a07d",
+   "periphery": "4768cb6743284fde5035ed187c408c4b46ca9d71cc5eeadff54a90d1ab3e4b24",
+   "seed": 20000,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 34,
+    "move": 7,
+    "scroll": 2
+   },
+   "fovea": "540c5115687347cc5029c26edbb5dcbe5a8194a7854a661529baac5a65746870",
+   "periphery": "6161689dd8154d22584e30d3bdd865e2086231cdaefdcf8f762f135bc3e0d55b",
+   "seed": 20000,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 37,
+    "move": 2,
+    "scroll": 2
+   },
+   "fovea": "fae90f01fb225fea830290173286e0629a50262c0767678fe3f3f1bd43b62c52",
+   "periphery": "ea75e9da420c30b66e24f938064fd632e394775382d90f57a7d609ae158ec00a",
+   "seed": 20000,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 17,
+    "move": 21,
+    "scroll": 1
+   },
+   "fovea": "f9717dc24d1480ac1f5f41ae20f503887d64dbc34d16299c00c6b3ccfbb33e34",
+   "periphery": "e3b7fc6c93802f54c61959442da0d55d0fd25595ee226e37fef642fddb920d77",
+   "seed": 20000,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 24,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "173a98e13fb43b8538c2dc4630e81341cdbf1d8694a20d0063b31fe36f5ec657",
+   "periphery": "6bb6776ebad50a86be1c66ca819c825437677e7c97210f7c447e015c67105cca",
+   "seed": 20001,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 39,
+    "move": 13,
+    "scroll": 0
+   },
+   "fovea": "6c6182e115f4499d5431bea2a36e70b134ba35611344e409db2db689ea913af3",
+   "periphery": "918eb3c7be2521f4ca35e5836770252b6d06e2341b7170041c8286d10a59eb35",
+   "seed": 20001,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 35,
+    "move": 2,
+    "scroll": 1
+   },
+   "fovea": "4208e8540e0dfbad98fc0eb7be304a2fb2581d6fac6e8d849ce7a6f137d78d37",
+   "periphery": "fad9ac33cf2eeb10f19632c95cab973e0d5a4efa960110810147cd579704e88f",
+   "seed": 20001,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 9,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "0477139bbe4a28ce65a80bac7c34dc6d60116c496fe162d4cc436f6ad70eb540",
+   "periphery": "854252a50192b3704bfc780c8ca103954fe42c33d0a4c5fd732775efd5f2a4f9",
+   "seed": 20001,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 36,
+    "move": 5,
+    "scroll": 0
+   },
+   "fovea": "010fd0489e2f3f21e25ef341b9b74c68069b4a07ec06e2eb1f0b55d41198055f",
+   "periphery": "0c630269e94f26c6183bb148f645ffdf74132625085f00c4c3158e97ffeacf2e",
+   "seed": 20001,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 25,
+    "move": 10,
+    "scroll": 0
+   },
+   "fovea": "62adb9d6e02bb32b969666dc3dd36853b5c98be9090e2435531ca6d8cc70c990",
+   "periphery": "5a8cfd6d7ba8095461afd8be0bb05153076b715866c3c33fdc4b1726ea851b43",
+   "seed": 20001,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 23,
+    "move": 7,
+    "scroll": 0
+   },
+   "fovea": "7f4fcfed5f62f4c169fc45623acddfa94637ecd28238466e32529ec52f8c6c38",
+   "periphery": "7550ce15cd8569d63715456a70c262336820285379ff01a4dd2617f2f1f1b62c",
+   "seed": 20001,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 41,
+    "move": 22,
+    "scroll": 2
+   },
+   "fovea": "ca0c434e604e77fa2aa5962b5c64f68c4685f761369e4cc5bfaa412696eb1e2e",
+   "periphery": "ee4c4ce69ddb4071bb98df81018a3908dd48702feb5cdb4afb06d65a927cfcc7",
+   "seed": 20001,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 4,
+    "move": 9,
+    "scroll": 0
+   },
+   "fovea": "0b0b3b598cc909d205fbcf13127c84c40e53edfc60318f2a1bf3744ae667422c",
+   "periphery": "c046fb2268251af425079d1c308ad047782c83a9cc086602e61f5d3179f1c93c",
+   "seed": 20001,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 16,
+    "move": 22,
+    "scroll": 1
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "bf75b2cb8efdad8af37203dfc8f5dca47e4d9c8240ec1fe550d0d69ca809f28d",
+   "seed": 20001,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 26,
+    "move": 17,
+    "scroll": 2
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "abaf9489125101722fad30ec878b202cce957197f4822cdb05baa6f665f5e1a9",
+   "seed": 20001,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 15,
+    "move": 9,
+    "scroll": 1
+   },
+   "fovea": "3bf36b15ad2c2eb9faa6437298e73397de99adf8853cebd0c29db8bfdd33ab9e",
+   "periphery": "9e1ea0e8561255dbcc4391e8a37ec84375c42abdf46faccb05c8304f6f210838",
+   "seed": 20001,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 44,
+    "move": 7,
+    "scroll": 1
+   },
+   "fovea": "9110a88943fa6f4b17ae2ed4f1ce0e9c99419bae72c1d874e23043e15b6109c1",
+   "periphery": "6c8bcfd9b7a7240bfa77bb0f5d272b344877e71d9d8cb75e85a20f8a1fd28fd7",
+   "seed": 20001,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 21,
+    "move": 20,
+    "scroll": 0
+   },
+   "fovea": "f0d93e861f66dac057107e6d3c86b584afd474b12eb1fec1fd412c4bad8ee176",
+   "periphery": "c9026b56f1c558a7dd325ba49435ed2a3b0265c6de311ef572bff92fe2d19d91",
+   "seed": 20001,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 10,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "f69031afd9e1292cdc0e6b9cc2d5a524780259c9a279236f44cda1ea5c651114",
+   "periphery": "e5849ca547e890cfc4a37514bb434026ce9a434a3c208ef0088995848ed70a36",
+   "seed": 20001,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 23,
+    "move": 20,
+    "scroll": 1
+   },
+   "fovea": "f81d3bbbfdd9ea4bf31af71ddfbec78f0d49c508e1f11840efb669174863bdb3",
+   "periphery": "4b714d47909fce76ed01528ebe87d36215ec8f40c2ddf33baa78847d3c9387d6",
+   "seed": 20001,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 2,
+    "move": 4,
+    "scroll": 0
+   },
+   "fovea": "30d3d6cfd908e1f1d355f2f3305ab79465163eb2861b5ba39cea1dc1a191bd91",
+   "periphery": "3c57282810ea586ed5beefb47524f8015e91b530d0872694e347c994d4313495",
+   "seed": 20002,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 11,
+    "move": 5,
+    "scroll": 0
+   },
+   "fovea": "7e02962698eb3a1b1d7487c6519fa62eed523b3fa9b89440ad9166804f7ac0e7",
+   "periphery": "e8dcd4cce595a53c7111dc8e441cf4ca0d0da2710c2ddf113d5538a657454be9",
+   "seed": 20002,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 9,
+    "move": 1,
+    "scroll": 0
+   },
+   "fovea": "7e02962698eb3a1b1d7487c6519fa62eed523b3fa9b89440ad9166804f7ac0e7",
+   "periphery": "ced6589f1e19b2f698fab6df2ef3a6e0aed3b4a1dced532b56c5f647f3dee0da",
+   "seed": 20002,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 28,
+    "move": 2,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "8790e3444e04b61d939a77ca3e0bf643ef2e547a55563eff0ebbea415cdb23ac",
+   "seed": 20002,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 32,
+    "move": 10,
+    "scroll": 2
+   },
+   "fovea": "2baa70e4dda9888c38ba67c4c49dfa72b03406c58d0b35a07f09798c1a14c1bf",
+   "periphery": "71a9238001126cee67396d6318765dc4048b8af71a1866c7140513130e3576a8",
+   "seed": 20002,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 11,
+    "move": 14,
+    "scroll": 2
+   },
+   "fovea": "ab749375db3656377f2aad0c2841e6731203f4bbb0a9f006e01e0a4bde576acb",
+   "periphery": "ca96392393deda97890add028d2cb5df43b87eabf3c08110bbdc7e5812f1fa91",
+   "seed": 20002,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 28,
+    "move": 8,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "0962b099807d57762b29f3aa05f4f4f954292c3aa0ae0ffa7a497d6aa6c647fb",
+   "seed": 20002,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 25,
+    "move": 19,
+    "scroll": 1
+   },
+   "fovea": "2adcb51e9c7b55a2e7d4109624c712caed24bd91db2adea665872d9ab1d89974",
+   "periphery": "57600180bb07e61b020df3615be9b81766e6c131a91e11a5a6d8b5fd7c8b6e05",
+   "seed": 20002,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 8,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "a997d2997e3f0da4fee0b22190ba0bf59d885317f73751f94eda2d3f0eb4c9b9",
+   "periphery": "182e79554ea543402400f0ef318d49f68b44637e576d17c72e3bb79da0ca7c30",
+   "seed": 20002,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 13,
+    "move": 18,
+    "scroll": 2
+   },
+   "fovea": "dab4e17db3478763b89bf3d86d1f6bdfbd340170320a5c124f589bf8def0c7c7",
+   "periphery": "2b6f4cf2308066071a11f8f7f39ea31e2129723aa98067933934d173dbcfda1e",
+   "seed": 20002,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 5,
+    "move": 18,
+    "scroll": 2
+   },
+   "fovea": "c3eb12cc6642995cce741518ab7d526e70d3dfe8d55c3869bb3f3ee7d20486e1",
+   "periphery": "ac4225908c8fd663c7884039077f2b107c4a582373a0855205c395f06dd1f5f7",
+   "seed": 20002,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 34,
+    "move": 9,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "efe5aa8c3f8d684e9f49dc2c95851572a1171928100bcacc6315849739907025",
+   "seed": 20002,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 19,
+    "move": 9,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "c11aafc8ad8192f88391ec3b633445664bfc012190ac176bc66bd1224384fa2c",
+   "seed": 20002,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 8,
+    "move": 0,
+    "scroll": 1
+   },
+   "fovea": "832ece8e23272ecddd38a804c8ac40a25888dd9332dd18e007b64d4de161e825",
+   "periphery": "3a66d5885f09eb69e6a5ef94b6edd3edf5d0ffe10492169c0479a33ea86e9dd4",
+   "seed": 20002,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 40,
+    "move": 7,
+    "scroll": 1
+   },
+   "fovea": "1ddac91f4b831b08a4cc195ba83d921f69b5b2def97bf158de262b2d523b9d4d",
+   "periphery": "975311dc807f6945dc0cf2c1e7ff8182903da59358b7c467c42be07d38dd2e06",
+   "seed": 20002,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 21,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "3d56c802809859cd03eea86f9d9ef6343587eaea4a860e31b3ab3c9fefa07f20",
+   "periphery": "659c53f589416eaf7c2c2d835d307c24ba44922534b2ab96a4f3c2e67598808e",
+   "seed": 20002,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 11,
+    "move": 5,
+    "scroll": 0
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "888da96d863e056e1c54bb5c2ddbc70df6535cf073aa0c09dbcde710a5275f69",
+   "seed": 20003,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 41,
+    "move": 24,
+    "scroll": 2
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "7dfde5df79cafc22c144431413b622a6bfac8bc14222a4cc8fdeb2b070e35eea",
+   "seed": 20003,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 30,
+    "move": 15,
+    "scroll": 0
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "7d89ece3183f596d3dade3aa34de2dfc1df60a3ef76c6a642d3572ddc50cd6fe",
+   "seed": 20003,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 7,
+    "move": 10,
+    "scroll": 2
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "8d198acce488760de4518a4984741ff9ebff12c6bc965747c8fe8a4efb184d49",
+   "seed": 20003,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 31,
+    "move": 13,
+    "scroll": 0
+   },
+   "fovea": "288858ce52051fe8570adeef58a71af1b71ee8479f13790b772e4173cdf87f08",
+   "periphery": "0dbd9a532a1f281a911d2891ec95c82182aa68f8d8620b6c323ee52454666f44",
+   "seed": 20003,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 27,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "2933fa8b38a9f8603b8b73cc8e97da8f09ade2bf0592c4705a1edf08a65c5f0e",
+   "seed": 20003,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 33,
+    "move": 8,
+    "scroll": 0
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "4936d8ab512e5f2e875610509c6f41bd565b44216a9e0900a5515e9e67956aa0",
+   "seed": 20003,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 22,
+    "move": 19,
+    "scroll": 0
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "a1fa0068be2e712266638d5a427cfd3f97c906686d6b8fa4852cfc731abf1e5f",
+   "seed": 20003,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 39,
+    "move": 22,
+    "scroll": 1
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "bc676081feb29f9e188097ac634e9900f0e468b9bd8f495676d2201d85f3cda0",
+   "seed": 20003,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 37,
+    "move": 9,
+    "scroll": 2
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "d5d6508fdb75945c0ded2ce750764917b25f8480be4d444800807dc905a8ae96",
+   "seed": 20003,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 43,
+    "move": 10,
+    "scroll": 2
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "85e942bc1c54ef9d5c9bd81fcc49bf9e979ad0ae78d0c61d6225a43fa90225c3",
+   "seed": 20003,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 32,
+    "move": 22,
+    "scroll": 1
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "d5d6508fdb75945c0ded2ce750764917b25f8480be4d444800807dc905a8ae96",
+   "seed": 20003,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 41,
+    "move": 20,
+    "scroll": 2
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "5ecb81160cd9050b0f22c9bf191f20b3674a8202ec90342323592c41c67d82e1",
+   "seed": 20003,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 17,
+    "move": 1,
+    "scroll": 2
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "196f946ce2cd41f2fed3b41e3453315e3d422cd21093956556462324a2cad779",
+   "seed": 20003,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 36,
+    "move": 23,
+    "scroll": 1
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "0cbbeb4d0b21933ea069244e1c72ebbe9ae17de358b0bc95e37bcd1f08ca8974",
+   "seed": 20003,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 2,
+    "move": 23,
+    "scroll": 1
+   },
+   "fovea": "d0d1723e22663ed1c998c94b820c9b2f4fc5c42341ebe76552a64a8b6003886c",
+   "periphery": "f2f05a050aa0e43d14377a28e371eea35b4ee26b1d748b0a041a8affafc9a25d",
+   "seed": 20003,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 10,
+    "move": 6,
+    "scroll": 2
+   },
+   "fovea": "ec43dab743a5ae0b8924fb3259029449933a6471f539196eeeab2b4c51ee8f37",
+   "periphery": "7b3d3c1a1b60f101764c7d1b827de84e907040a93b591fc5df7d5d201c1a4069",
+   "seed": 20004,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 28,
+    "move": 15,
+    "scroll": 0
+   },
+   "fovea": "ce48e5e9e39bc69702b363f81bb5b220cbf1f4ed1fa24d7b8a20b1d3254c7f43",
+   "periphery": "6bac770cd7d7d0777c14deeac4b331be01c176b6b6a466a3d65df8cd158351a5",
+   "seed": 20004,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 23,
+    "move": 18,
+    "scroll": 0
+   },
+   "fovea": "6e4e7efd3dc710418e376af0a62254c3db5c47d1d2cc1b5d9e965422b0cb6123",
+   "periphery": "501f61ef15d18890b18a35295e90fd9ad349bd8075a72aadcd0acba2eaa18272",
+   "seed": 20004,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 35,
+    "move": 19,
+    "scroll": 2
+   },
+   "fovea": "99697ad7a793af6a3082ed48b8707f6665afa786db68f38c48b02fd9b8b0a0f1",
+   "periphery": "e000755077b88f02554c8d68090d17a1d17b03ae2c5e6aee35d195867c9016a0",
+   "seed": 20004,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 17,
+    "move": 6,
+    "scroll": 1
+   },
+   "fovea": "8b5c3d571f77a8a031ecc1706b869c35496abe84ce9e93aaa85fe9a995b44971",
+   "periphery": "2c03707a1e43413b27e564dc1ef8212c1074edaf660f15cfd87469e6b8a02327",
+   "seed": 20004,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 10,
+    "move": 4,
+    "scroll": 1
+   },
+   "fovea": "1103ba8e720248d8d5691587da893be32552b80e2184d04b6ecfd4b4b422138b",
+   "periphery": "d5e1d5a8cee856292210f8c10b12d505fe9cab15d42f614770291996722c0d92",
+   "seed": 20004,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 34,
+    "move": 20,
+    "scroll": 0
+   },
+   "fovea": "e7a6a4eae29cc987e6a2b6e033dc8034a72c39eaaad065aa55c86e19a36305f6",
+   "periphery": "d62cf0432f65b7b231750dcaa702765dc4efbaa8a0af856ee6ff6d189f29e125",
+   "seed": 20004,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 11,
+    "move": 0,
+    "scroll": 0
+   },
+   "fovea": "e7a6a4eae29cc987e6a2b6e033dc8034a72c39eaaad065aa55c86e19a36305f6",
+   "periphery": "d62cf0432f65b7b231750dcaa702765dc4efbaa8a0af856ee6ff6d189f29e125",
+   "seed": 20004,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 3,
+    "move": 1,
+    "scroll": 0
+   },
+   "fovea": "c577e9361f02d71daa0e2505e4d024b88cb356561dd254ea6e03ac70d8b2aec1",
+   "periphery": "d3ef04b589a4d41f4fa5feb2db93bb8aa2ddfd5acefbfc1a47afe908c15fc985",
+   "seed": 20004,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 25,
+    "move": 2,
+    "scroll": 0
+   },
+   "fovea": "f3ae1b4bae36b2a27cd23dc501eb5c5928ed87ad80ec284d441a2d927b8dc35f",
+   "periphery": "5d102fb98aa59ca267545b6d6946c89be7134aacc6c834cc678da583c59fb76c",
+   "seed": 20004,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 1,
+    "move": 2,
+    "scroll": 0
+   },
+   "fovea": "6c77f4ee4555809d4a423b0abe7adf67b1302803cd30889727d32a5761f5a6f9",
+   "periphery": "517db48b5326bee518eca53687b30b8bde51dd3fe379ac2b155671ee3c6e196c",
+   "seed": 20004,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 27,
+    "move": 23,
+    "scroll": 2
+   },
+   "fovea": "7943d87a0bb7250e50b11e4dac6a6a212925a99553b52ef037cdccd2cd115d3b",
+   "periphery": "577d04e5ede8c5b28052fbe3e0f09896a36b440ebe4eb55b7595e5f306c842f2",
+   "seed": 20004,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 5,
+    "move": 0,
+    "scroll": 2
+   },
+   "fovea": "1a0af5ff7e433576e84bfa683d0d59de79815036e30eaefb6d58785ad4948d0c",
+   "periphery": "ddf62082c3339b24fbc074d9be117722226945de223899e437ec0c5214e9298c",
+   "seed": 20004,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 11,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "f0aa7444d527871f6762d6a645b7dd81a8d2135acc323a35649e2b180523d041",
+   "periphery": "bc52e8c86a272d36bd8a6fd6f8144f4da53591fc6da48bce6eaeea9cc4ec7520",
+   "seed": 20004,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 16,
+    "move": 3,
+    "scroll": 2
+   },
+   "fovea": "ab6b6234e55a983c85c2cd336dec02174586bfa9449fe8d86071093a19a7a613",
+   "periphery": "2c6c60200131c29433c57453880e92614c89bd7a366d849db36df1264acf3838",
+   "seed": 20004,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 17,
+    "move": 4,
+    "scroll": 2
+   },
+   "fovea": "be7a3268d76f38db640a6fc57983a76ecded08a3fc4a7b25bff1fa6625c42556",
+   "periphery": "a1c46a11f54f99b3a4067d4183ceae76505d68b3b1a78c8277b93104f96a8106",
+   "seed": 20004,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 15,
+    "move": 19,
+    "scroll": 1
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "d7a73b5398aa6dd6545081bb2d4dc7dad991f779f593c6d1afda5ad404ae6112",
+   "seed": 20005,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 16,
+    "move": 7,
+    "scroll": 2
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "6e2ad0f58bf4e8ed16fcd58974fc5585827154202cddea9e91b7e08439398d60",
+   "seed": 20005,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 19,
+    "move": 24,
+    "scroll": 1
+   },
+   "fovea": "bab210928a574f2f2e3596f096a07a65e9f4f00a94e7ce3bd573696ce0098dc3",
+   "periphery": "5ed2ca4a79897173a3d31ed4b2fd520645a8c8e52a42e721374ca3bac965cad4",
+   "seed": 20005,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 18,
+    "move": 12,
+    "scroll": 0
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "6e2ad0f58bf4e8ed16fcd58974fc5585827154202cddea9e91b7e08439398d60",
+   "seed": 20005,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 30,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "dcdcfdf71279abbacd5ee6b7a1b9ad858d69048930aaea30890a250db50832e8",
+   "seed": 20005,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 16,
+    "move": 24,
+    "scroll": 1
+   },
+   "fovea": "cd627af940a640b8e717dfd5f0f26a8d39aaa42e3df1b7a179732014bd38dee1",
+   "periphery": "2f84230af26d039604f5f37dc0d8c5974e7089649518fba4fb27fc831ca8d2be",
+   "seed": 20005,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 6,
+    "move": 17,
+    "scroll": 0
+   },
+   "fovea": "bab210928a574f2f2e3596f096a07a65e9f4f00a94e7ce3bd573696ce0098dc3",
+   "periphery": "23f0a2a0df3ce269a910a229168044f80a5ff1411e11fc517a4adade9bb01661",
+   "seed": 20005,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 22,
+    "move": 15,
+    "scroll": 0
+   },
+   "fovea": "eece10a001c9f656423b4bdf096a334addb1be4db8a142466333ddf922d83c18",
+   "periphery": "134a70292f888b949c0977f2911ad869fb124f07b61136e6a4bc306329cf0c91",
+   "seed": 20005,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 3,
+    "move": 20,
+    "scroll": 1
+   },
+   "fovea": "b9417dff0f699fd5fd42152473b555daac0b9994feb021ffe686016703b0b8a6",
+   "periphery": "fb17fd9b0f7553dd357d58f00e55ffb146c69ba66f8ae14eb8d63d31dd695dd0",
+   "seed": 20005,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 39,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "9f682d763ed6cf9cca570378edfc890c086aee0b81601c3b0141baeb39fd745b",
+   "periphery": "fc3586ca309f0ae8805607ab6b65d6c40856b493013a1cb3aedbb9d28b3fe5d8",
+   "seed": 20005,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 5,
+    "move": 14,
+    "scroll": 0
+   },
+   "fovea": "eece10a001c9f656423b4bdf096a334addb1be4db8a142466333ddf922d83c18",
+   "periphery": "134a70292f888b949c0977f2911ad869fb124f07b61136e6a4bc306329cf0c91",
+   "seed": 20005,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 34,
+    "move": 20,
+    "scroll": 2
+   },
+   "fovea": "b9417dff0f699fd5fd42152473b555daac0b9994feb021ffe686016703b0b8a6",
+   "periphery": "fb17fd9b0f7553dd357d58f00e55ffb146c69ba66f8ae14eb8d63d31dd695dd0",
+   "seed": 20005,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 43,
+    "move": 17,
+    "scroll": 0
+   },
+   "fovea": "18bdfe9fb9f70f63ccd41336801796972917bc7a45855fd54d241ecede16ded6",
+   "periphery": "01cc527c2ea06e760f5deb8e5ba0fa342de5e57387142dd6acc3e2bcb07ff3f8",
+   "seed": 20005,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 7,
+    "move": 1,
+    "scroll": 0
+   },
+   "fovea": "43938e7655517a873fc675a59a44cccb8a8d11cd7dc13362d065d053d3da2b5b",
+   "periphery": "919b70adbeb0b51c7dff17947023ca98b3f7f70283b04a571cbf8c3945883f95",
+   "seed": 20005,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 33,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "99f60686fdfa0fb77e0054e88e2d6bd0a7f2ba606e2d438b61cca8b8884c8371",
+   "periphery": "f85e338fc7b9eef0e5e4d4ee733fbc3c1de6a4b656743352373aea769db44f43",
+   "seed": 20005,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 17,
+    "move": 17,
+    "scroll": 2
+   },
+   "fovea": "17c95a97811e098569797913254c2285ffc54b8fc7cc44987030dbb00cba9247",
+   "periphery": "966bf27235eff212512f003065d48770a54aba66ab74ba7e8814763608e20df5",
+   "seed": 20005,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 38,
+    "move": 1,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "79cd2a349e2f8fd4eb3267f951d61b939be4307695fa7f74f1003ddfb2ee7f8e",
+   "seed": 20006,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 43,
+    "move": 22,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "60b2520a3b67ad119c0400d7f48d58730471a2e451537c1f4ba5385e73c4d34f",
+   "seed": 20006,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 5,
+    "move": 14,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "a354fc62c39d9c759d9a84eb8c627d9f722c72db681d290b3d71c200d1c5a9c0",
+   "seed": 20006,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 25,
+    "move": 1,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "6ff76e6636876b1cfc40a9b1b94295aea7607d78bf1426d129b3cc2467874d25",
+   "seed": 20006,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 40,
+    "move": 12,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "dd19c2db826f0b04d1eb1dbeb3a2ac8a40f3c910c10df20d45b6cfa210b16b52",
+   "seed": 20006,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 17,
+    "move": 19,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "4665c4e234d2bbd752167b714ffb3c886e00c3923570de66f4ea70f72120557f",
+   "seed": 20006,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 15,
+    "move": 23,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "2dd8400a754a14406f9dba2654e3500bbe48101653e1b64fd47c2ccef4909d7a",
+   "seed": 20006,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 41,
+    "move": 10,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "5c188a79d4e30bd16179c1d55cb4f82b6559a879245d88adf9ec00e0eb00e4af",
+   "seed": 20006,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 23,
+    "move": 12,
+    "scroll": 1
+   },
+   "fovea": "22848c8f96dffafe9c93705d439428073c01e6ad594b1f046bdfe56f538acbae",
+   "periphery": "8f4fad23d992a440d88ff18c9b446196e9c97136c426b787ac1783623911378e",
+   "seed": 20006,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 8,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "75e07f3483ea0721e5912daadeb4212021ae368388a480d5c171ba487b47a3a9",
+   "periphery": "deb7d5aaafd231fb4c0d95e2e309b662df405027eda2947d986201588c37a900",
+   "seed": 20006,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 3,
+    "move": 3,
+    "scroll": 1
+   },
+   "fovea": "b8942c2eecae3f58bf6bf91cd7da76e6448802436d0cc4873d4e273c7c76bd1f",
+   "periphery": "bdd0228cf3561d376fc4c8cfbf358ca28327754b4afb4fb4c724a1e69615c255",
+   "seed": 20006,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 18,
+    "move": 18,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "3199967f3db5f11f59150ef739e8915265d7e67395b02683a595e323b7e6ee8a",
+   "seed": 20006,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 1,
+    "move": 15,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "e1fbc3dfdb8d83d8699fbbc462ddb23813e6202022ea65127f7a121298a9066a",
+   "seed": 20006,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 11,
+    "move": 2,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "1f119165a5f2ce3f5dbf4664bd0d6699e43a0602873089e5333e723d432a9e44",
+   "seed": 20006,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 42,
+    "move": 1,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "2563983e145efcbafc5c83ab90b4990cd82055a13b80075f98a0bd7a24d888b5",
+   "seed": 20006,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 43,
+    "move": 6,
+    "scroll": 1
+   },
+   "fovea": "db31407600b47fc71cf81482d4956fa4dcadf991a112946af5c374ae06f24ea2",
+   "periphery": "d678a242251583abf90d73811cb10c79195aa4fb1904ae9b7f479d6677e8139f",
+   "seed": 20006,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 22,
+    "move": 2,
+    "scroll": 2
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "fd967860f27412690cbfb468fd6036a3519c03e94154e4cddd7ab9b6dc8465f3",
+   "seed": 20007,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 35,
+    "move": 14,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "5d6513568206b8c897d511b01ecc8538da39ac61c0ea76cb98745846d599744a",
+   "seed": 20007,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 30,
+    "move": 14,
+    "scroll": 2
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "151104c802b38f94637479920056a8b82fb3c216880ddf9b07cd8c1eaf25198e",
+   "seed": 20007,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 21,
+    "move": 6,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "3c3f2ff0f8ef2a9719cd40c60f96acd3b9c1f0b151fa75e14bc05e40a42a388d",
+   "seed": 20007,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 33,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "a94e8b4dc70cd0bae716caa61822120c8a29f47e5f9408d2786a1fbea01e6d93",
+   "seed": 20007,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 30,
+    "move": 23,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "67167ede46e74de228a4a7a447cacbf21f376f338dfbd3e2e285879c4d904ad1",
+   "seed": 20007,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 21,
+    "move": 24,
+    "scroll": 0
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "a65b159e5cc8061d1279adf6b720c3abd90be04540b190c8890bec4380bf17d7",
+   "seed": 20007,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 37,
+    "move": 2,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "524975629b72fe54d9fa81a93efb167df4ef90538c058ce9d2cab053a4466794",
+   "seed": 20007,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 42,
+    "move": 15,
+    "scroll": 0
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "b377701837beb27a0a6f255ad4cba228f4f8d43b8637e9cce38f02a66eee76fb",
+   "seed": 20007,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 2,
+    "move": 13,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "6cb3ed387e15b219f0a6e7d8f5f21dc2a7b276062e63a5186c4f2e601e78912e",
+   "seed": 20007,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 2,
+    "move": 17,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "3f8667e7fe7d1a08dcb8bcb7842212c58ede6cc8327f408f2b98e01b0a436008",
+   "seed": 20007,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 35,
+    "move": 7,
+    "scroll": 2
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "6733fd4078d826a53948919af07d29e5cf45b6cd21fffc1bc63f709978212db6",
+   "seed": 20007,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 42,
+    "move": 3,
+    "scroll": 0
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "5a0eaf9594aaa154926c8407e54ab15314eba8701de31b5b1ffe214c0da932df",
+   "seed": 20007,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 37,
+    "move": 3,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "4c8a6ce439069ee342f417b9b03f2f241822e9062ecff148820bfd85ba819946",
+   "seed": 20007,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 36,
+    "move": 0,
+    "scroll": 1
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "4c8a6ce439069ee342f417b9b03f2f241822e9062ecff148820bfd85ba819946",
+   "seed": 20007,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 29,
+    "move": 2,
+    "scroll": 0
+   },
+   "fovea": "8c5112dd3c4f3ce10a1b70c8e021ed2eb3d4e47b668b60b7dddf18979e61814f",
+   "periphery": "91995b4bf3c0f436fed10017844ed84f19bfb5888b57721868513d1f7e425f36",
+   "seed": 20007,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 19,
+    "move": 7,
+    "scroll": 0
+   },
+   "fovea": "04b05874c2fb3390508efeb3fb85ae14018ec53a2e2df0c56d6c9d1807af5315",
+   "periphery": "d80e995a52747b92fdd7f4dc0069d2cda55079022ca0439c2e395be8f7c0d49d",
+   "seed": 20008,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 41,
+    "move": 4,
+    "scroll": 0
+   },
+   "fovea": "6d3e09383c42f31a34ba2fbd3a460dd611636ac4371b831add149ed8c3cc10a0",
+   "periphery": "500a5783d3096e937da73c703d013c757ec43cc3dddfe71c4f03d47f522c31f6",
+   "seed": 20008,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 17,
+    "move": 4,
+    "scroll": 0
+   },
+   "fovea": "c3b0693d6b272df7b2cf2232f20d23775f9c99f113277e0928f48b7df5f25d18",
+   "periphery": "76243fa7851e04959719ad79f01cad0c6df46ddefedd8140d11aba6e7d554c0d",
+   "seed": 20008,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 10,
+    "move": 13,
+    "scroll": 0
+   },
+   "fovea": "1e7123e81d0f41a11afa312fbb1296d3d6df2130feb25cce54560603ba42a1cc",
+   "periphery": "cbbea58612d0baa82ba3436716ec867fd664417dd706acb36c33d48b0ac43941",
+   "seed": 20008,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 42,
+    "move": 20,
+    "scroll": 0
+   },
+   "fovea": "f30d0b2ef21103e65dfabf01dcf57a91ada38cda312028719f0e1f24967a750c",
+   "periphery": "5a1ba7dbb26e8ab823af1ae3a9f865f51f4781e73ec8fdbf8b12b5d753cd88a2",
+   "seed": 20008,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 13,
+    "move": 3,
+    "scroll": 2
+   },
+   "fovea": "506f91161ba4caa73c7c852f0a57a5ce184e27549e4c5f411c6c3ef132dadd45",
+   "periphery": "2c87a8250196171ccc2ec571579d91f997ffd6e9af0432fef39c091586577c8c",
+   "seed": 20008,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 36,
+    "move": 12,
+    "scroll": 0
+   },
+   "fovea": "959c1fbd09a86a255c6b276ded42bd315da7de640eea73988527cdcfd01756fb",
+   "periphery": "bd47ba0a7523eacc1c505cf8b1b36c010f1015f4f2fe9852c38d631591425737",
+   "seed": 20008,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 32,
+    "move": 19,
+    "scroll": 0
+   },
+   "fovea": "959c1fbd09a86a255c6b276ded42bd315da7de640eea73988527cdcfd01756fb",
+   "periphery": "2645b655f4eba4e26241274e08bca91f636d35e99396ae902b403e2fce8a32bd",
+   "seed": 20008,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 5,
+    "move": 7,
+    "scroll": 2
+   },
+   "fovea": "959c1fbd09a86a255c6b276ded42bd315da7de640eea73988527cdcfd01756fb",
+   "periphery": "bd47ba0a7523eacc1c505cf8b1b36c010f1015f4f2fe9852c38d631591425737",
+   "seed": 20008,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 43,
+    "move": 8,
+    "scroll": 2
+   },
+   "fovea": "f4b3e965f4ea296ca0f4a0cbf39fdee6e511b2146505a50ab267dc5254165adb",
+   "periphery": "7bcb46c2bb14f3e142e1b8181fcc425116f82627f466e95716c82f8a0756ed3f",
+   "seed": 20008,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 18,
+    "move": 9,
+    "scroll": 0
+   },
+   "fovea": "f428bfeefc934c7227af08316fa5cecc3da1452396d0647cc26e775f5a21a4b5",
+   "periphery": "0f08365bd59e3dd1f35a9bb608a73c4865598c99de8b4785db202e80361581a0",
+   "seed": 20008,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 27,
+    "move": 0,
+    "scroll": 1
+   },
+   "fovea": "f428bfeefc934c7227af08316fa5cecc3da1452396d0647cc26e775f5a21a4b5",
+   "periphery": "0f08365bd59e3dd1f35a9bb608a73c4865598c99de8b4785db202e80361581a0",
+   "seed": 20008,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 37,
+    "move": 17,
+    "scroll": 0
+   },
+   "fovea": "1321534cf22fe6b36a9593bd0302a01abf0b86cc6b4093c63a5ae5ff5385d900",
+   "periphery": "4d0818d781fcdcc0fecbce5cb1f20ef6ea7e89fab3961a92ddfffedce098cad1",
+   "seed": 20008,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 13,
+    "move": 0,
+    "scroll": 0
+   },
+   "fovea": "1321534cf22fe6b36a9593bd0302a01abf0b86cc6b4093c63a5ae5ff5385d900",
+   "periphery": "4d0818d781fcdcc0fecbce5cb1f20ef6ea7e89fab3961a92ddfffedce098cad1",
+   "seed": 20008,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 38,
+    "move": 4,
+    "scroll": 2
+   },
+   "fovea": "8afce7f28f59ce09a61f922bc74956b436bbbaac054684dbd9a4c748d5bd91dc",
+   "periphery": "e95024814c6025154237f00b777de9fabed316eeeedab2a84cec711eebd108c1",
+   "seed": 20008,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 13,
+    "move": 8,
+    "scroll": 1
+   },
+   "fovea": "635afe956b4d8f2f2409356bb5aa8a8e1a7846f2ed7fd24c4fd70938a278f782",
+   "periphery": "d60710fe3f5efd4231e4415e90e7c9c9e9c7e03b3e16f42ad845784dc4381033",
+   "seed": 20008,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 42,
+    "move": 23,
+    "scroll": 2
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "2d7f2f9ae340072cd2ff5170de410e2d799c00a756d203d124b2236b9ce19347",
+   "seed": 20009,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 18,
+    "move": 6,
+    "scroll": 0
+   },
+   "fovea": "7d3d3055f162b2fd1993712f2d5ed3e0d71ca069fd6609c63d49a84e2933fd55",
+   "periphery": "1182beb97e07baee68bd82eee18a96c6fff01be6a2551d326bcca9fffce55ce9",
+   "seed": 20009,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 25,
+    "move": 15,
+    "scroll": 1
+   },
+   "fovea": "e0effbe2f5a4e15dc5f7efee909ccf31b067da6855e8e106143d896e76d3c3a1",
+   "periphery": "91e540466cc22fc32a95d3cfe525823c38df83552560133e1720e0e56518d661",
+   "seed": 20009,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 8,
+    "move": 17,
+    "scroll": 2
+   },
+   "fovea": "397c3fe5edf6ff0520421b8b3d2054b7cdfb7d469ade0d702037cdc10a5f825b",
+   "periphery": "586559262577b65ea32695dad3c5031a294b07c016d3990fb9271771e5813ae1",
+   "seed": 20009,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 32,
+    "move": 14,
+    "scroll": 2
+   },
+   "fovea": "397c3fe5edf6ff0520421b8b3d2054b7cdfb7d469ade0d702037cdc10a5f825b",
+   "periphery": "a7ef02f06c12c9ff82461f240e32f03bfac7074dde2bddd07286a9f6ffe6a528",
+   "seed": 20009,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 37,
+    "move": 22,
+    "scroll": 1
+   },
+   "fovea": "e72fd061005029515469c09d2fec3e91ff94d09c05d51fd2aa9d7038e5069f90",
+   "periphery": "a6e34e05fa30547cd808b91550f88c29a16c17dc03480edb32745d29445b379b",
+   "seed": 20009,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 32,
+    "move": 2,
+    "scroll": 1
+   },
+   "fovea": "e72fd061005029515469c09d2fec3e91ff94d09c05d51fd2aa9d7038e5069f90",
+   "periphery": "4405a4bf246cb8dffa2418bd38621d7bfb2c5c7b71eecc86a8b70926dc1d7824",
+   "seed": 20009,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 32,
+    "move": 0,
+    "scroll": 0
+   },
+   "fovea": "e72fd061005029515469c09d2fec3e91ff94d09c05d51fd2aa9d7038e5069f90",
+   "periphery": "4405a4bf246cb8dffa2418bd38621d7bfb2c5c7b71eecc86a8b70926dc1d7824",
+   "seed": 20009,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 40,
+    "move": 3,
+    "scroll": 2
+   },
+   "fovea": "f1eb9182e4f8ca860cab46ec5123ce6943ba29efd63d1c1bb268f33237d22cd2",
+   "periphery": "3cc17b3dd43398e94d9b1b1d27bee47b59e61a34b5ed102710d84070e786fd40",
+   "seed": 20009,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 29,
+    "move": 13,
+    "scroll": 0
+   },
+   "fovea": "28b403bc734732367b31f53e4f9e2088faa923cc1fd65883eaa1a30fe2e9a918",
+   "periphery": "0ca6ef21f221db396202ee5197bdd0f75d694a9b912c5ff25146b1d64fe246ff",
+   "seed": 20009,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 44,
+    "move": 6,
+    "scroll": 0
+   },
+   "fovea": "a06c9d49facfea78aa64f37aade3fc7d7e4093d21c69dfa43ff4ab337f9f62fb",
+   "periphery": "73031d223ef355e44f206b9f21e016e30a9e316189cf76ea5df0b710aa52aaee",
+   "seed": 20009,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 6,
+    "move": 24,
+    "scroll": 0
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "a61afc2d34a0ddd85e5efd665e10ff3bc7d962e4f94eaf21d5b5281e32e393c6",
+   "seed": 20009,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 16,
+    "move": 22,
+    "scroll": 2
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "1b8bf286752b592ecd4c39cb6bd08ba8c5fc84222eb96ad7cf538324daf84934",
+   "seed": 20009,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 6,
+    "move": 10,
+    "scroll": 2
+   },
+   "fovea": "7e9ecf73be3b99703720804fc79d01e48985516b7d3e3d5e04e23e577a125605",
+   "periphery": "a61afc2d34a0ddd85e5efd665e10ff3bc7d962e4f94eaf21d5b5281e32e393c6",
+   "seed": 20009,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 18,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "a06c9d49facfea78aa64f37aade3fc7d7e4093d21c69dfa43ff4ab337f9f62fb",
+   "periphery": "73031d223ef355e44f206b9f21e016e30a9e316189cf76ea5df0b710aa52aaee",
+   "seed": 20009,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 43,
+    "move": 1,
+    "scroll": 1
+   },
+   "fovea": "930969e230916ec5339a9cd489a7fead66983d461a77b024a81f5705a732bd3b",
+   "periphery": "523be2cca3e3a797452f82cde75612afe044c9c1680508e7db07e9963010dab7",
+   "seed": 20009,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 14,
+    "move": 4,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "3610384caf81c50c8851cabfcb1d24c21007a700267f8ef817d5e0b7b4218d0e",
+   "seed": 20010,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 16,
+    "move": 23,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "898831aa01963047bc5654118ec6e23c409df6b79838242cc9a76c3a5ac6994e",
+   "seed": 20010,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 33,
+    "move": 16,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "40f6d0e440361c865631a67a88962df0d216de17dd7a0a54b50cb2cf524d41d3",
+   "seed": 20010,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 42,
+    "move": 4,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "91894ed8a5e205b8ea21e409d38fa4a4325827d08e220d16e641c5eff8f04a4d",
+   "seed": 20010,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 6,
+    "move": 17,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "510d6080ccd961af658ed99c0ffbb9f582a07fd09b0287a816137b41d1338ac2",
+   "seed": 20010,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 6,
+    "move": 9,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "120ebf8a9de27025e3bfbc210b1a7138974cbaf7ce17c3f51cca551da156c09d",
+   "seed": 20010,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 40,
+    "move": 9,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "c748f2cc980055dc0d101b5c5eddf9705e610f32c8ca25eed22dcd9842962004",
+   "seed": 20010,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 10,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "b1eb4c73df7a4134e4b72a7221a5fd40c06d6f4a627898702231771645fbcca2",
+   "seed": 20010,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 22,
+    "move": 18,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "f49aae61c6e7a48c9f5d3d5230190088989bb3c089518592166f89ccb6a66886",
+   "seed": 20010,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 12,
+    "move": 4,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "d473cb7c70cb6173513a947b147e72f53a41474ca05300152186f82753a68acb",
+   "seed": 20010,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 18,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "6a2e133c5c1cb47e77f2cd1cc36a620136488ae5ab083e863623c2611f08933f",
+   "seed": 20010,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 4,
+    "move": 20,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "5e7ff2f5b925314009a7f552a2ff949a6a95ec8adba34bd43aa5238797756d4e",
+   "seed": 20010,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 28,
+    "move": 4,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "4f9f32f383e2df52627b9f5db999a65421d3ccf0ff48d17050d53fdb767fda43",
+   "seed": 20010,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 26,
+    "move": 16,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "5e7ff2f5b925314009a7f552a2ff949a6a95ec8adba34bd43aa5238797756d4e",
+   "seed": 20010,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 33,
+    "move": 3,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "1ca82f577049308c15915dd07e49151bda9450964983249c5294fe943d147e47",
+   "seed": 20010,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 2,
+    "move": 2,
+    "scroll": 2
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "7759b8178c6b4be4175898165f10c9b08ba61f7fc1696cc0bfd1ea26df59d834",
+   "seed": 20010,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 33,
+    "move": 16,
+    "scroll": 2
+   },
+   "fovea": "4fbf3d214e1c9d12caa7da146456f9895c58cfbd6429892a4e92f0c1959d00cc",
+   "periphery": "17db6cb46b513681a6f81d0190a228b337805664f9f2af85cc0479745537d76f",
+   "seed": 20011,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 36,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "f70af83f26f06f68fe70e90a0faa39a40e8be53cad243c367f4efd90cdf028f7",
+   "seed": 20011,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 22,
+    "move": 3,
+    "scroll": 1
+   },
+   "fovea": "5cfd9fbc7d7661c4d1500769a470db82fbebfb07e6b0b8ba49e626ed86bc75b2",
+   "periphery": "05bccc67110388bff6096ba80278ca3da7405a1ec7c521dec3a553988ff84942",
+   "seed": 20011,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 37,
+    "move": 7,
+    "scroll": 0
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "e5393a75ecd7965c57eb91889359cd3ebd71f7bbd0f821d1fb26c4359ff69975",
+   "seed": 20011,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 14,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "fb7f9d882d85042c14414da17d92494bc7569a3f4560ebfeafd6f20ecf86e615",
+   "seed": 20011,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 32,
+    "move": 17,
+    "scroll": 0
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "8b4f653b7d88050f4084f69970d72df8d485f9a73232b1d6a79077c87f2cba0f",
+   "seed": 20011,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 44,
+    "move": 22,
+    "scroll": 2
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "c662fc4cf32be4759707d9f0d3504a9b37d6662afd42d7167ca6bd60d9ca24c9",
+   "seed": 20011,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 23,
+    "move": 8,
+    "scroll": 0
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "8c9434ecb143567261ebb617d62fcff043c955e3129a95688cac777750208817",
+   "seed": 20011,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 15,
+    "move": 8,
+    "scroll": 0
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "35f757327f8cb0998409d8c33f2c760435a0f8d0a7bb2dbe64b7f2b670af066e",
+   "seed": 20011,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 4,
+    "move": 5,
+    "scroll": 0
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "7024201e2d45c4ae6f0f8368d24e6009bc7bc7d7fedc963f78bc917dae4feed1",
+   "seed": 20011,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 33,
+    "move": 23,
+    "scroll": 2
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "ce625a8ddbb6638b6c131e17319ae423511cb636b2a1b7990ece13e2fe683652",
+   "seed": 20011,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 4,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "63db0a4cd49eb36f667b6c88e4167989748c8b616d100188c3c03dc23fccabb0",
+   "periphery": "7024201e2d45c4ae6f0f8368d24e6009bc7bc7d7fedc963f78bc917dae4feed1",
+   "seed": 20011,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 4,
+    "move": 9,
+    "scroll": 1
+   },
+   "fovea": "f69cce0bb6f96a80d08cdabe2d03ff38cd09f777b0427889b694176454994f2a",
+   "periphery": "26ac6460365d6c61ded8f0004ad50880e238beee18fc02d709f16a1ca1ff263a",
+   "seed": 20011,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 2,
+    "move": 9,
+    "scroll": 2
+   },
+   "fovea": "364f7992f338eb08f62ced79f1663ac1423141d1381ac2005e8ac03dda890602",
+   "periphery": "ce230a55eb5502272ae4602f36cb04a29615d5f32129b147ffe1fd31138b0ffa",
+   "seed": 20011,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 43,
+    "move": 8,
+    "scroll": 2
+   },
+   "fovea": "72fc5a3d97f59a45c31306f4da96d9b4e6222b98391569ea18fff2dccb164df5",
+   "periphery": "d5b879c0104d2339938b576527f176abe4a6e9d6501ca069171a19bebf15e568",
+   "seed": 20011,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 17,
+    "move": 5,
+    "scroll": 2
+   },
+   "fovea": "b14a1d8533a22704a2d8ef063dcbca50aafffff39824977225ee5ee64740ac3e",
+   "periphery": "4a678dca1de756d107fcd5808cf8622f3a4cb8b752384046a98887930e07452b",
+   "seed": 20011,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 38,
+    "move": 21,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "4fbe91f85016282c12cb8a34e37e10f6fcb82cdf4a66c99760128ee642055291",
+   "seed": 20012,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 12,
+    "move": 6,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "6444c306999975d2ea463645593ff9340cee51431bc2f15daa530587ed17b646",
+   "seed": 20012,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 12,
+    "move": 23,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "a98a25b3b2c583cd38e26a4b4451922691ef0a9ffbd1b33673ae6328ff876c76",
+   "seed": 20012,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 8,
+    "move": 23,
+    "scroll": 0
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "a7be194f6b34a187d73a741193af544e13ccfa2730ed95035d5690b5fcd66012",
+   "seed": 20012,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 22,
+    "move": 18,
+    "scroll": 0
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "8d51f3567b5ff6bad5188fa54c5afa344e7f3c1c2d7876dbb45abbcc4692b0f3",
+   "seed": 20012,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 4,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "37f3133a6dad66dc6ee4b288426ade4953fd00816364e4f89981dd7a66869e93",
+   "seed": 20012,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 6,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "7465fb04d3adf07e417e0346cc676c449967b2de9855a4f82efdb00a7ec55ae9",
+   "seed": 20012,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 35,
+    "move": 17,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "37f3133a6dad66dc6ee4b288426ade4953fd00816364e4f89981dd7a66869e93",
+   "seed": 20012,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 20,
+    "move": 8,
+    "scroll": 2
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "708baefc93dae3e9e4987091695c21626c926774dbe6620f5fa6126ffe625f7f",
+   "seed": 20012,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 15,
+    "move": 14,
+    "scroll": 0
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "d1ccfed6a5895c4c7ba1ed95cccf4c413ea0db8e31076f66598134a01196c068",
+   "seed": 20012,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 11,
+    "move": 10,
+    "scroll": 2
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "24cfb06b26855c205073e3bad9ee6b7823c4ab71189b3f53c92a5ac6632ef52b",
+   "seed": 20012,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 0,
+    "move": 17,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "deb02f80bf185ecc509d7cc5093117ccd1d3db3819003ab6b7f5676b8f6da2a5",
+   "seed": 20012,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 30,
+    "move": 15,
+    "scroll": 2
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "3ef405eed249d14285358d2ac8f51755c768dabf01e3d712d12902c33dfdcd4e",
+   "seed": 20012,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 34,
+    "move": 19,
+    "scroll": 2
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "18be619caaa255428d92f9740214367dc1fb9de854f409e48c0ef773072a373f",
+   "seed": 20012,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 27,
+    "move": 22,
+    "scroll": 1
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "d0a8a2ca42712bf5410557af446aff53f0f577f267462e359eee1942211e9c80",
+   "seed": 20012,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 21,
+    "move": 19,
+    "scroll": 0
+   },
+   "fovea": "6c7e72554c933bb71af13779ee01da9d9eb7e55afcc69c14b7331c3aa07e7ce4",
+   "periphery": "975491c021da2d646aae7b919183ca951dc314ec7dfca8d481c1a4c5b49c96a7",
+   "seed": 20012,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 2,
+    "move": 20,
+    "scroll": 0
+   },
+   "fovea": "a0a08a37f253166276b79385860459f4dc998be53cb6801a01970e7d3eff7c9b",
+   "periphery": "56146495fc5d9e637d539c4af752ab7e7fea8289c53e7928c0b50104f966bfae",
+   "seed": 20013,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 17,
+    "move": 5,
+    "scroll": 0
+   },
+   "fovea": "f3de72cf392c33e351d63874f00ecaaf456228bc30e1eebe97845777349a1345",
+   "periphery": "03c24453d4028e92e4be8801bb81337f34a273d9a163ae9f2df87ce43faf2e74",
+   "seed": 20013,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 44,
+    "move": 19,
+    "scroll": 0
+   },
+   "fovea": "b7b61f549f9ee0a8fbf3e4c9163b2de30b69132a2980ef7f25846c30d4dee9b7",
+   "periphery": "6d7687e18db14982d607839282fc79eb4b61bccda9c42a312632101ccfb4582f",
+   "seed": 20013,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 24,
+    "move": 15,
+    "scroll": 2
+   },
+   "fovea": "ad28638abe71b3a3780d1ba37d7e5f095cacc5d8fb375deaa395ba8074efb453",
+   "periphery": "f720a93e2f53f7fabcd2c4581f7cd68f3f412b5bfbc2a99f86fef956abecccf5",
+   "seed": 20013,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 18,
+    "move": 19,
+    "scroll": 0
+   },
+   "fovea": "a46d084e7d01ab264c64e6f29cf01b298df6c51e35c51d4f84a8c146b9e1db72",
+   "periphery": "e42a9d123ef6ddd395fb869512565477e2efe4980853dddf9c8cf4163b563f7b",
+   "seed": 20013,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 34,
+    "move": 12,
+    "scroll": 2
+   },
+   "fovea": "aef8cae1ec712f9a50d45efc84e3ac35614e43fd7e9a7779c0a84f363ba28732",
+   "periphery": "a7e31a6b80c6bd6c78a5261589cf3eff7c2da99fa1da2bf5c82eacbc0316d132",
+   "seed": 20013,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 13,
+    "move": 10,
+    "scroll": 2
+   },
+   "fovea": "46e742996a9abcf41df6dbb327c4c81311ec27fb97de516f479c71306ca8935d",
+   "periphery": "2f860a29de08903977c6520f81fa631028cb23ec61406c8fbae3de7a4c2790d8",
+   "seed": 20013,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 32,
+    "move": 7,
+    "scroll": 1
+   },
+   "fovea": "fa7b71cbd139c933737670ead834822d4d35f386d01facea6f4717292974dd10",
+   "periphery": "ffe3c237b6bdf1fcd1ec456e4dce8ffcc58e512dadc9540d743747a331781b7a",
+   "seed": 20013,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 26,
+    "move": 0,
+    "scroll": 1
+   },
+   "fovea": "fa7b71cbd139c933737670ead834822d4d35f386d01facea6f4717292974dd10",
+   "periphery": "ffe3c237b6bdf1fcd1ec456e4dce8ffcc58e512dadc9540d743747a331781b7a",
+   "seed": 20013,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 5,
+    "move": 7,
+    "scroll": 0
+   },
+   "fovea": "c25c7ac88991358706915b45cbfc573e2a4108c366b850846521b825d675dbb7",
+   "periphery": "ddb6e1b8e78dba6a2b52d1d8b84be6c6269f368f4acfb55527bebbe5d40c0372",
+   "seed": 20013,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 35,
+    "move": 7,
+    "scroll": 0
+   },
+   "fovea": "c1e19803dec4a03d51375f70810fe6046f0aab7a8e2831c756922e3a10ad86e5",
+   "periphery": "dbfd6f28120be6cc3cb50bdeea540f34a3ac435d11c8ecf9633a67600cf64129",
+   "seed": 20013,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 43,
+    "move": 1,
+    "scroll": 0
+   },
+   "fovea": "c1e19803dec4a03d51375f70810fe6046f0aab7a8e2831c756922e3a10ad86e5",
+   "periphery": "55757002a21f5bed6ab4b7a7ed3bd5df078277a0e97ccecae03af1bfc366de27",
+   "seed": 20013,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 0,
+    "move": 7,
+    "scroll": 1
+   },
+   "fovea": "fbbf70e020693fe6f80772916513389cc3ec09d52675b941da93dcacfe76245f",
+   "periphery": "4fcd4a3b60fbfc74280d37c52f522da828aa63a36c59547a43cd5273c15a6ce4",
+   "seed": 20013,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 33,
+    "move": 13,
+    "scroll": 0
+   },
+   "fovea": "fbbf70e020693fe6f80772916513389cc3ec09d52675b941da93dcacfe76245f",
+   "periphery": "a466a0cef3419a9e07a6828227b6a7fb92db75dadaf4db48724059fbbe3f2008",
+   "seed": 20013,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 41,
+    "move": 10,
+    "scroll": 0
+   },
+   "fovea": "8c2a84a890f0b7f4c6ed5c0d845fe11b6db2dea969fd39b9b69360f01ba96418",
+   "periphery": "5974070ec9722f9b3b5d0f717abf090a62f8cd88c7c0b23daa3cf237e34eaaf5",
+   "seed": 20013,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 20,
+    "move": 5,
+    "scroll": 1
+   },
+   "fovea": "c10bee20a92f63e795b22c5453b9ac292de55379dc2c8f4586da34faec27d1ee",
+   "periphery": "c1725f0a6cf77d3ee2a7aeabf4e1be5a7167119bbf85c1dea3cc04d65afe8a70",
+   "seed": 20013,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 44,
+    "move": 10,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "9f6f0c9db01738c0031ee5b91298268c812812fea90d809323a9bcc61ecf33c2",
+   "seed": 20014,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 43,
+    "move": 11,
+    "scroll": 0
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "09f6af63899d1e1ccc4a9bb5f6fbc805d739b5b07566c4e7030a938c6739e780",
+   "seed": 20014,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 19,
+    "move": 18,
+    "scroll": 2
+   },
+   "fovea": "2f73f4322ea129b1bc359fc93619792f6edf9711d28c737fcc2cd6fcb14b9628",
+   "periphery": "de45edbe530549dd144fc0d515998fb83152f12768447065882a762e7194a577",
+   "seed": 20014,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 0,
+    "move": 9,
+    "scroll": 2
+   },
+   "fovea": "2f73f4322ea129b1bc359fc93619792f6edf9711d28c737fcc2cd6fcb14b9628",
+   "periphery": "d042ab7148ef79e8d9325a800b2cf018117b2fa9afb4573fc4aeadfe6d48cab0",
+   "seed": 20014,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 2,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "b0d947e32edc0deae3365f6821221b4dd97218ce04b76839c0aec73a8224b12d",
+   "periphery": "17a3a23cd44a13a3b9a1c5ffd16854c61a0dcd064687472d4a682c77ee701b13",
+   "seed": 20014,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 7,
+    "move": 21,
+    "scroll": 1
+   },
+   "fovea": "b0d947e32edc0deae3365f6821221b4dd97218ce04b76839c0aec73a8224b12d",
+   "periphery": "53f7fff9c55725ab979cc9e04e4a502acdd582bf5139e6a49139020eee0b71cb",
+   "seed": 20014,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 0,
+    "move": 11,
+    "scroll": 0
+   },
+   "fovea": "43634314526de2f40fff60b88de1cae425875a5a8cb82ead2d9e0ceaffef9bc7",
+   "periphery": "bb75547d05be22e160b027b87aaf58e381762e44d7c3149e4670648effdd4313",
+   "seed": 20014,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 2,
+    "move": 6,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "0bbe1a18c47390b09d41a680a3535fd5ea82011540d5d3dee45c40f3cae1c873",
+   "seed": 20014,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 1,
+    "move": 1,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "ef646374d822a050fa70ff6139a4a3e7391036fba047fc71e0df781aaf5b52db",
+   "seed": 20014,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 8,
+    "move": 22,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "bd2bf32e6fedd038542cbbdfcedb75084f14883325d9fc07bbcd7bcd1af05f4b",
+   "seed": 20014,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 27,
+    "move": 14,
+    "scroll": 2
+   },
+   "fovea": "a725a29cb46924956ea82b918e34b009f2cb9e207f916eb3a2b10bcd46c44bab",
+   "periphery": "427f9d4e250e78bfb66afd68d0ab91248eb8e52d580e886c6c972a2aeeb03a96",
+   "seed": 20014,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 12,
+    "move": 15,
+    "scroll": 2
+   },
+   "fovea": "4c7b5e62022fd5da84ee0809ee741639738eb0eb3c1ca3c2f47e58167c854179",
+   "periphery": "0c479bfcda32fadccc876880ea64bccea9129de6b922a386864d694971285354",
+   "seed": 20014,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 10,
+    "move": 16,
+    "scroll": 0
+   },
+   "fovea": "ce3d5395fd3f8be280f2938d5cf79d3aa4c6e16db07781514fcac973451d5ee2",
+   "periphery": "55fead70d2e91a734269b3b2413cd74e89828d72c202ca74638d445a2febf39f",
+   "seed": 20014,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 12,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "94873aa166f56cfed74d46259854b06d1657ea1360e153559b7a9bfdc0d9a373",
+   "periphery": "4bb69a3442be2297044cf5398aca3a558293a585dd6eca857f2e2b26ff1b3c17",
+   "seed": 20014,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 6,
+    "move": 15,
+    "scroll": 2
+   },
+   "fovea": "8ef60a433421600187bcbf4c66e0ecd78b8719cee73da198938772837942e090",
+   "periphery": "2008a43705c3d6376e95eb971c492b310d8b5acf2d0341415b50a6562921a3a0",
+   "seed": 20014,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 7,
+    "move": 20,
+    "scroll": 2
+   },
+   "fovea": "1ffbc29302afa25de09d165d6571ac1d78a015faf4aa2a7f118d8929579d0eb4",
+   "periphery": "8d1bc5947365cda79ccafcfe1ea0664ed4d3a3feab8aa36a247a6b2dfe9e77e0",
+   "seed": 20014,
+   "step": 16
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 38,
+    "move": 17,
+    "scroll": 0
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "ee1fe35b6da56f1f33de78cecaebf42ed4a280176fc8743005aca65fbf5f2276",
+   "seed": 20015,
+   "step": 1
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 42,
+    "move": 16,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "19ec510264480cd1f1fb259384e7eac5cb753553dcb7a579549b161b7ec79af2",
+   "seed": 20015,
+   "step": 2
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 18,
+    "move": 3,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "ed3cc6651cd262968a4c563c763faf6ed3e692c80f627426061044d472f5409f",
+   "seed": 20015,
+   "step": 3
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 4,
+    "move": 2,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "dbe0e051b7f8046fbbf51e0dcf480dbe7a51c1db1979d7c6d6bdcaa7453d67a1",
+   "seed": 20015,
+   "step": 4
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 19,
+    "move": 21,
+    "scroll": 0
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "85f5eb9d8290036905fc50f2ed58a2f7b99e4bd6132993aae9e57750b1ea5360",
+   "seed": 20015,
+   "step": 5
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 5,
+    "move": 8,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "1173affc7068187221ba2e4449b4648d12bbc5c374b9039b36d9dbfc5dc3dfe2",
+   "seed": 20015,
+   "step": 6
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 26,
+    "move": 11,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "4f1f23f62190ed6dcf900146aaa61116b4ccafd9045ff89fc793f3780d8618ac",
+   "seed": 20015,
+   "step": 7
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 32,
+    "move": 20,
+    "scroll": 2
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "43f9d63fbe4c26e08fefac2a45eb3b2f7a4bbf226cbe74482c7e08be3ab9c442",
+   "seed": 20015,
+   "step": 8
+  },
+  {
+   "action": {
+    "button": 0,
+    "key": 34,
+    "move": 0,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "43f9d63fbe4c26e08fefac2a45eb3b2f7a4bbf226cbe74482c7e08be3ab9c442",
+   "seed": 20015,
+   "step": 9
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 16,
+    "move": 8,
+    "scroll": 0
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "4f1f23f62190ed6dcf900146aaa61116b4ccafd9045ff89fc793f3780d8618ac",
+   "seed": 20015,
+   "step": 10
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 41,
+    "move": 18,
+    "scroll": 0
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "a384efbe8d03564e6f39d67af970aa3ca12d700e9e11f278626330d319ddfb53",
+   "seed": 20015,
+   "step": 11
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 36,
+    "move": 6,
+    "scroll": 0
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "4f1f23f62190ed6dcf900146aaa61116b4ccafd9045ff89fc793f3780d8618ac",
+   "seed": 20015,
+   "step": 12
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 28,
+    "move": 7,
+    "scroll": 0
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "c44828426c31c3d7b0f6c1ab5f149a789eb1b1c46dc57cd251761fffeb1e2317",
+   "seed": 20015,
+   "step": 13
+  },
+  {
+   "action": {
+    "button": 1,
+    "key": 36,
+    "move": 0,
+    "scroll": 2
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "c44828426c31c3d7b0f6c1ab5f149a789eb1b1c46dc57cd251761fffeb1e2317",
+   "seed": 20015,
+   "step": 14
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 28,
+    "move": 21,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "89b2fc99d6fe9274c3dcec76e08d80f6d44e735cdf781f8483a6ccb546eb2052",
+   "seed": 20015,
+   "step": 15
+  },
+  {
+   "action": {
+    "button": 2,
+    "key": 39,
+    "move": 1,
+    "scroll": 1
+   },
+   "fovea": "7a0632111342bcfa924ae048e1f0342ae3701d9b0c71e00b565c3f692d812534",
+   "periphery": "e43cd35e737a16ba1fb51aeee017a9a22579d84fa37ac871202b2e622933ae22",
+   "seed": 20015,
+   "step": 16
+  }
+ ],
+ "schemaVersion": 1,
+ "seeds": [
+  20000,
+  20001,
+  20002,
+  20003,
+  20004,
+  20005,
+  20006,
+  20007,
+  20008,
+  20009,
+  20010,
+  20011,
+  20012,
+  20013,
+  20014,
+  20015
+ ],
+ "sha256": "bf9ebe6b16142747f9db9dcf2a8ce48b8017632b4c9eb0f9be787288fb220ec6",
+ "startRoom": "seed mod 4",
+ "steps": 16
+}

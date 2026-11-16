@@ -30,6 +30,13 @@ All of these were fixed, tested and committed **before** the probe first ran on 
 - **Weight motion** is ‖(w, b) − (w₀, b₀)‖ / ‖(w₀, b₀)‖ per encoder, weights and biases together, in float64, at 512, 1,024 and 2,048 CU.
 - **The birth state** is recomputed with `createModel(cpu, settings.seed, GPU_WIDTHS)`'s `FIRST_LAYER_PARAMS`, and tested bit for bit against a newborn learner's `readParams()`.
 
+### Which activations [agent's call, not yet confirmed]
+
+- **Post-ReLU conv1 output,** which is what the next layer receives, recomputed in float64 from each state's float32 weights. Pre-ReLU values are never computed, so there is no second set of numbers to choose between later.
+- **Every (frame, output position) is one sample:** 256 × 1,000 for the periphery, 256 × 256 for the fovea.
+- **Activations at init and 2,048 CU only,** as the spec compares; the 512 and 1,024 snapshots get weight motion only (and 512 the identification check, below).
+- **A streamed two-pass centred Gram** over every (life, state, unit) column: pass 1 takes means, pass 2 accumulates centred cross-products; the activations themselves are never stored. A column that takes one value on every sample (a dead unit) is flagged, and its Gram row and column are exactly 0.
+
 ## Alternatives considered
 
 Each section above names what it rejected.

@@ -1,0 +1,4483 @@
+{
+ "centreSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+ "convergence": [
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_0389057c8edfd656",
+    "lrn_04e5b12745ad2a6f",
+    "lrn_0b07fef0a117ee2a",
+    "lrn_0fa76bcff8f298fc",
+    "lrn_166a8c316c83fbca",
+    "lrn_19567a71f9af005d",
+    "lrn_19866eed52921978",
+    "lrn_234d2e09b70c7044",
+    "lrn_24e9e0c38551d1c2",
+    "lrn_24eb5ed3e2473cde",
+    "lrn_273c921607055c72",
+    "lrn_289e560dc33ef0c2",
+    "lrn_2ae1a1fe05461d4f",
+    "lrn_2d32e0f3ff2a01bf",
+    "lrn_2d85395c9398d6a9",
+    "lrn_305e4b75f1d46470",
+    "lrn_330b970d0a006076",
+    "lrn_34cb624866797078",
+    "lrn_34da8ae6f5c0d9e9",
+    "lrn_3ac0a42fec091628",
+    "lrn_3bbc85db195f266d",
+    "lrn_3dd2381eebbf7a60",
+    "lrn_424a8d5e1764b12c",
+    "lrn_42ba908935d176ae",
+    "lrn_466f09a7d6ac0cfd",
+    "lrn_4b9f4af9f85526d4",
+    "lrn_4d36342f7952da4d",
+    "lrn_51e714657ccfb40b",
+    "lrn_575c764b5ec4c039",
+    "lrn_593d718ff9edce58",
+    "lrn_5df68570f464388c",
+    "lrn_6343f9b964e16d90",
+    "lrn_675e77c272967506",
+    "lrn_69cff7e59ed5ddb7",
+    "lrn_6bd7f08a3c3d3ccf",
+    "lrn_6cf284efe1c94839",
+    "lrn_708d9b52a9f20e91",
+    "lrn_70b6301addb331a5",
+    "lrn_71b858aa8d6e5215",
+    "lrn_752915770407d7f4",
+    "lrn_77c031192a6bafcf",
+    "lrn_7994a6ec15754c8f",
+    "lrn_7a6495cac26a7170",
+    "lrn_7a99f3c2f8528353",
+    "lrn_7e8e0c7f5985d23a",
+    "lrn_831b2503f5f38eff",
+    "lrn_868fb20b38d26c1a",
+    "lrn_86e9e39a5577ddcf",
+    "lrn_88dcf6c7d58d9b4e",
+    "lrn_8e97a39010dad877",
+    "lrn_92518cddd5901f8e",
+    "lrn_94a91d79c24e2c23",
+    "lrn_971d4b8f4433eb5c",
+    "lrn_972903ab6e68c506",
+    "lrn_99281dfece81c20a",
+    "lrn_9c46bf9f7c443708",
+    "lrn_9cc715a39afc0ac0",
+    "lrn_a090f2871275cec6",
+    "lrn_a69c9acf6e36fb18",
+    "lrn_a8f89fafae586ca3",
+    "lrn_a9db94fead468df8",
+    "lrn_aa0a2b7aa93a77f5",
+    "lrn_ae0943c7d2664075",
+    "lrn_ae4a66529b9f7bdd",
+    "lrn_b0e99e1c83edf0bf",
+    "lrn_b4758fc9fe8d1e3d",
+    "lrn_b4df20bf82d881cd",
+    "lrn_b65c2bf3bfbcf264",
+    "lrn_b73b58b617d8f86b",
+    "lrn_b8fd03242c616cc3",
+    "lrn_be242e9d52bf6080",
+    "lrn_bebfff0cd4076a58",
+    "lrn_c0eab2a0f2dbee96",
+    "lrn_c1a7759e6311989a",
+    "lrn_c3f44f5ebbfffe2f",
+    "lrn_c7bb5490d6c71b57",
+    "lrn_ce3d9e8730f31f05",
+    "lrn_d49328278d3f7b6e",
+    "lrn_d9f5dcc79feadb67",
+    "lrn_db9ea0fdb63f33ac",
+    "lrn_de282728b6111ce2",
+    "lrn_debe50499d02279b",
+    "lrn_def32918fbec02ff",
+    "lrn_df1e716fc8e829b8",
+    "lrn_e040e2ba4af5ba26",
+    "lrn_e12928ed80061772",
+    "lrn_e90903d0871f32e5",
+    "lrn_ec9e9bdc36cdd2a7",
+    "lrn_ed9ac74b58bf80ac",
+    "lrn_ef0bede745dabd62",
+    "lrn_f14351a5ac56b7b5",
+    "lrn_f39d7ad686474af9",
+    "lrn_f48b73948869356b",
+    "lrn_f580f6a848691b0d",
+    "lrn_f7a9808c5110711c",
+    "lrn_fb6608d831eccf38",
+    "lrn_fc6f874c15a0bde5",
+    "lrn_fd458a73812c87fb",
+    "lrn_fd6bb00dcf988a5d"
+   ],
+   "name": "pooled",
+   "stats": {
+    "init": {
+     "cka": 0.7536516736220167,
+     "matched": 0.4766085295592005
+    },
+    "learned": {
+     "cka": 0.36498051105838386,
+     "matched": 0
+    },
+    "n": 99,
+    "pairs": 4753,
+    "skipped": 98
+   },
+   "verdict": {
+    "ckaDelta": -0.3886711625636328,
+    "converged": false,
+    "convergedHolm": false,
+    "evaluable": true,
+    "matched": 0,
+    "p": 1,
+    "pDescriptive": 1,
+    "pFloor": 0.0001,
+    "pHolm": 1,
+    "reasons": []
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_0389057c8edfd656",
+    "lrn_04e5b12745ad2a6f",
+    "lrn_0b07fef0a117ee2a",
+    "lrn_0fa76bcff8f298fc",
+    "lrn_166a8c316c83fbca",
+    "lrn_19567a71f9af005d",
+    "lrn_19866eed52921978",
+    "lrn_234d2e09b70c7044",
+    "lrn_24e9e0c38551d1c2",
+    "lrn_24eb5ed3e2473cde",
+    "lrn_273c921607055c72",
+    "lrn_289e560dc33ef0c2",
+    "lrn_2ae1a1fe05461d4f",
+    "lrn_2d32e0f3ff2a01bf",
+    "lrn_2d85395c9398d6a9",
+    "lrn_305e4b75f1d46470",
+    "lrn_330b970d0a006076",
+    "lrn_34cb624866797078",
+    "lrn_34da8ae6f5c0d9e9",
+    "lrn_3ac0a42fec091628",
+    "lrn_3bbc85db195f266d",
+    "lrn_3dd2381eebbf7a60",
+    "lrn_424a8d5e1764b12c",
+    "lrn_42ba908935d176ae",
+    "lrn_466f09a7d6ac0cfd",
+    "lrn_4b9f4af9f85526d4",
+    "lrn_4d36342f7952da4d",
+    "lrn_51e714657ccfb40b",
+    "lrn_575c764b5ec4c039",
+    "lrn_593d718ff9edce58",
+    "lrn_5df68570f464388c",
+    "lrn_6343f9b964e16d90",
+    "lrn_675e77c272967506",
+    "lrn_69cff7e59ed5ddb7",
+    "lrn_6bd7f08a3c3d3ccf",
+    "lrn_6cf284efe1c94839",
+    "lrn_708d9b52a9f20e91",
+    "lrn_70b6301addb331a5",
+    "lrn_71b858aa8d6e5215",
+    "lrn_752915770407d7f4",
+    "lrn_77c031192a6bafcf",
+    "lrn_7994a6ec15754c8f",
+    "lrn_7a6495cac26a7170",
+    "lrn_7a99f3c2f8528353",
+    "lrn_7e8e0c7f5985d23a",
+    "lrn_831b2503f5f38eff",
+    "lrn_868fb20b38d26c1a",
+    "lrn_86e9e39a5577ddcf",
+    "lrn_88dcf6c7d58d9b4e",
+    "lrn_8e97a39010dad877",
+    "lrn_92518cddd5901f8e",
+    "lrn_94a91d79c24e2c23",
+    "lrn_971d4b8f4433eb5c",
+    "lrn_972903ab6e68c506",
+    "lrn_99281dfece81c20a",
+    "lrn_9c46bf9f7c443708",
+    "lrn_9cc715a39afc0ac0",
+    "lrn_a090f2871275cec6",
+    "lrn_a69c9acf6e36fb18",
+    "lrn_a8f89fafae586ca3",
+    "lrn_a9db94fead468df8",
+    "lrn_aa0a2b7aa93a77f5",
+    "lrn_ae0943c7d2664075",
+    "lrn_ae4a66529b9f7bdd",
+    "lrn_b0e99e1c83edf0bf",
+    "lrn_b4758fc9fe8d1e3d",
+    "lrn_b4df20bf82d881cd",
+    "lrn_b65c2bf3bfbcf264",
+    "lrn_b73b58b617d8f86b",
+    "lrn_b8fd03242c616cc3",
+    "lrn_be242e9d52bf6080",
+    "lrn_bebfff0cd4076a58",
+    "lrn_c0eab2a0f2dbee96",
+    "lrn_c1a7759e6311989a",
+    "lrn_c3f44f5ebbfffe2f",
+    "lrn_c7bb5490d6c71b57",
+    "lrn_ce3d9e8730f31f05",
+    "lrn_d49328278d3f7b6e",
+    "lrn_d9f5dcc79feadb67",
+    "lrn_db9ea0fdb63f33ac",
+    "lrn_de282728b6111ce2",
+    "lrn_debe50499d02279b",
+    "lrn_def32918fbec02ff",
+    "lrn_df1e716fc8e829b8",
+    "lrn_e040e2ba4af5ba26",
+    "lrn_e12928ed80061772",
+    "lrn_e90903d0871f32e5",
+    "lrn_ec9e9bdc36cdd2a7",
+    "lrn_ed9ac74b58bf80ac",
+    "lrn_ef0bede745dabd62",
+    "lrn_f14351a5ac56b7b5",
+    "lrn_f39d7ad686474af9",
+    "lrn_f48b73948869356b",
+    "lrn_f580f6a848691b0d",
+    "lrn_f7a9808c5110711c",
+    "lrn_fb6608d831eccf38",
+    "lrn_fc6f874c15a0bde5",
+    "lrn_fd458a73812c87fb",
+    "lrn_fd6bb00dcf988a5d"
+   ],
+   "name": "pooled",
+   "stats": {
+    "init": {
+     "cka": 0.7520649892370118,
+     "matched": 0.5584610764021665
+    },
+    "learned": {
+     "cka": 0.7225921340750494,
+     "matched": 0.256642721482481
+    },
+    "n": 99,
+    "pairs": 4851,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.029472855161962408,
+    "converged": false,
+    "convergedHolm": false,
+    "evaluable": true,
+    "matched": 0.256642721482481,
+    "p": 0.8973,
+    "pDescriptive": 0.8973,
+    "pFloor": 0.0001,
+    "pHolm": 1,
+    "reasons": []
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_166a8c316c83fbca",
+    "lrn_19866eed52921978",
+    "lrn_273c921607055c72",
+    "lrn_2ae1a1fe05461d4f",
+    "lrn_2d32e0f3ff2a01bf",
+    "lrn_2d85395c9398d6a9",
+    "lrn_305e4b75f1d46470",
+    "lrn_330b970d0a006076",
+    "lrn_34da8ae6f5c0d9e9",
+    "lrn_3ac0a42fec091628",
+    "lrn_3bbc85db195f266d",
+    "lrn_3dd2381eebbf7a60",
+    "lrn_466f09a7d6ac0cfd",
+    "lrn_4b9f4af9f85526d4",
+    "lrn_4d36342f7952da4d",
+    "lrn_51e714657ccfb40b",
+    "lrn_575c764b5ec4c039",
+    "lrn_593d718ff9edce58",
+    "lrn_675e77c272967506",
+    "lrn_69cff7e59ed5ddb7",
+    "lrn_6bd7f08a3c3d3ccf",
+    "lrn_70b6301addb331a5",
+    "lrn_7994a6ec15754c8f",
+    "lrn_7e8e0c7f5985d23a",
+    "lrn_868fb20b38d26c1a",
+    "lrn_86e9e39a5577ddcf",
+    "lrn_92518cddd5901f8e",
+    "lrn_9c46bf9f7c443708",
+    "lrn_9cc715a39afc0ac0",
+    "lrn_ae0943c7d2664075",
+    "lrn_b4758fc9fe8d1e3d",
+    "lrn_b8fd03242c616cc3",
+    "lrn_c3f44f5ebbfffe2f",
+    "lrn_d9f5dcc79feadb67",
+    "lrn_debe50499d02279b",
+    "lrn_e040e2ba4af5ba26",
+    "lrn_ed9ac74b58bf80ac",
+    "lrn_ef0bede745dabd62",
+    "lrn_f48b73948869356b",
+    "lrn_f7a9808c5110711c",
+    "lrn_fd458a73812c87fb"
+   ],
+   "name": "genome:d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "stats": {
+    "init": {
+     "cka": 0.7727348307867371,
+     "matched": 0.46743643003333574
+    },
+    "learned": {
+     "cka": 0.4255357789427524,
+     "matched": 0
+    },
+    "n": 41,
+    "pairs": 780,
+    "skipped": 40
+   },
+   "verdict": {
+    "ckaDelta": -0.3471990518439847,
+    "converged": false,
+    "convergedHolm": false,
+    "evaluable": true,
+    "matched": 0,
+    "p": 0.9998,
+    "pDescriptive": 0.9998,
+    "pFloor": 0.0001,
+    "pHolm": 1,
+    "reasons": []
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_166a8c316c83fbca",
+    "lrn_19866eed52921978",
+    "lrn_273c921607055c72",
+    "lrn_2ae1a1fe05461d4f",
+    "lrn_2d32e0f3ff2a01bf",
+    "lrn_2d85395c9398d6a9",
+    "lrn_305e4b75f1d46470",
+    "lrn_330b970d0a006076",
+    "lrn_34da8ae6f5c0d9e9",
+    "lrn_3ac0a42fec091628",
+    "lrn_3bbc85db195f266d",
+    "lrn_3dd2381eebbf7a60",
+    "lrn_466f09a7d6ac0cfd",
+    "lrn_4b9f4af9f85526d4",
+    "lrn_4d36342f7952da4d",
+    "lrn_51e714657ccfb40b",
+    "lrn_575c764b5ec4c039",
+    "lrn_593d718ff9edce58",
+    "lrn_675e77c272967506",
+    "lrn_69cff7e59ed5ddb7",
+    "lrn_6bd7f08a3c3d3ccf",
+    "lrn_70b6301addb331a5",
+    "lrn_7994a6ec15754c8f",
+    "lrn_7e8e0c7f5985d23a",
+    "lrn_868fb20b38d26c1a",
+    "lrn_86e9e39a5577ddcf",
+    "lrn_92518cddd5901f8e",
+    "lrn_9c46bf9f7c443708",
+    "lrn_9cc715a39afc0ac0",
+    "lrn_ae0943c7d2664075",
+    "lrn_b4758fc9fe8d1e3d",
+    "lrn_b8fd03242c616cc3",
+    "lrn_c3f44f5ebbfffe2f",
+    "lrn_d9f5dcc79feadb67",
+    "lrn_debe50499d02279b",
+    "lrn_e040e2ba4af5ba26",
+    "lrn_ed9ac74b58bf80ac",
+    "lrn_ef0bede745dabd62",
+    "lrn_f48b73948869356b",
+    "lrn_f7a9808c5110711c",
+    "lrn_fd458a73812c87fb"
+   ],
+   "name": "genome:d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "stats": {
+    "init": {
+     "cka": 0.7361954038399032,
+     "matched": 0.5626780081168814
+    },
+    "learned": {
+     "cka": 0.6856545765269821,
+     "matched": 0.2946212827212379
+    },
+    "n": 41,
+    "pairs": 820,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.05054082731292109,
+    "converged": false,
+    "convergedHolm": false,
+    "evaluable": true,
+    "matched": 0.2946212827212379,
+    "p": 0.9341,
+    "pDescriptive": 0.9341,
+    "pFloor": 0.0001,
+    "pHolm": 1,
+    "reasons": []
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_24e9e0c38551d1c2",
+    "lrn_34cb624866797078",
+    "lrn_71b858aa8d6e5215",
+    "lrn_88dcf6c7d58d9b4e",
+    "lrn_b4df20bf82d881cd",
+    "lrn_b65c2bf3bfbcf264"
+   ],
+   "name": "genome:008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "stats": {
+    "init": {
+     "cka": 0.7294706190700803,
+     "matched": 0.5988921796917106
+    },
+    "learned": {
+     "cka": 0.19607043432877813,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.5334001847413021,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.984375,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_24e9e0c38551d1c2",
+    "lrn_34cb624866797078",
+    "lrn_71b858aa8d6e5215",
+    "lrn_88dcf6c7d58d9b4e",
+    "lrn_b4df20bf82d881cd",
+    "lrn_b65c2bf3bfbcf264"
+   ],
+   "name": "genome:008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "stats": {
+    "init": {
+     "cka": 0.792765621555892,
+     "matched": 0.6580739328487364
+    },
+    "learned": {
+     "cka": 0.7974610189855506,
+     "matched": 0.5085610514309993
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.004695397429658521,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.5085610514309993,
+    "p": null,
+    "pDescriptive": 0.46875,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_0389057c8edfd656",
+    "lrn_42ba908935d176ae",
+    "lrn_a69c9acf6e36fb18",
+    "lrn_a9db94fead468df8",
+    "lrn_ce3d9e8730f31f05"
+   ],
+   "name": "genome:0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "stats": {
+    "init": {
+     "cka": 0.6990071749313805,
+     "matched": 0.39375765965305753
+    },
+    "learned": {
+     "cka": 0.14245798976353857,
+     "matched": 0
+    },
+    "n": 5,
+    "pairs": 10,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.5565491851678419,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.90625,
+    "pFloor": 0.03125,
+    "pHolm": null,
+    "reasons": [
+     "n = 5 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_0389057c8edfd656",
+    "lrn_42ba908935d176ae",
+    "lrn_a69c9acf6e36fb18",
+    "lrn_a9db94fead468df8",
+    "lrn_ce3d9e8730f31f05"
+   ],
+   "name": "genome:0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "stats": {
+    "init": {
+     "cka": 0.7010622846796345,
+     "matched": 0.5306536407691865
+    },
+    "learned": {
+     "cka": 0.5952480109103255,
+     "matched": 0.01578967854502071
+    },
+    "n": 5,
+    "pairs": 10,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.10581427376930896,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.01578967854502071,
+    "p": null,
+    "pDescriptive": 0.96875,
+    "pFloor": 0.03125,
+    "pHolm": null,
+    "reasons": [
+     "n = 5 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_424a8d5e1764b12c",
+    "lrn_7a6495cac26a7170",
+    "lrn_a090f2871275cec6",
+    "lrn_b73b58b617d8f86b",
+    "lrn_be242e9d52bf6080",
+    "lrn_fc6f874c15a0bde5"
+   ],
+   "name": "genome:179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "stats": {
+    "init": {
+     "cka": 0.7623074534253118,
+     "matched": 0.43985870922853926
+    },
+    "learned": {
+     "cka": 0.251412742731981,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.5108947106933308,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 1,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_424a8d5e1764b12c",
+    "lrn_7a6495cac26a7170",
+    "lrn_a090f2871275cec6",
+    "lrn_b73b58b617d8f86b",
+    "lrn_be242e9d52bf6080",
+    "lrn_fc6f874c15a0bde5"
+   ],
+   "name": "genome:179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "stats": {
+    "init": {
+     "cka": 0.6999279892875417,
+     "matched": 0.533271350543769
+    },
+    "learned": {
+     "cka": 0.8460747136588825,
+     "matched": 0.5076351470148975
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.1461467243713408,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.5076351470148975,
+    "p": null,
+    "pDescriptive": 0.015625,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_04e5b12745ad2a6f",
+    "lrn_19567a71f9af005d",
+    "lrn_6343f9b964e16d90",
+    "lrn_6cf284efe1c94839",
+    "lrn_831b2503f5f38eff",
+    "lrn_c1a7759e6311989a"
+   ],
+   "name": "genome:1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "stats": {
+    "init": {
+     "cka": 0.6611696814458822,
+     "matched": 0.3093095373878943
+    },
+    "learned": {
+     "cka": 0.7154707098519474,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.05430102840606521,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.421875,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_04e5b12745ad2a6f",
+    "lrn_19567a71f9af005d",
+    "lrn_6343f9b964e16d90",
+    "lrn_6cf284efe1c94839",
+    "lrn_831b2503f5f38eff",
+    "lrn_c1a7759e6311989a"
+   ],
+   "name": "genome:1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "stats": {
+    "init": {
+     "cka": 0.7462303476330181,
+     "matched": 0.5276939773389006
+    },
+    "learned": {
+     "cka": 0.8204733419894459,
+     "matched": 0.37130400078860093
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.07424299435642778,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.37130400078860093,
+    "p": null,
+    "pDescriptive": 0.140625,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_289e560dc33ef0c2",
+    "lrn_7a99f3c2f8528353",
+    "lrn_c7bb5490d6c71b57",
+    "lrn_db9ea0fdb63f33ac",
+    "lrn_e12928ed80061772"
+   ],
+   "name": "genome:3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "stats": {
+    "init": {
+     "cka": 0.7568560692495769,
+     "matched": 0.5181101875058043
+    },
+    "learned": {
+     "cka": 0.09203252602551353,
+     "matched": 0
+    },
+    "n": 5,
+    "pairs": 10,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.6648235432240635,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.90625,
+    "pFloor": 0.03125,
+    "pHolm": null,
+    "reasons": [
+     "n = 5 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_289e560dc33ef0c2",
+    "lrn_7a99f3c2f8528353",
+    "lrn_c7bb5490d6c71b57",
+    "lrn_db9ea0fdb63f33ac",
+    "lrn_e12928ed80061772"
+   ],
+   "name": "genome:3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "stats": {
+    "init": {
+     "cka": 0.8464640843864668,
+     "matched": 0.3965604542692224
+    },
+    "learned": {
+     "cka": 0.6997595841387553,
+     "matched": 0.01467907959073899
+    },
+    "n": 5,
+    "pairs": 10,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.14670450024771153,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.01467907959073899,
+    "p": null,
+    "pDescriptive": 0.78125,
+    "pFloor": 0.03125,
+    "pHolm": null,
+    "reasons": [
+     "n = 5 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_708d9b52a9f20e91",
+    "lrn_aa0a2b7aa93a77f5",
+    "lrn_b0e99e1c83edf0bf",
+    "lrn_e90903d0871f32e5",
+    "lrn_ec9e9bdc36cdd2a7",
+    "lrn_f39d7ad686474af9"
+   ],
+   "name": "genome:56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "stats": {
+    "init": {
+     "cka": 0.8158206919520127,
+     "matched": 0.46603083967321657
+    },
+    "learned": {
+     "cka": 0.6855675970086008,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.13025309494341186,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.8125,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_708d9b52a9f20e91",
+    "lrn_aa0a2b7aa93a77f5",
+    "lrn_b0e99e1c83edf0bf",
+    "lrn_e90903d0871f32e5",
+    "lrn_ec9e9bdc36cdd2a7",
+    "lrn_f39d7ad686474af9"
+   ],
+   "name": "genome:56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "stats": {
+    "init": {
+     "cka": 0.7990637336550533,
+     "matched": 0.6357951473701279
+    },
+    "learned": {
+     "cka": 0.8465197776881958,
+     "matched": 0.04132474689441046
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.04745604403314241,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.04132474689441046,
+    "p": null,
+    "pDescriptive": 0.234375,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_77c031192a6bafcf",
+    "lrn_94a91d79c24e2c23",
+    "lrn_972903ab6e68c506",
+    "lrn_a8f89fafae586ca3",
+    "lrn_d49328278d3f7b6e",
+    "lrn_de282728b6111ce2"
+   ],
+   "name": "genome:aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "stats": {
+    "init": {
+     "cka": 0.7617551556618596,
+     "matched": 0.5852334516577382
+    },
+    "learned": {
+     "cka": 0.31851810394870805,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.44323705171315153,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.84375,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_77c031192a6bafcf",
+    "lrn_94a91d79c24e2c23",
+    "lrn_972903ab6e68c506",
+    "lrn_a8f89fafae586ca3",
+    "lrn_d49328278d3f7b6e",
+    "lrn_de282728b6111ce2"
+   ],
+   "name": "genome:aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "stats": {
+    "init": {
+     "cka": 0.8515171105093767,
+     "matched": 0.5501100778183341
+    },
+    "learned": {
+     "cka": 0.6052732338803012,
+     "matched": 0.3023006882785787
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.24624387662907554,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.3023006882785787,
+    "p": null,
+    "pDescriptive": 0.859375,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_5df68570f464388c",
+    "lrn_bebfff0cd4076a58",
+    "lrn_c0eab2a0f2dbee96",
+    "lrn_def32918fbec02ff",
+    "lrn_df1e716fc8e829b8",
+    "lrn_f14351a5ac56b7b5"
+   ],
+   "name": "genome:e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "stats": {
+    "init": {
+     "cka": 0.7638257993093521,
+     "matched": 0.5828569459948576
+    },
+    "learned": {
+     "cka": 0.6007764523016063,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.16304934700774587,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.6875,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_5df68570f464388c",
+    "lrn_bebfff0cd4076a58",
+    "lrn_c0eab2a0f2dbee96",
+    "lrn_def32918fbec02ff",
+    "lrn_df1e716fc8e829b8",
+    "lrn_f14351a5ac56b7b5"
+   ],
+   "name": "genome:e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "stats": {
+    "init": {
+     "cka": 0.6475565995323492,
+     "matched": 0.4006238828899952
+    },
+    "learned": {
+     "cka": 0.716305068640235,
+     "matched": 0.07834202620473085
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.06874846910788579,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.07834202620473085,
+    "p": null,
+    "pDescriptive": 0.359375,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_971d4b8f4433eb5c",
+    "lrn_99281dfece81c20a",
+    "lrn_ae4a66529b9f7bdd",
+    "lrn_f580f6a848691b0d",
+    "lrn_fb6608d831eccf38",
+    "lrn_fd6bb00dcf988a5d"
+   ],
+   "name": "genome:fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "stats": {
+    "init": {
+     "cka": 0.6826885964053967,
+     "matched": 0.43692788432851065
+    },
+    "learned": {
+     "cka": 0.2128165922482195,
+     "matched": 0
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": -0.4698720041571772,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0,
+    "p": null,
+    "pDescriptive": 0.90625,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_971d4b8f4433eb5c",
+    "lrn_99281dfece81c20a",
+    "lrn_ae4a66529b9f7bdd",
+    "lrn_f580f6a848691b0d",
+    "lrn_fb6608d831eccf38",
+    "lrn_fd6bb00dcf988a5d"
+   ],
+   "name": "genome:fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "stats": {
+    "init": {
+     "cka": 0.8339529207386279,
+     "matched": 0.46447425664475106
+    },
+    "learned": {
+     "cka": 0.8437972891912044,
+     "matched": 0.19996800969440914
+    },
+    "n": 6,
+    "pairs": 15,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.009844368452576524,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.19996800969440914,
+    "p": null,
+    "pDescriptive": 0.484375,
+    "pFloor": 0.015625,
+    "pHolm": null,
+    "reasons": [
+     "n = 6 < 10 lives"
+    ]
+   }
+  }
+ ],
+ "excluded": [
+  {
+   "learnerId": "lrn_0adb1fb0fabb8f49",
+   "reason": "no snapshot at 512"
+  },
+  {
+   "learnerId": "lrn_1787a3c93600cc87",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_1b06e2ef1a7a4a2e",
+   "reason": "no snapshot at 512"
+  },
+  {
+   "learnerId": "lrn_245f90f55bad891a",
+   "reason": "no snapshot at 512"
+  },
+  {
+   "learnerId": "lrn_2897b594eb31a53a",
+   "reason": "no snapshot at 2048"
+  },
+  {
+   "learnerId": "lrn_2a53f317ad5d7d8b",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_323b7f3bc3ebb9cd",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_378b4f2cd002004b",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_37d6d3a11ccc3008",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_3e8c670620506319",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_3fd60640ae230523",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_47918d7c7afcb647",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_4c7ec98889ef9cbb",
+   "reason": "filters frozen after 512"
+  },
+  {
+   "learnerId": "lrn_4d41b1c2f0e6eb7e",
+   "reason": "filters frozen after 1024"
+  },
+  {
+   "learnerId": "lrn_5b874cfab7665c57",
+   "reason": "no snapshot at 2048"
+  },
+  {
+   "learnerId": "lrn_6f8258735e6ae8ba",
+   "reason": "no snapshot at 512"
+  },
+  {
+   "learnerId": "lrn_77bc48e0c0441e9a",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_7a40ebadaebf9627",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_7c284a3b30d206a5",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_8f81e6c3dda13693",
+   "reason": "filters frozen after 512"
+  },
+  {
+   "learnerId": "lrn_98ba4bb64436f134",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_99b7cb1ba4fb6e83",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_a1bd699ef00d0fa1",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_a4c5ddf56297aa1e",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_bb63cb76b4ec524f",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_dfd5c5085147992a",
+   "reason": "no meta"
+  },
+  {
+   "learnerId": "lrn_e98ab50d3b616cae",
+   "reason": "no snapshot at 512"
+  },
+  {
+   "learnerId": "lrn_fc5a8037031231f2",
+   "reason": "no meta"
+  }
+ ],
+ "flags": [
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_0389057c8edfd656"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_0389057c8edfd656"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_0389057c8edfd656"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_04e5b12745ad2a6f"
+  },
+  {
+   "flag": "periphery 2048: 15 dead units on the probe set",
+   "learnerId": "lrn_04e5b12745ad2a6f"
+  },
+  {
+   "flag": "fovea 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_04e5b12745ad2a6f"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_0b07fef0a117ee2a"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_0b07fef0a117ee2a"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_0fa76bcff8f298fc"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_0fa76bcff8f298fc"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_0fa76bcff8f298fc"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_166a8c316c83fbca"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_166a8c316c83fbca"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_166a8c316c83fbca"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_166a8c316c83fbca"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_19567a71f9af005d"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_19567a71f9af005d"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_19567a71f9af005d"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_19866eed52921978"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_19866eed52921978"
+  },
+  {
+   "flag": "periphery 2048: 7 dead units on the probe set",
+   "learnerId": "lrn_19866eed52921978"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_19866eed52921978"
+  },
+  {
+   "flag": "periphery 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_234d2e09b70c7044"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_24e9e0c38551d1c2"
+  },
+  {
+   "flag": "periphery 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_24e9e0c38551d1c2"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_24e9e0c38551d1c2"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_24e9e0c38551d1c2"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_24eb5ed3e2473cde"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_24eb5ed3e2473cde"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_24eb5ed3e2473cde"
+  },
+  {
+   "flag": "periphery 2048: 14 dead units on the probe set",
+   "learnerId": "lrn_273c921607055c72"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_273c921607055c72"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_289e560dc33ef0c2"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_289e560dc33ef0c2"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_289e560dc33ef0c2"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_289e560dc33ef0c2"
+  },
+  {
+   "flag": "periphery init: 5 dead units on the probe set",
+   "learnerId": "lrn_2ae1a1fe05461d4f"
+  },
+  {
+   "flag": "periphery 2048: 16 dead units on the probe set",
+   "learnerId": "lrn_2ae1a1fe05461d4f"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_2ae1a1fe05461d4f"
+  },
+  {
+   "flag": "fovea 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_2ae1a1fe05461d4f"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_2d32e0f3ff2a01bf"
+  },
+  {
+   "flag": "periphery 2048: 15 dead units on the probe set",
+   "learnerId": "lrn_2d32e0f3ff2a01bf"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_2d32e0f3ff2a01bf"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_2d85395c9398d6a9"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_2d85395c9398d6a9"
+  },
+  {
+   "flag": "periphery 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_305e4b75f1d46470"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_330b970d0a006076"
+  },
+  {
+   "flag": "periphery 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_34cb624866797078"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_34da8ae6f5c0d9e9"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_34da8ae6f5c0d9e9"
+  },
+  {
+   "flag": "periphery 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_34da8ae6f5c0d9e9"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_34da8ae6f5c0d9e9"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_34da8ae6f5c0d9e9"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_3ac0a42fec091628"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_3ac0a42fec091628"
+  },
+  {
+   "flag": "periphery 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_3ac0a42fec091628"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_3bbc85db195f266d"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_3bbc85db195f266d"
+  },
+  {
+   "flag": "periphery 2048: 13 dead units on the probe set",
+   "learnerId": "lrn_3dd2381eebbf7a60"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_3dd2381eebbf7a60"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_3dd2381eebbf7a60"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_424a8d5e1764b12c"
+  },
+  {
+   "flag": "periphery 2048: 7 dead units on the probe set",
+   "learnerId": "lrn_424a8d5e1764b12c"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_42ba908935d176ae"
+  },
+  {
+   "flag": "periphery 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_42ba908935d176ae"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_42ba908935d176ae"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_42ba908935d176ae"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_466f09a7d6ac0cfd"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_466f09a7d6ac0cfd"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_466f09a7d6ac0cfd"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_466f09a7d6ac0cfd"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_466f09a7d6ac0cfd"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_4b9f4af9f85526d4"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_4b9f4af9f85526d4"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_4b9f4af9f85526d4"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_4d36342f7952da4d"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_4d36342f7952da4d"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_4d36342f7952da4d"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_51e714657ccfb40b"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_51e714657ccfb40b"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_51e714657ccfb40b"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_51e714657ccfb40b"
+  },
+  {
+   "flag": "fovea 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_51e714657ccfb40b"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_575c764b5ec4c039"
+  },
+  {
+   "flag": "periphery 2048: 13 dead units on the probe set",
+   "learnerId": "lrn_575c764b5ec4c039"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_593d718ff9edce58"
+  },
+  {
+   "flag": "periphery 2048: 15 dead units on the probe set",
+   "learnerId": "lrn_593d718ff9edce58"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_593d718ff9edce58"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_593d718ff9edce58"
+  },
+  {
+   "flag": "periphery 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_5df68570f464388c"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_5df68570f464388c"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_5df68570f464388c"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_6343f9b964e16d90"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_6343f9b964e16d90"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_6343f9b964e16d90"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_6343f9b964e16d90"
+  },
+  {
+   "flag": "periphery init: 4 dead units on the probe set",
+   "learnerId": "lrn_675e77c272967506"
+  },
+  {
+   "flag": "periphery 2048: 7 dead units on the probe set",
+   "learnerId": "lrn_675e77c272967506"
+  },
+  {
+   "flag": "fovea 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_675e77c272967506"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_69cff7e59ed5ddb7"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_69cff7e59ed5ddb7"
+  },
+  {
+   "flag": "periphery 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_69cff7e59ed5ddb7"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_69cff7e59ed5ddb7"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_69cff7e59ed5ddb7"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_6bd7f08a3c3d3ccf"
+  },
+  {
+   "flag": "periphery 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_6bd7f08a3c3d3ccf"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_6cf284efe1c94839"
+  },
+  {
+   "flag": "periphery 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_6cf284efe1c94839"
+  },
+  {
+   "flag": "periphery init: 4 dead units on the probe set",
+   "learnerId": "lrn_708d9b52a9f20e91"
+  },
+  {
+   "flag": "periphery 2048: 11 dead units on the probe set",
+   "learnerId": "lrn_708d9b52a9f20e91"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_708d9b52a9f20e91"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_708d9b52a9f20e91"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_70b6301addb331a5"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_70b6301addb331a5"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_70b6301addb331a5"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_70b6301addb331a5"
+  },
+  {
+   "flag": "periphery 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_71b858aa8d6e5215"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_71b858aa8d6e5215"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_71b858aa8d6e5215"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_752915770407d7f4"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_752915770407d7f4"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_77c031192a6bafcf"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_77c031192a6bafcf"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_77c031192a6bafcf"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_7994a6ec15754c8f"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_7994a6ec15754c8f"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_7a6495cac26a7170"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_7a6495cac26a7170"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_7a6495cac26a7170"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_7a6495cac26a7170"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_7a99f3c2f8528353"
+  },
+  {
+   "flag": "periphery 2048: 14 dead units on the probe set",
+   "learnerId": "lrn_7a99f3c2f8528353"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_7a99f3c2f8528353"
+  },
+  {
+   "flag": "fovea 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_7a99f3c2f8528353"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_7e8e0c7f5985d23a"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_7e8e0c7f5985d23a"
+  },
+  {
+   "flag": "periphery 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_7e8e0c7f5985d23a"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_831b2503f5f38eff"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_831b2503f5f38eff"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_831b2503f5f38eff"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_831b2503f5f38eff"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_868fb20b38d26c1a"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_868fb20b38d26c1a"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_868fb20b38d26c1a"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_868fb20b38d26c1a"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_868fb20b38d26c1a"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_86e9e39a5577ddcf"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_86e9e39a5577ddcf"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_86e9e39a5577ddcf"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_88dcf6c7d58d9b4e"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_88dcf6c7d58d9b4e"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_88dcf6c7d58d9b4e"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_88dcf6c7d58d9b4e"
+  },
+  {
+   "flag": "periphery 2048: 11 dead units on the probe set",
+   "learnerId": "lrn_8e97a39010dad877"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_8e97a39010dad877"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_92518cddd5901f8e"
+  },
+  {
+   "flag": "periphery 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_94a91d79c24e2c23"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_971d4b8f4433eb5c"
+  },
+  {
+   "flag": "fovea init: 4 dead units on the probe set",
+   "learnerId": "lrn_971d4b8f4433eb5c"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_971d4b8f4433eb5c"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_972903ab6e68c506"
+  },
+  {
+   "flag": "periphery 2048: 14 dead units on the probe set",
+   "learnerId": "lrn_972903ab6e68c506"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_972903ab6e68c506"
+  },
+  {
+   "flag": "periphery 2048: 14 dead units on the probe set",
+   "learnerId": "lrn_99281dfece81c20a"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_99281dfece81c20a"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_99281dfece81c20a"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_9c46bf9f7c443708"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_9c46bf9f7c443708"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_9c46bf9f7c443708"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_9c46bf9f7c443708"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_9cc715a39afc0ac0"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_9cc715a39afc0ac0"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_9cc715a39afc0ac0"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_9cc715a39afc0ac0"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_a090f2871275cec6"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_a090f2871275cec6"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_a090f2871275cec6"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_a69c9acf6e36fb18"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_a69c9acf6e36fb18"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_a69c9acf6e36fb18"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_a69c9acf6e36fb18"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_a69c9acf6e36fb18"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_a8f89fafae586ca3"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_a8f89fafae586ca3"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_a8f89fafae586ca3"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_a8f89fafae586ca3"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_a9db94fead468df8"
+  },
+  {
+   "flag": "periphery 2048: 15 dead units on the probe set",
+   "learnerId": "lrn_a9db94fead468df8"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_a9db94fead468df8"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_a9db94fead468df8"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_aa0a2b7aa93a77f5"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_aa0a2b7aa93a77f5"
+  },
+  {
+   "flag": "periphery 2048: 7 dead units on the probe set",
+   "learnerId": "lrn_aa0a2b7aa93a77f5"
+  },
+  {
+   "flag": "fovea 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_aa0a2b7aa93a77f5"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_ae0943c7d2664075"
+  },
+  {
+   "flag": "periphery 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_ae0943c7d2664075"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_ae0943c7d2664075"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_ae0943c7d2664075"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_ae4a66529b9f7bdd"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_ae4a66529b9f7bdd"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_ae4a66529b9f7bdd"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_ae4a66529b9f7bdd"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_b0e99e1c83edf0bf"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_b0e99e1c83edf0bf"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_b0e99e1c83edf0bf"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_b0e99e1c83edf0bf"
+  },
+  {
+   "flag": "fovea 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_b0e99e1c83edf0bf"
+  },
+  {
+   "flag": "periphery 2048: 11 dead units on the probe set",
+   "learnerId": "lrn_b4758fc9fe8d1e3d"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_b4758fc9fe8d1e3d"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_b4758fc9fe8d1e3d"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_b4df20bf82d881cd"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_b4df20bf82d881cd"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_b4df20bf82d881cd"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_b65c2bf3bfbcf264"
+  },
+  {
+   "flag": "periphery 2048: 11 dead units on the probe set",
+   "learnerId": "lrn_b65c2bf3bfbcf264"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_b65c2bf3bfbcf264"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_b73b58b617d8f86b"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_b73b58b617d8f86b"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_b73b58b617d8f86b"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_b73b58b617d8f86b"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_b8fd03242c616cc3"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_b8fd03242c616cc3"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_b8fd03242c616cc3"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_be242e9d52bf6080"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_be242e9d52bf6080"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_be242e9d52bf6080"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_bebfff0cd4076a58"
+  },
+  {
+   "flag": "periphery 2048: 11 dead units on the probe set",
+   "learnerId": "lrn_bebfff0cd4076a58"
+  },
+  {
+   "flag": "fovea 2048: 7 dead units on the probe set",
+   "learnerId": "lrn_bebfff0cd4076a58"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_c0eab2a0f2dbee96"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_c0eab2a0f2dbee96"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_c0eab2a0f2dbee96"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_c1a7759e6311989a"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_c1a7759e6311989a"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_c1a7759e6311989a"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_c3f44f5ebbfffe2f"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_c3f44f5ebbfffe2f"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_c7bb5490d6c71b57"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_c7bb5490d6c71b57"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_ce3d9e8730f31f05"
+  },
+  {
+   "flag": "periphery 2048: 13 dead units on the probe set",
+   "learnerId": "lrn_ce3d9e8730f31f05"
+  },
+  {
+   "flag": "fovea 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_ce3d9e8730f31f05"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_d49328278d3f7b6e"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_d9f5dcc79feadb67"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_d9f5dcc79feadb67"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_d9f5dcc79feadb67"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_d9f5dcc79feadb67"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_db9ea0fdb63f33ac"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_db9ea0fdb63f33ac"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_db9ea0fdb63f33ac"
+  },
+  {
+   "flag": "fovea 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_db9ea0fdb63f33ac"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_de282728b6111ce2"
+  },
+  {
+   "flag": "periphery 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_de282728b6111ce2"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_de282728b6111ce2"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_de282728b6111ce2"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_debe50499d02279b"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_debe50499d02279b"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_debe50499d02279b"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_def32918fbec02ff"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_def32918fbec02ff"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_def32918fbec02ff"
+  },
+  {
+   "flag": "periphery motion did not grow 512→2048",
+   "learnerId": "lrn_df1e716fc8e829b8"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_df1e716fc8e829b8"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_df1e716fc8e829b8"
+  },
+  {
+   "flag": "periphery 2048: 9 dead units on the probe set",
+   "learnerId": "lrn_df1e716fc8e829b8"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_df1e716fc8e829b8"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_df1e716fc8e829b8"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_e040e2ba4af5ba26"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_e040e2ba4af5ba26"
+  },
+  {
+   "flag": "periphery 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_e040e2ba4af5ba26"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_e12928ed80061772"
+  },
+  {
+   "flag": "periphery 2048: 12 dead units on the probe set",
+   "learnerId": "lrn_e12928ed80061772"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_e12928ed80061772"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_e90903d0871f32e5"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_e90903d0871f32e5"
+  },
+  {
+   "flag": "periphery 2048: 11 dead units on the probe set",
+   "learnerId": "lrn_e90903d0871f32e5"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_e90903d0871f32e5"
+  },
+  {
+   "flag": "periphery 2048: 10 dead units on the probe set",
+   "learnerId": "lrn_ec9e9bdc36cdd2a7"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_ec9e9bdc36cdd2a7"
+  },
+  {
+   "flag": "fovea motion did not grow 512→2048",
+   "learnerId": "lrn_ed9ac74b58bf80ac"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_ed9ac74b58bf80ac"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_ed9ac74b58bf80ac"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_ed9ac74b58bf80ac"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_ed9ac74b58bf80ac"
+  },
+  {
+   "flag": "periphery 2048: 13 dead units on the probe set",
+   "learnerId": "lrn_ef0bede745dabd62"
+  },
+  {
+   "flag": "fovea 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_ef0bede745dabd62"
+  },
+  {
+   "flag": "periphery 2048: 6 dead units on the probe set",
+   "learnerId": "lrn_f14351a5ac56b7b5"
+  },
+  {
+   "flag": "fovea 2048: 7 dead units on the probe set",
+   "learnerId": "lrn_f14351a5ac56b7b5"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_f39d7ad686474af9"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_f39d7ad686474af9"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_f39d7ad686474af9"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_f39d7ad686474af9"
+  },
+  {
+   "flag": "periphery 2048: 13 dead units on the probe set",
+   "learnerId": "lrn_f48b73948869356b"
+  },
+  {
+   "flag": "fovea 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_f48b73948869356b"
+  },
+  {
+   "flag": "periphery 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_f580f6a848691b0d"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_f580f6a848691b0d"
+  },
+  {
+   "flag": "fovea 2048: 3 dead units on the probe set",
+   "learnerId": "lrn_f580f6a848691b0d"
+  },
+  {
+   "flag": "periphery init: 1 dead units on the probe set",
+   "learnerId": "lrn_f7a9808c5110711c"
+  },
+  {
+   "flag": "periphery 2048: 4 dead units on the probe set",
+   "learnerId": "lrn_f7a9808c5110711c"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_f7a9808c5110711c"
+  },
+  {
+   "flag": "periphery init: 4 dead units on the probe set",
+   "learnerId": "lrn_fb6608d831eccf38"
+  },
+  {
+   "flag": "periphery 2048: 14 dead units on the probe set",
+   "learnerId": "lrn_fb6608d831eccf38"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_fb6608d831eccf38"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_fb6608d831eccf38"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_fc6f874c15a0bde5"
+  },
+  {
+   "flag": "periphery 2048: 8 dead units on the probe set",
+   "learnerId": "lrn_fc6f874c15a0bde5"
+  },
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_fd458a73812c87fb"
+  },
+  {
+   "flag": "periphery 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_fd458a73812c87fb"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_fd458a73812c87fb"
+  },
+  {
+   "flag": "fovea 2048: 2 dead units on the probe set",
+   "learnerId": "lrn_fd458a73812c87fb"
+  },
+  {
+   "flag": "periphery init: 3 dead units on the probe set",
+   "learnerId": "lrn_fd6bb00dcf988a5d"
+  },
+  {
+   "flag": "periphery 2048: 14 dead units on the probe set",
+   "learnerId": "lrn_fd6bb00dcf988a5d"
+  },
+  {
+   "flag": "fovea init: 2 dead units on the probe set",
+   "learnerId": "lrn_fd6bb00dcf988a5d"
+  },
+  {
+   "flag": "fovea 2048: 5 dead units on the probe set",
+   "learnerId": "lrn_fd6bb00dcf988a5d"
+  }
+ ],
+ "identification": [
+  {
+   "bestOther": 0.059565606169424405,
+   "bestOtherId": "lrn_42ba908935d176ae",
+   "learnerId": "lrn_0389057c8edfd656",
+   "ownInit": 0.9859329826324043
+  },
+  {
+   "bestOther": 0.0839090325456311,
+   "bestOtherId": "lrn_752915770407d7f4",
+   "learnerId": "lrn_04e5b12745ad2a6f",
+   "ownInit": 0.9743720440388818
+  },
+  {
+   "bestOther": 0.1006507879668593,
+   "bestOtherId": "lrn_f14351a5ac56b7b5",
+   "learnerId": "lrn_0b07fef0a117ee2a",
+   "ownInit": 0.9903223856209095
+  },
+  {
+   "bestOther": 0.057731871822763174,
+   "bestOtherId": "lrn_51e714657ccfb40b",
+   "learnerId": "lrn_0fa76bcff8f298fc",
+   "ownInit": 0.9719189435030594
+  },
+  {
+   "bestOther": 0.08274579533182713,
+   "bestOtherId": "lrn_b4758fc9fe8d1e3d",
+   "learnerId": "lrn_166a8c316c83fbca",
+   "ownInit": 0.9876964062466138
+  },
+  {
+   "bestOther": 0.08106515377253541,
+   "bestOtherId": "lrn_6bd7f08a3c3d3ccf",
+   "learnerId": "lrn_19567a71f9af005d",
+   "ownInit": 0.9905361717387249
+  },
+  {
+   "bestOther": 0.05286198335181416,
+   "bestOtherId": "lrn_d49328278d3f7b6e",
+   "learnerId": "lrn_19866eed52921978",
+   "ownInit": 0.9643657234372144
+  },
+  {
+   "bestOther": 0.06457476810460197,
+   "bestOtherId": "lrn_db9ea0fdb63f33ac",
+   "learnerId": "lrn_234d2e09b70c7044",
+   "ownInit": 0.9829271730150863
+  },
+  {
+   "bestOther": 0.0564113571275474,
+   "bestOtherId": "lrn_ef0bede745dabd62",
+   "learnerId": "lrn_24e9e0c38551d1c2",
+   "ownInit": 0.9898584323480104
+  },
+  {
+   "bestOther": 0.07850295511511264,
+   "bestOtherId": "lrn_ec9e9bdc36cdd2a7",
+   "learnerId": "lrn_24eb5ed3e2473cde",
+   "ownInit": 0.9858375629195497
+  },
+  {
+   "bestOther": 0.07532901486260828,
+   "bestOtherId": "lrn_575c764b5ec4c039",
+   "learnerId": "lrn_273c921607055c72",
+   "ownInit": 0.9631050166850776
+  },
+  {
+   "bestOther": 0.08853500726010713,
+   "bestOtherId": "lrn_868fb20b38d26c1a",
+   "learnerId": "lrn_289e560dc33ef0c2",
+   "ownInit": 0.9879012071231702
+  },
+  {
+   "bestOther": 0.06540262477215389,
+   "bestOtherId": "lrn_7e8e0c7f5985d23a",
+   "learnerId": "lrn_2ae1a1fe05461d4f",
+   "ownInit": 0.9812068970206571
+  },
+  {
+   "bestOther": 0.07526567811104684,
+   "bestOtherId": "lrn_7a6495cac26a7170",
+   "learnerId": "lrn_2d32e0f3ff2a01bf",
+   "ownInit": 0.9629413123415683
+  },
+  {
+   "bestOther": 0.09513218218911783,
+   "bestOtherId": "lrn_71b858aa8d6e5215",
+   "learnerId": "lrn_2d85395c9398d6a9",
+   "ownInit": 0.9867161779309539
+  },
+  {
+   "bestOther": 0.09562122752883859,
+   "bestOtherId": "lrn_d9f5dcc79feadb67",
+   "learnerId": "lrn_305e4b75f1d46470",
+   "ownInit": 0.9844421570864654
+  },
+  {
+   "bestOther": 0.05185826558864663,
+   "bestOtherId": "lrn_f39d7ad686474af9",
+   "learnerId": "lrn_330b970d0a006076",
+   "ownInit": 0.9546866646086464
+  },
+  {
+   "bestOther": 0.05909448692491437,
+   "bestOtherId": "lrn_ec9e9bdc36cdd2a7",
+   "learnerId": "lrn_34cb624866797078",
+   "ownInit": 0.982223479280761
+  },
+  {
+   "bestOther": 0.06744474086667644,
+   "bestOtherId": "lrn_a69c9acf6e36fb18",
+   "learnerId": "lrn_34da8ae6f5c0d9e9",
+   "ownInit": 0.9609299466222854
+  },
+  {
+   "bestOther": 0.07103307709001823,
+   "bestOtherId": "lrn_99281dfece81c20a",
+   "learnerId": "lrn_3ac0a42fec091628",
+   "ownInit": 0.9817749593991281
+  },
+  {
+   "bestOther": 0.07211261725388915,
+   "bestOtherId": "lrn_b8fd03242c616cc3",
+   "learnerId": "lrn_3bbc85db195f266d",
+   "ownInit": 0.9751926036237859
+  },
+  {
+   "bestOther": 0.07586851021732728,
+   "bestOtherId": "lrn_a090f2871275cec6",
+   "learnerId": "lrn_3dd2381eebbf7a60",
+   "ownInit": 0.9745029402960379
+  },
+  {
+   "bestOther": 0.059353334632939125,
+   "bestOtherId": "lrn_b73b58b617d8f86b",
+   "learnerId": "lrn_424a8d5e1764b12c",
+   "ownInit": 0.9915268172385278
+  },
+  {
+   "bestOther": 0.07665741259357838,
+   "bestOtherId": "lrn_de282728b6111ce2",
+   "learnerId": "lrn_42ba908935d176ae",
+   "ownInit": 0.8863851713987573
+  },
+  {
+   "bestOther": 0.09789143160414109,
+   "bestOtherId": "lrn_a9db94fead468df8",
+   "learnerId": "lrn_466f09a7d6ac0cfd",
+   "ownInit": 0.9661346497048942
+  },
+  {
+   "bestOther": 0.07157110147940961,
+   "bestOtherId": "lrn_19567a71f9af005d",
+   "learnerId": "lrn_4b9f4af9f85526d4",
+   "ownInit": 0.9849647772970906
+  },
+  {
+   "bestOther": 0.07942463876044559,
+   "bestOtherId": "lrn_7a6495cac26a7170",
+   "learnerId": "lrn_4d36342f7952da4d",
+   "ownInit": 0.9798103923652837
+  },
+  {
+   "bestOther": 0.06100436031314507,
+   "bestOtherId": "lrn_f580f6a848691b0d",
+   "learnerId": "lrn_51e714657ccfb40b",
+   "ownInit": 0.9738119409009248
+  },
+  {
+   "bestOther": 0.07470984792672251,
+   "bestOtherId": "lrn_273c921607055c72",
+   "learnerId": "lrn_575c764b5ec4c039",
+   "ownInit": 0.9838634982429173
+  },
+  {
+   "bestOther": 0.05972460755230862,
+   "bestOtherId": "lrn_0389057c8edfd656",
+   "learnerId": "lrn_593d718ff9edce58",
+   "ownInit": 0.9756109532341901
+  },
+  {
+   "bestOther": 0.10733920706913094,
+   "bestOtherId": "lrn_675e77c272967506",
+   "learnerId": "lrn_5df68570f464388c",
+   "ownInit": 0.9857109884937817
+  },
+  {
+   "bestOther": 0.061587226558090624,
+   "bestOtherId": "lrn_831b2503f5f38eff",
+   "learnerId": "lrn_6343f9b964e16d90",
+   "ownInit": 0.9768340248386965
+  },
+  {
+   "bestOther": 0.12021335116432909,
+   "bestOtherId": "lrn_5df68570f464388c",
+   "learnerId": "lrn_675e77c272967506",
+   "ownInit": 0.9718906464653901
+  },
+  {
+   "bestOther": 0.05458644709941386,
+   "bestOtherId": "lrn_4d36342f7952da4d",
+   "learnerId": "lrn_69cff7e59ed5ddb7",
+   "ownInit": 0.9876920756048047
+  },
+  {
+   "bestOther": 0.07009793631616969,
+   "bestOtherId": "lrn_19567a71f9af005d",
+   "learnerId": "lrn_6bd7f08a3c3d3ccf",
+   "ownInit": 0.9792479132812183
+  },
+  {
+   "bestOther": 0.058681526973221855,
+   "bestOtherId": "lrn_19866eed52921978",
+   "learnerId": "lrn_6cf284efe1c94839",
+   "ownInit": 0.9769024446459185
+  },
+  {
+   "bestOther": 0.06449803673970776,
+   "bestOtherId": "lrn_f580f6a848691b0d",
+   "learnerId": "lrn_708d9b52a9f20e91",
+   "ownInit": 0.9797467934625889
+  },
+  {
+   "bestOther": 0.07795152956882678,
+   "bestOtherId": "lrn_94a91d79c24e2c23",
+   "learnerId": "lrn_70b6301addb331a5",
+   "ownInit": 0.9769833853065513
+  },
+  {
+   "bestOther": 0.09461989219127488,
+   "bestOtherId": "lrn_2d85395c9398d6a9",
+   "learnerId": "lrn_71b858aa8d6e5215",
+   "ownInit": 0.9867744416971168
+  },
+  {
+   "bestOther": 0.09545568169825336,
+   "bestOtherId": "lrn_04e5b12745ad2a6f",
+   "learnerId": "lrn_752915770407d7f4",
+   "ownInit": 0.9905700652571853
+  },
+  {
+   "bestOther": 0.06047693025038621,
+   "bestOtherId": "lrn_0b07fef0a117ee2a",
+   "learnerId": "lrn_77c031192a6bafcf",
+   "ownInit": 0.9894714927539029
+  },
+  {
+   "bestOther": 0.06766534261740913,
+   "bestOtherId": "lrn_972903ab6e68c506",
+   "learnerId": "lrn_7994a6ec15754c8f",
+   "ownInit": 0.9825298767773083
+  },
+  {
+   "bestOther": 0.08630494623714129,
+   "bestOtherId": "lrn_2d32e0f3ff2a01bf",
+   "learnerId": "lrn_7a6495cac26a7170",
+   "ownInit": 0.9923488994424484
+  },
+  {
+   "bestOther": 0.06638233777101268,
+   "bestOtherId": "lrn_971d4b8f4433eb5c",
+   "learnerId": "lrn_7a99f3c2f8528353",
+   "ownInit": 0.9567940239741155
+  },
+  {
+   "bestOther": 0.08697918913597553,
+   "bestOtherId": "lrn_a9db94fead468df8",
+   "learnerId": "lrn_7e8e0c7f5985d23a",
+   "ownInit": 0.985782074118637
+  },
+  {
+   "bestOther": 0.06273846580984992,
+   "bestOtherId": "lrn_2d32e0f3ff2a01bf",
+   "learnerId": "lrn_831b2503f5f38eff",
+   "ownInit": 0.9813424851190135
+  },
+  {
+   "bestOther": 0.08868633914583036,
+   "bestOtherId": "lrn_289e560dc33ef0c2",
+   "learnerId": "lrn_868fb20b38d26c1a",
+   "ownInit": 0.9847001548974753
+  },
+  {
+   "bestOther": 0.07077890346305452,
+   "bestOtherId": "lrn_7a6495cac26a7170",
+   "learnerId": "lrn_86e9e39a5577ddcf",
+   "ownInit": 0.9948465574632781
+  },
+  {
+   "bestOther": 0.07209069423662372,
+   "bestOtherId": "lrn_bebfff0cd4076a58",
+   "learnerId": "lrn_88dcf6c7d58d9b4e",
+   "ownInit": 0.9825992734317563
+  },
+  {
+   "bestOther": 0.06496365339274136,
+   "bestOtherId": "lrn_42ba908935d176ae",
+   "learnerId": "lrn_8e97a39010dad877",
+   "ownInit": 0.9522940927946089
+  },
+  {
+   "bestOther": 0.06912454906178418,
+   "bestOtherId": "lrn_94a91d79c24e2c23",
+   "learnerId": "lrn_92518cddd5901f8e",
+   "ownInit": 0.9796099690810506
+  },
+  {
+   "bestOther": 0.06659719740663171,
+   "bestOtherId": "lrn_fb6608d831eccf38",
+   "learnerId": "lrn_94a91d79c24e2c23",
+   "ownInit": 0.9794840609184621
+  },
+  {
+   "bestOther": 0.044155814623346085,
+   "bestOtherId": "lrn_ef0bede745dabd62",
+   "learnerId": "lrn_971d4b8f4433eb5c",
+   "ownInit": 0.9783066668274473
+  },
+  {
+   "bestOther": 0.08362653508836845,
+   "bestOtherId": "lrn_db9ea0fdb63f33ac",
+   "learnerId": "lrn_972903ab6e68c506",
+   "ownInit": 0.962292853498869
+  },
+  {
+   "bestOther": 0.06669152211799864,
+   "bestOtherId": "lrn_3ac0a42fec091628",
+   "learnerId": "lrn_99281dfece81c20a",
+   "ownInit": 0.969569126556048
+  },
+  {
+   "bestOther": 0.08747592693751947,
+   "bestOtherId": "lrn_c3f44f5ebbfffe2f",
+   "learnerId": "lrn_9c46bf9f7c443708",
+   "ownInit": 0.980787826829177
+  },
+  {
+   "bestOther": 0.0714023171550721,
+   "bestOtherId": "lrn_f580f6a848691b0d",
+   "learnerId": "lrn_9cc715a39afc0ac0",
+   "ownInit": 0.9743004184943016
+  },
+  {
+   "bestOther": 0.0690088720532827,
+   "bestOtherId": "lrn_3dd2381eebbf7a60",
+   "learnerId": "lrn_a090f2871275cec6",
+   "ownInit": 0.9877386177597147
+  },
+  {
+   "bestOther": 0.06416315988895183,
+   "bestOtherId": "lrn_34da8ae6f5c0d9e9",
+   "learnerId": "lrn_a69c9acf6e36fb18",
+   "ownInit": 0.9772899845312304
+  },
+  {
+   "bestOther": 0.05709727689732003,
+   "bestOtherId": "lrn_3bbc85db195f266d",
+   "learnerId": "lrn_a8f89fafae586ca3",
+   "ownInit": 0.9635907725348212
+  },
+  {
+   "bestOther": 0.09419825701265036,
+   "bestOtherId": "lrn_466f09a7d6ac0cfd",
+   "learnerId": "lrn_a9db94fead468df8",
+   "ownInit": 0.9811907598669233
+  },
+  {
+   "bestOther": 0.068016662365277,
+   "bestOtherId": "lrn_51e714657ccfb40b",
+   "learnerId": "lrn_aa0a2b7aa93a77f5",
+   "ownInit": 0.9569775461487282
+  },
+  {
+   "bestOther": 0.051433294556742226,
+   "bestOtherId": "lrn_19567a71f9af005d",
+   "learnerId": "lrn_ae0943c7d2664075",
+   "ownInit": 0.9895060993375391
+  },
+  {
+   "bestOther": 0.05859091065834336,
+   "bestOtherId": "lrn_86e9e39a5577ddcf",
+   "learnerId": "lrn_ae4a66529b9f7bdd",
+   "ownInit": 0.991734641689562
+  },
+  {
+   "bestOther": 0.059408424056372755,
+   "bestOtherId": "lrn_305e4b75f1d46470",
+   "learnerId": "lrn_b0e99e1c83edf0bf",
+   "ownInit": 0.9553482675219411
+  },
+  {
+   "bestOther": 0.07274234370278546,
+   "bestOtherId": "lrn_166a8c316c83fbca",
+   "learnerId": "lrn_b4758fc9fe8d1e3d",
+   "ownInit": 0.9866754652176221
+  },
+  {
+   "bestOther": 0.06126827260185643,
+   "bestOtherId": "lrn_fd458a73812c87fb",
+   "learnerId": "lrn_b4df20bf82d881cd",
+   "ownInit": 0.9952755001665254
+  },
+  {
+   "bestOther": 0.052820236240898426,
+   "bestOtherId": "lrn_42ba908935d176ae",
+   "learnerId": "lrn_b65c2bf3bfbcf264",
+   "ownInit": 0.9782864609857589
+  },
+  {
+   "bestOther": 0.08567086133608959,
+   "bestOtherId": "lrn_466f09a7d6ac0cfd",
+   "learnerId": "lrn_b73b58b617d8f86b",
+   "ownInit": 0.9910229423406898
+  },
+  {
+   "bestOther": 0.06696402929383549,
+   "bestOtherId": "lrn_3bbc85db195f266d",
+   "learnerId": "lrn_b8fd03242c616cc3",
+   "ownInit": 0.9798715273253161
+  },
+  {
+   "bestOther": 0.06874290282679449,
+   "bestOtherId": "lrn_94a91d79c24e2c23",
+   "learnerId": "lrn_be242e9d52bf6080",
+   "ownInit": 0.9936041361659325
+  },
+  {
+   "bestOther": 0.07634991361278111,
+   "bestOtherId": "lrn_88dcf6c7d58d9b4e",
+   "learnerId": "lrn_bebfff0cd4076a58",
+   "ownInit": 0.980952666703368
+  },
+  {
+   "bestOther": 0.05802759712917374,
+   "bestOtherId": "lrn_71b858aa8d6e5215",
+   "learnerId": "lrn_c0eab2a0f2dbee96",
+   "ownInit": 0.9344059309752913
+  },
+  {
+   "bestOther": 0.06863409805991649,
+   "bestOtherId": "lrn_d9f5dcc79feadb67",
+   "learnerId": "lrn_c1a7759e6311989a",
+   "ownInit": 0.9768503150395058
+  },
+  {
+   "bestOther": 0.07957051849803129,
+   "bestOtherId": "lrn_9c46bf9f7c443708",
+   "learnerId": "lrn_c3f44f5ebbfffe2f",
+   "ownInit": 0.983431791585026
+  },
+  {
+   "bestOther": 0.08066134859915242,
+   "bestOtherId": "lrn_71b858aa8d6e5215",
+   "learnerId": "lrn_c7bb5490d6c71b57",
+   "ownInit": 0.9740483463593603
+  },
+  {
+   "bestOther": 0.06746566581132742,
+   "bestOtherId": "lrn_2d85395c9398d6a9",
+   "learnerId": "lrn_ce3d9e8730f31f05",
+   "ownInit": 0.9862563109122231
+  },
+  {
+   "bestOther": 0.05658097213009691,
+   "bestOtherId": "lrn_ed9ac74b58bf80ac",
+   "learnerId": "lrn_d49328278d3f7b6e",
+   "ownInit": 0.9799936797604459
+  },
+  {
+   "bestOther": 0.07605941445581885,
+   "bestOtherId": "lrn_ec9e9bdc36cdd2a7",
+   "learnerId": "lrn_d9f5dcc79feadb67",
+   "ownInit": 0.9787108667247321
+  },
+  {
+   "bestOther": 0.06258751186199189,
+   "bestOtherId": "lrn_6343f9b964e16d90",
+   "learnerId": "lrn_db9ea0fdb63f33ac",
+   "ownInit": 0.943960585917568
+  },
+  {
+   "bestOther": 0.060513660933321556,
+   "bestOtherId": "lrn_a69c9acf6e36fb18",
+   "learnerId": "lrn_de282728b6111ce2",
+   "ownInit": 0.9812119735621072
+  },
+  {
+   "bestOther": 0.06552040952846,
+   "bestOtherId": "lrn_f48b73948869356b",
+   "learnerId": "lrn_debe50499d02279b",
+   "ownInit": 0.9859892628135059
+  },
+  {
+   "bestOther": 0.05541505631066184,
+   "bestOtherId": "lrn_f48b73948869356b",
+   "learnerId": "lrn_def32918fbec02ff",
+   "ownInit": 0.9640404462329389
+  },
+  {
+   "bestOther": 0.06491757031690076,
+   "bestOtherId": "lrn_def32918fbec02ff",
+   "learnerId": "lrn_df1e716fc8e829b8",
+   "ownInit": 0.9704503212401608
+  },
+  {
+   "bestOther": 0.08114286256935481,
+   "bestOtherId": "lrn_b73b58b617d8f86b",
+   "learnerId": "lrn_e040e2ba4af5ba26",
+   "ownInit": 0.9787271518824284
+  },
+  {
+   "bestOther": 0.040952288603686125,
+   "bestOtherId": "lrn_971d4b8f4433eb5c",
+   "learnerId": "lrn_e12928ed80061772",
+   "ownInit": 0.9383768085426135
+  },
+  {
+   "bestOther": 0.07702338058815715,
+   "bestOtherId": "lrn_972903ab6e68c506",
+   "learnerId": "lrn_e90903d0871f32e5",
+   "ownInit": 0.960104871269539
+  },
+  {
+   "bestOther": 0.08832838766888568,
+   "bestOtherId": "lrn_d9f5dcc79feadb67",
+   "learnerId": "lrn_ec9e9bdc36cdd2a7",
+   "ownInit": 0.9699823718180626
+  },
+  {
+   "bestOther": 0.06362045643378997,
+   "bestOtherId": "lrn_a090f2871275cec6",
+   "learnerId": "lrn_ed9ac74b58bf80ac",
+   "ownInit": 0.9616188440925169
+  },
+  {
+   "bestOther": 0.0633164175281171,
+   "bestOtherId": "lrn_2d32e0f3ff2a01bf",
+   "learnerId": "lrn_ef0bede745dabd62",
+   "ownInit": 0.9723718108449342
+  },
+  {
+   "bestOther": 0.08704224190083233,
+   "bestOtherId": "lrn_0b07fef0a117ee2a",
+   "learnerId": "lrn_f14351a5ac56b7b5",
+   "ownInit": 0.9240987522210933
+  },
+  {
+   "bestOther": 0.04861400989767174,
+   "bestOtherId": "lrn_def32918fbec02ff",
+   "learnerId": "lrn_f39d7ad686474af9",
+   "ownInit": 0.9661461353300775
+  },
+  {
+   "bestOther": 0.0758876444335738,
+   "bestOtherId": "lrn_def32918fbec02ff",
+   "learnerId": "lrn_f48b73948869356b",
+   "ownInit": 0.9784229773812768
+  },
+  {
+   "bestOther": 0.07155482235734234,
+   "bestOtherId": "lrn_2d32e0f3ff2a01bf",
+   "learnerId": "lrn_f580f6a848691b0d",
+   "ownInit": 0.9888952474740453
+  },
+  {
+   "bestOther": 0.059642267887335704,
+   "bestOtherId": "lrn_42ba908935d176ae",
+   "learnerId": "lrn_f7a9808c5110711c",
+   "ownInit": 0.9682763762535642
+  },
+  {
+   "bestOther": 0.07009457976152884,
+   "bestOtherId": "lrn_94a91d79c24e2c23",
+   "learnerId": "lrn_fb6608d831eccf38",
+   "ownInit": 0.9811845442947879
+  },
+  {
+   "bestOther": 0.06578738717564116,
+   "bestOtherId": "lrn_305e4b75f1d46470",
+   "learnerId": "lrn_fc6f874c15a0bde5",
+   "ownInit": 0.9897192925479421
+  },
+  {
+   "bestOther": 0.07561390537546928,
+   "bestOtherId": "lrn_e040e2ba4af5ba26",
+   "learnerId": "lrn_fd458a73812c87fb",
+   "ownInit": 0.996358339568953
+  },
+  {
+   "bestOther": 0.06574453256098323,
+   "bestOtherId": "lrn_752915770407d7f4",
+   "learnerId": "lrn_fd6bb00dcf988a5d",
+   "ownInit": 0.9882585728176128
+  }
+ ],
+ "lives": 99,
+ "manifestSha": "bf9ebe6b16142747f9db9dcf2a8ce48b8017632b4c9eb0f9be787288fb220ec6",
+ "motion": [
+  {
+   "fovea": [
+    0.21213361585808452,
+    0.21632705418061965,
+    0.21632705419421916
+   ],
+   "genomeSha": "0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "learnerId": "lrn_0389057c8edfd656",
+   "periphery": [
+    0.18807918140749835,
+    0.25463138712208944,
+    0.2546314251560849
+   ]
+  },
+  {
+   "fovea": [
+    0.28262323171893533,
+    0.40034970051638946,
+    0.5452237684701664
+   ],
+   "genomeSha": "1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "learnerId": "lrn_04e5b12745ad2a6f",
+   "periphery": [
+    0.25556284242887806,
+    0.2628864792367136,
+    0.31526742183165046
+   ]
+  },
+  {
+   "fovea": [
+    0.14812462122178177,
+    0.18238448897801315,
+    0.23264748471744595
+   ],
+   "genomeSha": "857d9fb2b5aed029e246120d115d4aa9e2524dead3d8d9f6041b714e9150ece5",
+   "learnerId": "lrn_0b07fef0a117ee2a",
+   "periphery": [
+    0.14310161634769872,
+    0.17101844094289173,
+    0.1661451522146717
+   ]
+  },
+  {
+   "fovea": [
+    0.1836670708297399,
+    0.1836670510997013,
+    0.18366704141125684
+   ],
+   "genomeSha": "c7a225faf43c9179193d2456e0e1cf0719613bae8e5fb48669874cd473b12d71",
+   "learnerId": "lrn_0fa76bcff8f298fc",
+   "periphery": [
+    0.3005186329238777,
+    0.3005393824683935,
+    0.30057304932130424
+   ]
+  },
+  {
+   "fovea": [
+    0.20713740965516594,
+    0.22052857001987033,
+    0.3222166348730353
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_166a8c316c83fbca",
+   "periphery": [
+    0.08899643156841834,
+    0.09304485390061075,
+    0.11336170746691085
+   ]
+  },
+  {
+   "fovea": [
+    0.1687033361703692,
+    0.3801031282393961,
+    0.3774529333336656
+   ],
+   "genomeSha": "1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "learnerId": "lrn_19567a71f9af005d",
+   "periphery": [
+    0.11624807127247846,
+    0.1400092191909827,
+    0.14335435931414264
+   ]
+  },
+  {
+   "fovea": [
+    0.3188184708781596,
+    0.3190510009977401,
+    0.3190502921709955
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_19866eed52921978",
+   "periphery": [
+    0.28002346429564173,
+    0.27694244422785147,
+    0.2769399745444011
+   ]
+  },
+  {
+   "fovea": [
+    0.14914932223215172,
+    0.1492235521942383,
+    0.1824649245169714
+   ],
+   "genomeSha": "cb9c680ca4f7339c432910e77c87548ee2a8916625784b31f2a328a29d42b98e",
+   "learnerId": "lrn_234d2e09b70c7044",
+   "periphery": [
+    0.2195264048035071,
+    0.21920789708524746,
+    0.2786605672805738
+   ]
+  },
+  {
+   "fovea": [
+    0.11598232442747315,
+    0.12956671966234024,
+    0.12789849828467623
+   ],
+   "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "learnerId": "lrn_24e9e0c38551d1c2",
+   "periphery": [
+    0.17669834850210758,
+    0.20346606709892875,
+    0.19032705995428695
+   ]
+  },
+  {
+   "fovea": [
+    0.18684069079200494,
+    0.2366617122685145,
+    0.33444848835677016
+   ],
+   "genomeSha": "7a757dcccf3bed30cab42afb22cf15a22bce13795a63e2d266e2da72d17834be",
+   "learnerId": "lrn_24eb5ed3e2473cde",
+   "periphery": [
+    0.16687290735269256,
+    0.1948320434773618,
+    0.2286724995493382
+   ]
+  },
+  {
+   "fovea": [
+    0.37390544509606327,
+    0.4363407350476206,
+    0.5316210426987202
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_273c921607055c72",
+   "periphery": [
+    0.2084080304228159,
+    0.2103827608511377,
+    0.2231041329883033
+   ]
+  },
+  {
+   "fovea": [
+    0.17776185317455725,
+    0.17872033280490843,
+    0.17872893996418385
+   ],
+   "genomeSha": "3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "learnerId": "lrn_289e560dc33ef0c2",
+   "periphery": [
+    0.21677840102000234,
+    0.28224014000695874,
+    0.28228206233357767
+   ]
+  },
+  {
+   "fovea": [
+    0.2567549188879158,
+    0.36730842705991396,
+    0.4858018834092583
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_2ae1a1fe05461d4f",
+   "periphery": [
+    0.21203245923874622,
+    0.2422554116298833,
+    0.2481899330318803
+   ]
+  },
+  {
+   "fovea": [
+    0.3649172519302395,
+    0.41577382388634754,
+    0.5541231736660872
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_2d32e0f3ff2a01bf",
+   "periphery": [
+    0.2959726230668405,
+    0.3220102544162486,
+    0.346320725462636
+   ]
+  },
+  {
+   "fovea": [
+    0.17533281272013088,
+    0.1897558794984997,
+    0.254992174779228
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_2d85395c9398d6a9",
+   "periphery": [
+    0.1932881059752987,
+    0.20559558618617998,
+    0.21533403848487054
+   ]
+  },
+  {
+   "fovea": [
+    0.21522735287429126,
+    0.2889558693692591,
+    0.3586356882355632
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_305e4b75f1d46470",
+   "periphery": [
+    0.15832943270613184,
+    0.18438964150548082,
+    0.18427299410841022
+   ]
+  },
+  {
+   "fovea": [
+    0.40684511586432354,
+    0.4323307079130703,
+    0.42924000470905765
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_330b970d0a006076",
+   "periphery": [
+    0.17500128713691354,
+    0.17523455801365886,
+    0.1756113177949595
+   ]
+  },
+  {
+   "fovea": [
+    0.23290304686157984,
+    0.26354996929149427,
+    0.3426469175464651
+   ],
+   "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "learnerId": "lrn_34cb624866797078",
+   "periphery": [
+    0.21328562988824712,
+    0.21669698663110537,
+    0.2583042386253967
+   ]
+  },
+  {
+   "fovea": [
+    0.3675722076286206,
+    0.3278645262585775,
+    0.3278645275885302
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_34da8ae6f5c0d9e9",
+   "periphery": [
+    0.24500260321328504,
+    0.27862271296376884,
+    0.27862208830214996
+   ]
+  },
+  {
+   "fovea": [
+    0.18081396561446178,
+    0.17938472088681245,
+    0.1793853074623066
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_3ac0a42fec091628",
+   "periphery": [
+    0.2065908889560695,
+    0.24084103230485437,
+    0.2407304100488903
+   ]
+  },
+  {
+   "fovea": [
+    0.23986756350964455,
+    0.23973599449996247,
+    0.3554054654676214
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_3bbc85db195f266d",
+   "periphery": [
+    0.22243450096436773,
+    0.23245808853413924,
+    0.29147103895201304
+   ]
+  },
+  {
+   "fovea": [
+    0.2883341177069517,
+    0.3959889210991779,
+    0.44222577376509603
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_3dd2381eebbf7a60",
+   "periphery": [
+    0.2251006650174232,
+    0.23666533050136368,
+    0.2383979702896929
+   ]
+  },
+  {
+   "fovea": [
+    0.1513980016827907,
+    0.18880069421578524,
+    0.24531518800898652
+   ],
+   "genomeSha": "179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "learnerId": "lrn_424a8d5e1764b12c",
+   "periphery": [
+    0.12373055543323626,
+    0.14476445421348852,
+    0.16162848734148813
+   ]
+  },
+  {
+   "fovea": [
+    0.6728429251208456,
+    0.6716341999951401,
+    1.021850393262478
+   ],
+   "genomeSha": "0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "learnerId": "lrn_42ba908935d176ae",
+   "periphery": [
+    0.2942720757937282,
+    0.2942043864388188,
+    0.3269231598397706
+   ]
+  },
+  {
+   "fovea": [
+    0.37947557796275483,
+    0.46848921495705986,
+    0.468212178854078
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_466f09a7d6ac0cfd",
+   "periphery": [
+    0.1973425152700343,
+    0.1973425152700343,
+    0.1973425152700343
+   ]
+  },
+  {
+   "fovea": [
+    0.20027882246434772,
+    0.19825102712875967,
+    0.2390051122433772
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_4b9f4af9f85526d4",
+   "periphery": [
+    0.20965515234837379,
+    0.2069778030701851,
+    0.22275117109203868
+   ]
+  },
+  {
+   "fovea": [
+    0.2739382165485675,
+    0.4177477407065063,
+    0.5553863128099948
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_4d36342f7952da4d",
+   "periphery": [
+    0.1348315498796975,
+    0.13477883848656394,
+    0.24431397134105562
+   ]
+  },
+  {
+   "fovea": [
+    0.3082195120210824,
+    0.3843447168105335,
+    0.48812932317943875
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_51e714657ccfb40b",
+   "periphery": [
+    0.2505619186593226,
+    0.2484933015368536,
+    0.24773845537756178
+   ]
+  },
+  {
+   "fovea": [
+    0.224930916552761,
+    0.3872854168596251,
+    0.5583516033072842
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_575c764b5ec4c039",
+   "periphery": [
+    0.16627062409717566,
+    0.2548194768166327,
+    0.2567539443884854
+   ]
+  },
+  {
+   "fovea": [
+    0.30840404075003264,
+    0.4527770899869401,
+    0.43944423823892154
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_593d718ff9edce58",
+   "periphery": [
+    0.23575235565441582,
+    0.2824948407473135,
+    0.2851648214284157
+   ]
+  },
+  {
+   "fovea": [
+    0.13910775752874063,
+    0.13910862771191715,
+    0.1391561190978341
+   ],
+   "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "learnerId": "lrn_5df68570f464388c",
+   "periphery": [
+    0.2530081133768433,
+    0.2532753951018342,
+    0.2590279500452726
+   ]
+  },
+  {
+   "fovea": [
+    0.2737178293879649,
+    0.27233743326630155,
+    0.2876065214284881
+   ],
+   "genomeSha": "1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "learnerId": "lrn_6343f9b964e16d90",
+   "periphery": [
+    0.15680021714630074,
+    0.15680873316584215,
+    0.15680873325979536
+   ]
+  },
+  {
+   "fovea": [
+    0.3395675046812515,
+    0.45247280677335155,
+    0.6082136808787939
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_675e77c272967506",
+   "periphery": [
+    0.18175627907511369,
+    0.18133696528623852,
+    0.1845255165082831
+   ]
+  },
+  {
+   "fovea": [
+    0.182691996078575,
+    0.19391609411484556,
+    0.18124655048933372
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_69cff7e59ed5ddb7",
+   "periphery": [
+    0.1429999217545332,
+    0.14315457155222644,
+    0.1922982224491317
+   ]
+  },
+  {
+   "fovea": [
+    0.3177593767031528,
+    0.3419421557261874,
+    0.3410068859995467
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_6bd7f08a3c3d3ccf",
+   "periphery": [
+    0.21666059304457647,
+    0.2427756437923639,
+    0.2734343209936925
+   ]
+  },
+  {
+   "fovea": [
+    0.23520668510835968,
+    0.23520669639437358,
+    0.23533905970786975
+   ],
+   "genomeSha": "1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "learnerId": "lrn_6cf284efe1c94839",
+   "periphery": [
+    0.2600242450175471,
+    0.2600221772104187,
+    0.25944221087301106
+   ]
+  },
+  {
+   "fovea": [
+    0.20123493544433305,
+    0.3000424922051557,
+    0.30004247774667897
+   ],
+   "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "learnerId": "lrn_708d9b52a9f20e91",
+   "periphery": [
+    0.23233855098246034,
+    0.36247509104549935,
+    0.3624749977763404
+   ]
+  },
+  {
+   "fovea": [
+    0.17385898649776269,
+    0.17385904405963615,
+    0.16849991008482254
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_70b6301addb331a5",
+   "periphery": [
+    0.26757732720826866,
+    0.26761269078880395,
+    0.2554849687542301
+   ]
+  },
+  {
+   "fovea": [
+    0.11965862465333083,
+    0.12265231692655416,
+    0.23650391153629205
+   ],
+   "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "learnerId": "lrn_71b858aa8d6e5215",
+   "periphery": [
+    0.20066072176541655,
+    0.167576543848653,
+    0.28246367800734384
+   ]
+  },
+  {
+   "fovea": [
+    0.16554461075370472,
+    0.21829262518799955,
+    0.2183121620968332
+   ],
+   "genomeSha": "4fc80a55d4225835f156349f7ec54dea53c350c1bfd83d7f10b1aef898a53df3",
+   "learnerId": "lrn_752915770407d7f4",
+   "periphery": [
+    0.1154001458994919,
+    0.23849427352342498,
+    0.23849416598039072
+   ]
+  },
+  {
+   "fovea": [
+    0.16236191806790995,
+    0.2875840571999156,
+    0.29535960961771773
+   ],
+   "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "learnerId": "lrn_77c031192a6bafcf",
+   "periphery": [
+    0.17169054938312386,
+    0.2189380774333989,
+    0.21961745970797394
+   ]
+  },
+  {
+   "fovea": [
+    0.19131955085854133,
+    0.18715887103091397,
+    0.1901447296086435
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_7994a6ec15754c8f",
+   "periphery": [
+    0.2337823341408178,
+    0.23202953131447357,
+    0.2400061653550666
+   ]
+  },
+  {
+   "fovea": [
+    0.1269007440730258,
+    0.14275683764988145,
+    0.19024103123042857
+   ],
+   "genomeSha": "179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "learnerId": "lrn_7a6495cac26a7170",
+   "periphery": [
+    0.13485652037416004,
+    0.18625355997544277,
+    0.19890693004264784
+   ]
+  },
+  {
+   "fovea": [
+    0.4454274556990623,
+    0.5730354629080919,
+    0.738008162791548
+   ],
+   "genomeSha": "3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "learnerId": "lrn_7a99f3c2f8528353",
+   "periphery": [
+    0.16964185935807224,
+    0.39381752595872715,
+    0.39381752595872715
+   ]
+  },
+  {
+   "fovea": [
+    0.2003093165372513,
+    0.26162340878466384,
+    0.2939572808479648
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_7e8e0c7f5985d23a",
+   "periphery": [
+    0.15891873820160907,
+    0.15645026817402713,
+    0.15495904345453107
+   ]
+  },
+  {
+   "fovea": [
+    0.16191950846429823,
+    0.16557271262685183,
+    0.1754625265029788
+   ],
+   "genomeSha": "1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "learnerId": "lrn_831b2503f5f38eff",
+   "periphery": [
+    0.22808117528767452,
+    0.22926495282507153,
+    0.2201143615932818
+   ]
+  },
+  {
+   "fovea": [
+    0.18979275292706133,
+    0.17263703053572574,
+    0.17258969606348434
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_868fb20b38d26c1a",
+   "periphery": [
+    0.17020032940700344,
+    0.22370584641815824,
+    0.22340423171547213
+   ]
+  },
+  {
+   "fovea": [
+    0.05957272397574395,
+    0.05940247363648097,
+    0.05911991169478491
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_86e9e39a5577ddcf",
+   "periphery": [
+    0.13007832413848583,
+    0.13320518066509893,
+    0.13595920134462272
+   ]
+  },
+  {
+   "fovea": [
+    0.14603570793020934,
+    0.14648374887217278,
+    0.1441507880574014
+   ],
+   "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "learnerId": "lrn_88dcf6c7d58d9b4e",
+   "periphery": [
+    0.23144196738446612,
+    0.23391540610987516,
+    0.25270634862077324
+   ]
+  },
+  {
+   "fovea": [
+    0.42410054394966357,
+    0.45289379375727984,
+    0.452877195418058
+   ],
+   "genomeSha": "f531b4605911fb177365615927d062318f6c4ab60c4c1bb6cc8098a7fe8f3008",
+   "learnerId": "lrn_8e97a39010dad877",
+   "periphery": [
+    0.3232586329973889,
+    0.32353867581149903,
+    0.32353866246504565
+   ]
+  },
+  {
+   "fovea": [
+    0.17555769065718044,
+    0.1758959041388961,
+    0.1759126254532818
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_92518cddd5901f8e",
+   "periphery": [
+    0.24462164931814148,
+    0.2987433605104033,
+    0.29862779991347116
+   ]
+  },
+  {
+   "fovea": [
+    0.2146260281133756,
+    0.2168277875286669,
+    0.21682791425974468
+   ],
+   "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "learnerId": "lrn_94a91d79c24e2c23",
+   "periphery": [
+    0.20329552459570358,
+    0.20339704808252457,
+    0.20340018439193228
+   ]
+  },
+  {
+   "fovea": [
+    0.2862369753496515,
+    0.4066636288243187,
+    0.5034167401803661
+   ],
+   "genomeSha": "fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "learnerId": "lrn_971d4b8f4433eb5c",
+   "periphery": [
+    0.1722324308961743,
+    0.18526750807368705,
+    0.20482989582131952
+   ]
+  },
+  {
+   "fovea": [
+    0.4386630928868161,
+    0.5072844759527781,
+    0.6707721290329026
+   ],
+   "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "learnerId": "lrn_972903ab6e68c506",
+   "periphery": [
+    0.23703902521831857,
+    0.2497312270192297,
+    0.2497312270192297
+   ]
+  },
+  {
+   "fovea": [
+    0.33346604678586483,
+    0.33974576655816097,
+    0.5040048044739572
+   ],
+   "genomeSha": "fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "learnerId": "lrn_99281dfece81c20a",
+   "periphery": [
+    0.28058437082976195,
+    0.2932809959153936,
+    0.31585178659066226
+   ]
+  },
+  {
+   "fovea": [
+    0.1715856695724803,
+    0.18140086391648944,
+    0.18140556572358285
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_9c46bf9f7c443708",
+   "periphery": [
+    0.2505982016532049,
+    0.25197565396268135,
+    0.25199227267658175
+   ]
+  },
+  {
+   "fovea": [
+    0.20021031907266343,
+    0.19895991542122923,
+    0.21453020268072323
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_9cc715a39afc0ac0",
+   "periphery": [
+    0.2680803852224599,
+    0.26800303833276484,
+    0.28600124131530796
+   ]
+  },
+  {
+   "fovea": [
+    0.18405786581469943,
+    0.18619849139697864,
+    0.21127374867434429
+   ],
+   "genomeSha": "179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "learnerId": "lrn_a090f2871275cec6",
+   "periphery": [
+    0.13374804332363716,
+    0.1786336074975618,
+    0.20507646638296226
+   ]
+  },
+  {
+   "fovea": [
+    0.19612710713375214,
+    0.19077708811815527,
+    0.1907760845338128
+   ],
+   "genomeSha": "0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "learnerId": "lrn_a69c9acf6e36fb18",
+   "periphery": [
+    0.2532124256577402,
+    0.2589577491881285,
+    0.25897408248257914
+   ]
+  },
+  {
+   "fovea": [
+    0.38704306295557944,
+    0.5405181057131045,
+    0.737187789991631
+   ],
+   "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "learnerId": "lrn_a8f89fafae586ca3",
+   "periphery": [
+    0.2394319676818585,
+    0.24004971400443326,
+    0.24666342721176257
+   ]
+  },
+  {
+   "fovea": [
+    0.30332424462441965,
+    0.3033251506677095,
+    0.31429533429999273
+   ],
+   "genomeSha": "0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "learnerId": "lrn_a9db94fead468df8",
+   "periphery": [
+    0.36137901798908634,
+    0.36137880843795117,
+    0.3612162362815769
+   ]
+  },
+  {
+   "fovea": [
+    0.40524214943706116,
+    0.48894639790193634,
+    0.6904143911788596
+   ],
+   "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "learnerId": "lrn_aa0a2b7aa93a77f5",
+   "periphery": [
+    0.2509824124972083,
+    0.2509824124972083,
+    0.2509824124972083
+   ]
+  },
+  {
+   "fovea": [
+    0.07140488925931644,
+    0.0726494878237053,
+    0.07201326528173269
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_ae0943c7d2664075",
+   "periphery": [
+    0.19671417271369357,
+    0.21740793502507538,
+    0.24621122083699531
+   ]
+  },
+  {
+   "fovea": [
+    0.1099312736413638,
+    0.117115969338077,
+    0.11645594587994801
+   ],
+   "genomeSha": "fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "learnerId": "lrn_ae4a66529b9f7bdd",
+   "periphery": [
+    0.14562679528174344,
+    0.15723932565544457,
+    0.15977200117447155
+   ]
+  },
+  {
+   "fovea": [
+    0.44969436214415104,
+    0.43945336877945373,
+    0.43945306514379845
+   ],
+   "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "learnerId": "lrn_b0e99e1c83edf0bf",
+   "periphery": [
+    0.1750744416538573,
+    0.17507439507816763,
+    0.17507439507816763
+   ]
+  },
+  {
+   "fovea": [
+    0.12240768492724059,
+    0.1812947433228364,
+    0.26017547398480234
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_b4758fc9fe8d1e3d",
+   "periphery": [
+    0.2099658994638193,
+    0.28357743028047677,
+    0.31942917644132907
+   ]
+  },
+  {
+   "fovea": [
+    0.06936134500424375,
+    0.1993447739868211,
+    0.3393930617327401
+   ],
+   "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "learnerId": "lrn_b4df20bf82d881cd",
+   "periphery": [
+    0.1221470486065739,
+    0.22349118329413994,
+    0.27135665708953605
+   ]
+  },
+  {
+   "fovea": [
+    0.27070913187601414,
+    0.31627620532628964,
+    0.3976727822550649
+   ],
+   "genomeSha": "008ce7c29f856ec4ecb073cee79827811a19ac1fa4dc6924f37d40b313c35e13",
+   "learnerId": "lrn_b65c2bf3bfbcf264",
+   "periphery": [
+    0.16270345224799232,
+    0.19785875507848355,
+    0.2401497739368949
+   ]
+  },
+  {
+   "fovea": [
+    0.17931225200997028,
+    0.1737511807607704,
+    0.2055980726974789
+   ],
+   "genomeSha": "179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "learnerId": "lrn_b73b58b617d8f86b",
+   "periphery": [
+    0.10658236015102594,
+    0.1374322395739767,
+    0.19184553158315398
+   ]
+  },
+  {
+   "fovea": [
+    0.2680816470969859,
+    0.2691650928374682,
+    0.27567327137293246
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_b8fd03242c616cc3",
+   "periphery": [
+    0.2201936675944395,
+    0.22140808827317754,
+    0.22071084869485103
+   ]
+  },
+  {
+   "fovea": [
+    0.1280188144895264,
+    0.17559726616312812,
+    0.2176741908188476
+   ],
+   "genomeSha": "179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "learnerId": "lrn_be242e9d52bf6080",
+   "periphery": [
+    0.10164175591990189,
+    0.17067209858305382,
+    0.21867479915002017
+   ]
+  },
+  {
+   "fovea": [
+    0.14721944321806166,
+    0.1471908860237584,
+    0.35158929866374133
+   ],
+   "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "learnerId": "lrn_bebfff0cd4076a58",
+   "periphery": [
+    0.26225495075871946,
+    0.26221890284960464,
+    0.3328810635579643
+   ]
+  },
+  {
+   "fovea": [
+    0.5580863901001277,
+    0.5895221103325351,
+    0.589709653548378
+   ],
+   "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "learnerId": "lrn_c0eab2a0f2dbee96",
+   "periphery": [
+    0.2348352608635752,
+    0.2348359357294972,
+    0.23483716465914756
+   ]
+  },
+  {
+   "fovea": [
+    0.294893356289388,
+    0.30744859290326654,
+    0.29810060627926566
+   ],
+   "genomeSha": "1e95ea0c4a11723a77d18474beb628a8dfc5d7191e38b0e12558702e85300588",
+   "learnerId": "lrn_c1a7759e6311989a",
+   "periphery": [
+    0.23373418297045662,
+    0.2340502286116514,
+    0.23345201489588316
+   ]
+  },
+  {
+   "fovea": [
+    0.20063553064571737,
+    0.26346647745071067,
+    0.27324343193282996
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_c3f44f5ebbfffe2f",
+   "periphery": [
+    0.22712437507352834,
+    0.23107221448466506,
+    0.24676351412728426
+   ]
+  },
+  {
+   "fovea": [
+    0.2843477147210704,
+    0.2739803197612924,
+    0.32865022809769284
+   ],
+   "genomeSha": "3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "learnerId": "lrn_c7bb5490d6c71b57",
+   "periphery": [
+    0.21590448909601767,
+    0.21569850876772473,
+    0.28160379217345155
+   ]
+  },
+  {
+   "fovea": [
+    0.24642848140128323,
+    0.24640431650477282,
+    0.5641521787884413
+   ],
+   "genomeSha": "0574db3ec7f47c0f72343a65c74dd7e32db58e56ee8c8e8d3cc67be08f87f45f",
+   "learnerId": "lrn_ce3d9e8730f31f05",
+   "periphery": [
+    0.19410620202103943,
+    0.19406543085617764,
+    0.38788380494683344
+   ]
+  },
+  {
+   "fovea": [
+    0.23581922961717544,
+    0.26800871504378987,
+    0.2664572246628462
+   ],
+   "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "learnerId": "lrn_d49328278d3f7b6e",
+   "periphery": [
+    0.23519291608579979,
+    0.24664343604632186,
+    0.2745867776050934
+   ]
+  },
+  {
+   "fovea": [
+    0.24365477505063196,
+    0.24330219822971771,
+    0.2407118520739406
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_d9f5dcc79feadb67",
+   "periphery": [
+    0.21587201435339531,
+    0.21587069715863064,
+    0.21272477083303865
+   ]
+  },
+  {
+   "fovea": [
+    0.4952077055086372,
+    0.6337505010762247,
+    0.6596737638270257
+   ],
+   "genomeSha": "3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "learnerId": "lrn_db9ea0fdb63f33ac",
+   "periphery": [
+    0.1485912947506903,
+    0.3155862001335286,
+    0.3155862001335286
+   ]
+  },
+  {
+   "fovea": [
+    0.2122728497540848,
+    0.21227626747852682,
+    0.21229399042265243
+   ],
+   "genomeSha": "aac76dab6db0880262511433b3dc68c8717c8d7ef5deb1ff236510db09c4f743",
+   "learnerId": "lrn_de282728b6111ce2",
+   "periphery": [
+    0.20255134854932008,
+    0.2037976048684819,
+    0.20484146669440614
+   ]
+  },
+  {
+   "fovea": [
+    0.2160696211992745,
+    0.21566037469965965,
+    0.23627783366512195
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_debe50499d02279b",
+   "periphery": [
+    0.20295814544270943,
+    0.2026909034719572,
+    0.2024474512994021
+   ]
+  },
+  {
+   "fovea": [
+    0.3114016096908308,
+    0.3116124260230646,
+    0.37689961892396084
+   ],
+   "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "learnerId": "lrn_def32918fbec02ff",
+   "periphery": [
+    0.29646286457983145,
+    0.29638995824919745,
+    0.3932573776379206
+   ]
+  },
+  {
+   "fovea": [
+    0.3093754315776508,
+    0.3093754315776508,
+    0.3093754261706298
+   ],
+   "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "learnerId": "lrn_df1e716fc8e829b8",
+   "periphery": [
+    0.26198295413391637,
+    0.26198281274098617,
+    0.26198134530911465
+   ]
+  },
+  {
+   "fovea": [
+    0.2252639736867306,
+    0.22526400296890836,
+    0.22524279166016362
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_e040e2ba4af5ba26",
+   "periphery": [
+    0.20640563795346722,
+    0.20645125908613426,
+    0.21962034670884922
+   ]
+  },
+  {
+   "fovea": [
+    0.38486286159634603,
+    0.9005108793335367,
+    1.231647589118564
+   ],
+   "genomeSha": "3f8dd9b92c69ef34868053326e2ee2cd62ff7ec30970d673304d95f8b12828b6",
+   "learnerId": "lrn_e12928ed80061772",
+   "periphery": [
+    0.38318552689849983,
+    0.3855394872974549,
+    0.3854773743305387
+   ]
+  },
+  {
+   "fovea": [
+    0.3691176056332188,
+    0.36911769741412276,
+    0.36911683792364625
+   ],
+   "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "learnerId": "lrn_e90903d0871f32e5",
+   "periphery": [
+    0.3013603665283134,
+    0.301355643505861,
+    0.30138082204045474
+   ]
+  },
+  {
+   "fovea": [
+    0.3371739062683722,
+    0.4368467333201205,
+    0.6952614408432469
+   ],
+   "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "learnerId": "lrn_ec9e9bdc36cdd2a7",
+   "periphery": [
+    0.25189727148260566,
+    0.25163136969352706,
+    0.2524989183540485
+   ]
+  },
+  {
+   "fovea": [
+    0.3563025901762597,
+    0.35630944061673864,
+    0.35418550711362556
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_ed9ac74b58bf80ac",
+   "periphery": [
+    0.2878806045589716,
+    0.28922253466435904,
+    0.3119402494213671
+   ]
+  },
+  {
+   "fovea": [
+    0.3835025046963068,
+    0.4745165621052993,
+    0.7148702476520051
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_ef0bede745dabd62",
+   "periphery": [
+    0.25671366335823387,
+    0.2788732403388668,
+    0.28996171967223183
+   ]
+  },
+  {
+   "fovea": [
+    0.6174946440040154,
+    0.6282130131504683,
+    0.6437532052417044
+   ],
+   "genomeSha": "e1aaafa0818c4fb3dd55d5f9247c459e809dec498175a021726b4483e1de2c4e",
+   "learnerId": "lrn_f14351a5ac56b7b5",
+   "periphery": [
+    0.1581469486413688,
+    0.1581469488009476,
+    0.1581469488009476
+   ]
+  },
+  {
+   "fovea": [
+    0.3583262789411452,
+    0.3860615756780881,
+    0.5191351056162573
+   ],
+   "genomeSha": "56e0b0f498e1807ed072c6d579466d7d2e0b441517411e8ffade4db988f8cae0",
+   "learnerId": "lrn_f39d7ad686474af9",
+   "periphery": [
+    0.17763300087876238,
+    0.17764674395105184,
+    0.17995365786482606
+   ]
+  },
+  {
+   "fovea": [
+    0.3204345251337525,
+    0.3940842635885237,
+    0.4693792726736836
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_f48b73948869356b",
+   "periphery": [
+    0.22447564466383824,
+    0.2637322749091548,
+    0.26419875593638087
+   ]
+  },
+  {
+   "fovea": [
+    0.1894264412599407,
+    0.20507684375109753,
+    0.35396242080248935
+   ],
+   "genomeSha": "fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "learnerId": "lrn_f580f6a848691b0d",
+   "periphery": [
+    0.12816070310971023,
+    0.12818538964055545,
+    0.14134725436621826
+   ]
+  },
+  {
+   "fovea": [
+    0.3812945158808504,
+    0.4693384842691788,
+    0.5935272142596127
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_f7a9808c5110711c",
+   "periphery": [
+    0.16264800959327114,
+    0.16721949702287883,
+    0.21646043059012035
+   ]
+  },
+  {
+   "fovea": [
+    0.23328925628735464,
+    0.274104250788319,
+    0.4662538009275824
+   ],
+   "genomeSha": "fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "learnerId": "lrn_fb6608d831eccf38",
+   "periphery": [
+    0.17067333065171728,
+    0.17870968882582136,
+    0.28198923305240386
+   ]
+  },
+  {
+   "fovea": [
+    0.16490548050718998,
+    0.17013732856340605,
+    0.23009619910681117
+   ],
+   "genomeSha": "179bc010b28fbe4b21dd30686860d66f2dc7e5833d8e5184c135a5889dd70500",
+   "learnerId": "lrn_fc6f874c15a0bde5",
+   "periphery": [
+    0.12813913470397767,
+    0.1834003409166165,
+    0.2053218295683351
+   ]
+  },
+  {
+   "fovea": [
+    0.09651497344181485,
+    0.14511545208603957,
+    0.1523265454758002
+   ],
+   "genomeSha": "d22c1c55b2066763c30014b91ef80f9d30206186ada7bf5ddd27e6ad13280148",
+   "learnerId": "lrn_fd458a73812c87fb",
+   "periphery": [
+    0.07443293775315628,
+    0.10076189043906597,
+    0.1000452351298941
+   ]
+  },
+  {
+   "fovea": [
+    0.1987636253771208,
+    0.38421108510461877,
+    0.44445073448523964
+   ],
+   "genomeSha": "fd6a2683494b23fe9891656542fb7577f5ea7a91c3fdba645a26cc36a4b9abfe",
+   "learnerId": "lrn_fd6bb00dcf988a5d",
+   "periphery": [
+    0.1597193714158613,
+    0.24003722653884568,
+    0.24846616112643777
+   ]
+  }
+ ],
+ "recipe": [
+  {
+   "between": 0.35889073209103206,
+   "encoder": "periphery",
+   "genomes": 10,
+   "p": 0.1401,
+   "within": 0.41875392510445847
+  },
+  {
+   "between": 0.7308604639931936,
+   "encoder": "fovea",
+   "genomes": 10,
+   "p": 0.9178,
+   "within": 0.6955824289556862
+  }
+ ],
+ "schemaVersion": 1,
+ "status": "ok"
+}

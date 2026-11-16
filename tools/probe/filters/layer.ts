@@ -1,7 +1,7 @@
 // The learner's first layer (conv1 + ReLU) recomputed in float64 on the probe frames, and the streamed centred Gram
 // matrix over every (life, state) unit column (plan 05c Task 3). Only the Gram is kept, never the activations (about
 // 2.4 GB at 37 lives): pass 1 takes every column's mean, pass 2 accumulates the centred cross-products.
-import type { Encoder, Filters } from "./lives.ts"
+import type { Encoder, Filters, ProbeLife } from "./lives.ts"
 
 export interface LayerShape { k: number; stride: number; pad: number; inH: number; inW: number; outH: number; outW: number }
 const out = (n: number, k: number, s: number, p: number) => Math.floor((n + 2 * p - k) / s) + 1
@@ -142,4 +142,13 @@ function accumulateUpper(A: Float64Array, cols: number, P: number, g: Float64Arr
     for (let p = 0; p < P; p++) s0 += A[a0 + p]! * A[a0 + p]!
     g[i * cols + i]! += s0
   }
+}
+
+/**
+ * Each encoder's centred Gram over the lives' states in stateOf order (life i: init as state 2i, its 2,048 CU state as
+ * 2i + 1), on that encoder's probe inputs (CHW, obsToInputs).
+ */
+export function probeGrams(lives: readonly ProbeLife[], inputs: Record<Encoder, readonly Float32Array[]>): Record<Encoder, Gram> {
+  const states = (e: Encoder) => lives.flatMap(l => [l.init[e], l.at[2048][e]])
+  return { periphery: centredGram(inputs.periphery, states("periphery"), LAYER.periphery), fovea: centredGram(inputs.fovea, states("fovea"), LAYER.fovea) }
 }

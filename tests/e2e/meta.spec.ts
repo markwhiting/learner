@@ -458,8 +458,9 @@ test("new code while a confirmation newborn runs: the forced checkpoint is answe
   await expect(page.getByTestId("learner-id")).toHaveText(learnerId)
 })
 
-test("the committed calibrate posterior: the page shows 'Calibrating: …' and the first file's method is calibrate, uniform or centre", async ({ page }) => {
-  const text = readFileSync(new URL("../../data/meta/posterior.json", import.meta.url), "utf8")
+test("a calibrate posterior the gate committed (0609061, frozen): the page shows 'Calibrating: …' and the first file's method is calibrate, uniform or centre", async ({ page }) => {
+  // Frozen: the live data/meta/posterior.json is the gate's to rewrite (it went flat on 2026-11-08 and failed this test).
+  const text = readFileSync(new URL("../../packages/meta/test/fixtures/posterior-v2-calibrate.json", import.meta.url), "utf8")
   expect(parsePosterior(text)!.mode).toBe("calibrate")
   const { errors } = await serve(page, { "posterior.json": text })
   await page.goto(GPU_CLASS)

@@ -10,7 +10,9 @@ const ALLOWED = new Set(["packages/meta/test/posterior.test.ts"])
 
 describe("no test pins the gate's live data/meta files", () => {
   it("only the parse check reads the repo's data/meta from a test", () => {
-    const tests = trackedFiles().filter(f => f.endsWith(".test.ts") && f !== "tools/no-live-meta-fixtures.test.ts")
+    // Unit tests and the browser tests alike (a tests/e2e spec read the live posterior and failed when the gate went flat).
+    const tests = trackedFiles().filter(f => /\.(test|spec)\.ts$/.test(f) && f !== "tools/no-live-meta-fixtures.test.ts")
+    expect(tests.some(f => f.startsWith("tests/e2e/"))).toBe(true)
     const offenders = tests.filter(f => !ALLOWED.has(f) && (readTracked(f) ?? "").split("\n").some(l => READS_LIVE_META.test(l)))
     expect(offenders).toEqual([])
   })

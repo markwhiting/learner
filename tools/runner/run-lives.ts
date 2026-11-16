@@ -13,7 +13,7 @@
 // --when-idle (tools/runner/idle.ts): the learner runs only while the Mac is unattended and on AC power, frozen in
 // place otherwise; the Mac is held awake only while it runs, and not past 8 h without input.
 import type { ChildProcess } from "node:child_process"
-import { spawn } from "node:child_process"
+import { execFileSync, spawn } from "node:child_process"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -57,9 +57,18 @@ export function claimProfile(profile: string, pid: number, alive: (pid: number) 
   return () => { if (existsSync(path) && Number(readFileSync(path, "utf8")) === pid) rmSync(path) }
 }
 
+/**
+ * Whether `pid` is a live run-lives process. Not just any process: after a reboot the claim's pid can belong to
+ * something else, and a runner that believed it refused to start until the next day (2026-11-13, pid 1908).
+ */
 export const isAlive = (pid: number): boolean => {
-  try { process.kill(pid, 0); return true } catch (e) { return (e as NodeJS.ErrnoException).code === "EPERM" }
+  try { process.kill(pid, 0) } catch (e) { if ((e as NodeJS.ErrnoException).code !== "EPERM") return false }
+  return isRunner(commandOf(pid))
 }
+/** The command line of `pid` (ps), or "" if there is none. */
+const commandOf = (pid: number): string => { try { return execFileSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf8" }) } catch { return "" } }
+/** Whether a command line is this runner's. */
+export const isRunner = (command: string): boolean => /tools\/runner\/run-lives\.ts/.test(command)
 
 /** A compute reading's CU as the page shows it ("1,234.5 CU", "…" before the first step), or null. */
 export function cuOf(text: string): number | null {
@@ -68,8 +77,9 @@ export function cuOf(text: string): number | null {
 }
 
 /**
- * Stall watch: a tab whose learner and compute have not changed for `limitMs` is stuck (a newborn's first checkup and
- * a code-update reload each take well under 10 minutes on a GPU).
+ * Stall watch: a tab whose learner and compute have not changed for `limitMs` is stuck. Compute does not move during a
+ * checkup, and checkups take a median 7-8 min on this Mac's GPU (runner log, 2026-10-26..11-16), some longer; a
+ * 10-minute limit reloaded tabs mid-checkup, and each reload restarted the checkup (STALL_MS).
  */
 export function stallWatch(limitMs: number) {
   let key = "", since = 0
@@ -79,6 +89,13 @@ export function stallWatch(limitMs: number) {
     return now - since > limitMs
   }
 }
+
+/**
+ * How long a tab may show no progress before it is reloaded, well above the longest checkups seen. After a reload the
+ * watch starts again, so a slow tab is reloaded at most once per STALL_MS, never every minute (2026-11-11..15: hours of
+ * reloads every minute, each restarting the checkup it interrupted).
+ */
+export const STALL_MS = 30 * 60_000
 
 interface Reading { learner: string; cu: string; status: string; contribution: string; meta: string; life: string; tokenStored: boolean }
 
@@ -130,7 +147,7 @@ async function main(): Promise<void> {
     }
     if (!(await read()).tokenStored) throw new Error(`no token in ${args.profile}: run once with --setup`)
     const until = Date.now() + args.hours * 3_600_000
-    let stalled = stallWatch(10 * 60_000)
+    let stalled = stallWatch(STALL_MS)
     const seen = new Set<string>()
     let last = ""
     let state: Wanted = "run", lastRead = 0
@@ -144,7 +161,7 @@ async function main(): Promise<void> {
           const n = signalBrowser(state === "run" ? "SIGCONT" : "SIGSTOP")
           holdAwake(state === "run")
           log(`${state === "run" ? "running" : "paused"}: ${w.why} (${n} browser processes)`)
-          stalled = stallWatch(10 * 60_000) // time frozen is not a stall
+          stalled = stallWatch(STALL_MS) // time frozen is not a stall
         }
         if (state === "pause" || Date.now() - lastRead < 60_000) { await new Promise(r => setTimeout(r, 30_000)); continue }
       } else await new Promise(r => setTimeout(r, 60_000))
@@ -154,7 +171,11 @@ async function main(): Promise<void> {
       if (/^lrn_/.test(r.learner)) seen.add(r.learner)
       const line = `${r.learner} · ${r.cu} · ${r.status} · ${r.contribution} · meta: ${r.meta}${r.life ? ` · ${r.life}` : ""}`
       if (line !== last) { log(`${line} (lives seen: ${seen.size})`); last = line }
-      if (stalled(r.learner, cuOf(r.cu), Date.now())) { log("no progress for 10 min; reloading"); await page.reload().catch(() => {}) }
+      if (stalled(r.learner, cuOf(r.cu), Date.now())) {
+        log(`no progress for ${STALL_MS / 60_000} min; reloading`)
+        await page.reload().catch(() => {})
+        stalled = stallWatch(STALL_MS) // the reloaded tab gets the full limit again
+      }
     }
     log(`--hours ${args.hours} reached; ${seen.size} lives seen`)
   } finally {

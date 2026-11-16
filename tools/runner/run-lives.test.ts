@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { SITE, claimProfile, cuOf, parseArgs, stallWatch } from "./run-lives"
+import { SITE, STALL_MS, claimProfile, cuOf, isAlive, isRunner, parseArgs, stallWatch } from "./run-lives"
 
 describe("run-lives", () => {
   it("parses its arguments, with the live site and a 16 h run by default", () => {
@@ -36,5 +36,14 @@ describe("run-lives", () => {
     writeFileSync(`${profile}.pid`, "garbage")
     claimProfile(profile, 12, () => true)()
     expect(existsSync(`${profile}.pid`)).toBe(false)
+  })
+  it("takes a claim over when its pid is alive but is not a runner (a reboot reuses pids)", () => {
+    expect(isRunner("/opt/node --require x tools/runner/run-lives.ts --when-idle --hours 336")).toBe(true)
+    expect(isRunner("/usr/libexec/some-daemon")).toBe(false)
+    expect(isAlive(process.pid)).toBe(false) // this test process is alive, but it is not a runner
+    expect(isAlive(2 ** 22 + 12345)).toBe(false)
+  })
+  it("leaves a tab mid-checkup alone: the limit is well above a checkup's 7-8 min", () => {
+    expect(STALL_MS).toBeGreaterThanOrEqual(30 * 60_000)
   })
 })

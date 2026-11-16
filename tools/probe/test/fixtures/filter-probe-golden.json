@@ -1,0 +1,606 @@
+{
+ "centreSha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+ "convergence": [
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_0000000000000f00",
+    "lrn_0000000000000f01",
+    "lrn_0000000000000f02",
+    "lrn_0000000000000f03",
+    "lrn_0000000000000f04",
+    "lrn_0000000000000f05",
+    "lrn_0000000000000f06",
+    "lrn_0000000000000f07",
+    "lrn_0000000000000f08",
+    "lrn_0000000000000f09",
+    "lrn_0000000000000f0a",
+    "lrn_0000000000000f0b"
+   ],
+   "name": "pooled",
+   "stats": {
+    "init": {
+     "cka": 0.10890774963795691,
+     "matched": 0.11498530442650923
+    },
+    "learned": {
+     "cka": 0.19030891056192395,
+     "matched": 0.12140905289402423
+    },
+    "n": 12,
+    "pairs": 66,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.08140116092396704,
+    "converged": false,
+    "convergedHolm": false,
+    "evaluable": true,
+    "matched": 0.12140905289402423,
+    "p": 0.00048828125,
+    "pDescriptive": 0.00048828125,
+    "pFloor": 0.000244140625,
+    "pHolm": 0.0009765625,
+    "reasons": []
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_0000000000000f00",
+    "lrn_0000000000000f01",
+    "lrn_0000000000000f02",
+    "lrn_0000000000000f03",
+    "lrn_0000000000000f04",
+    "lrn_0000000000000f05",
+    "lrn_0000000000000f06",
+    "lrn_0000000000000f07",
+    "lrn_0000000000000f08",
+    "lrn_0000000000000f09",
+    "lrn_0000000000000f0a",
+    "lrn_0000000000000f0b"
+   ],
+   "name": "pooled",
+   "stats": {
+    "init": {
+     "cka": 0.2431200075027855,
+     "matched": 0.19514413998289937
+    },
+    "learned": {
+     "cka": 0.3424923033324348,
+     "matched": 0.2520462433126034
+    },
+    "n": 12,
+    "pairs": 66,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.0993722958296493,
+    "converged": false,
+    "convergedHolm": false,
+    "evaluable": true,
+    "matched": 0.2520462433126034,
+    "p": 0.0009765625,
+    "pDescriptive": 0.0009765625,
+    "pFloor": 0.000244140625,
+    "pHolm": 0.0009765625,
+    "reasons": []
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_0000000000000f00",
+    "lrn_0000000000000f03",
+    "lrn_0000000000000f06",
+    "lrn_0000000000000f09"
+   ],
+   "name": "genome:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+   "stats": {
+    "init": {
+     "cka": 0.11209767024534108,
+     "matched": 0.12359913973411166
+    },
+    "learned": {
+     "cka": 0.4192210487935378,
+     "matched": 0.49105306285928163
+    },
+    "n": 4,
+    "pairs": 6,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.3071233785481967,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.49105306285928163,
+    "p": null,
+    "pDescriptive": 0.0625,
+    "pFloor": 0.0625,
+    "pHolm": null,
+    "reasons": [
+     "n = 4 < 10 lives",
+     "p cannot reach 0.05 (floor 0.0625)"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_0000000000000f00",
+    "lrn_0000000000000f03",
+    "lrn_0000000000000f06",
+    "lrn_0000000000000f09"
+   ],
+   "name": "genome:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+   "stats": {
+    "init": {
+     "cka": 0.2667586975486174,
+     "matched": 0.2364527251449713
+    },
+    "learned": {
+     "cka": 0.6092873429626942,
+     "matched": 0.6451183769301143
+    },
+    "n": 4,
+    "pairs": 6,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.34252864541407674,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.6451183769301143,
+    "p": null,
+    "pDescriptive": 0.0625,
+    "pFloor": 0.0625,
+    "pHolm": null,
+    "reasons": [
+     "n = 4 < 10 lives",
+     "p cannot reach 0.05 (floor 0.0625)"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_0000000000000f01",
+    "lrn_0000000000000f04",
+    "lrn_0000000000000f07",
+    "lrn_0000000000000f0a"
+   ],
+   "name": "genome:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+   "stats": {
+    "init": {
+     "cka": 0.118461704722715,
+     "matched": 0.1081469719510682
+    },
+    "learned": {
+     "cka": 0.37592759977426143,
+     "matched": 0.45912584811546797
+    },
+    "n": 4,
+    "pairs": 6,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.25746589505154643,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.45912584811546797,
+    "p": null,
+    "pDescriptive": 0.0625,
+    "pFloor": 0.0625,
+    "pHolm": null,
+    "reasons": [
+     "n = 4 < 10 lives",
+     "p cannot reach 0.05 (floor 0.0625)"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_0000000000000f01",
+    "lrn_0000000000000f04",
+    "lrn_0000000000000f07",
+    "lrn_0000000000000f0a"
+   ],
+   "name": "genome:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+   "stats": {
+    "init": {
+     "cka": 0.24217867494107223,
+     "matched": 0.18915400845414213
+    },
+    "learned": {
+     "cka": 0.5550821469623394,
+     "matched": 0.5754978756389062
+    },
+    "n": 4,
+    "pairs": 6,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.3129034720212671,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.5754978756389062,
+    "p": null,
+    "pDescriptive": 0.0625,
+    "pFloor": 0.0625,
+    "pHolm": null,
+    "reasons": [
+     "n = 4 < 10 lives",
+     "p cannot reach 0.05 (floor 0.0625)"
+    ]
+   }
+  },
+  {
+   "encoder": "periphery",
+   "learnerIds": [
+    "lrn_0000000000000f02",
+    "lrn_0000000000000f05",
+    "lrn_0000000000000f08",
+    "lrn_0000000000000f0b"
+   ],
+   "name": "genome:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+   "stats": {
+    "init": {
+     "cka": 0.0883550954155053,
+     "matched": 0.11848417257204127
+    },
+    "learned": {
+     "cka": 0.4730076248278537,
+     "matched": 0.4690319317675105
+    },
+    "n": 4,
+    "pairs": 6,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.3846525294123484,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.4690319317675105,
+    "p": null,
+    "pDescriptive": 0.0625,
+    "pFloor": 0.0625,
+    "pHolm": null,
+    "reasons": [
+     "n = 4 < 10 lives",
+     "p cannot reach 0.05 (floor 0.0625)"
+    ]
+   }
+  },
+  {
+   "encoder": "fovea",
+   "learnerIds": [
+    "lrn_0000000000000f02",
+    "lrn_0000000000000f05",
+    "lrn_0000000000000f08",
+    "lrn_0000000000000f0b"
+   ],
+   "name": "genome:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+   "stats": {
+    "init": {
+     "cka": 0.18068073764102688,
+     "matched": 0.16164661496401123
+    },
+    "learned": {
+     "cka": 0.5248244155171109,
+     "matched": 0.5609004674882081
+    },
+    "n": 4,
+    "pairs": 6,
+    "skipped": 0
+   },
+   "verdict": {
+    "ckaDelta": 0.344143677876084,
+    "converged": null,
+    "convergedHolm": null,
+    "evaluable": false,
+    "matched": 0.5609004674882081,
+    "p": null,
+    "pDescriptive": 0.0625,
+    "pFloor": 0.0625,
+    "pHolm": null,
+    "reasons": [
+     "n = 4 < 10 lives",
+     "p cannot reach 0.05 (floor 0.0625)"
+    ]
+   }
+  }
+ ],
+ "excluded": [],
+ "flags": [
+  {
+   "flag": "periphery init: 2 dead units on the probe set",
+   "learnerId": "lrn_0000000000000f02"
+  },
+  {
+   "flag": "fovea init: 1 dead units on the probe set",
+   "learnerId": "lrn_0000000000000f04"
+  },
+  {
+   "flag": "periphery 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_0000000000000f06"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_0000000000000f07"
+  },
+  {
+   "flag": "fovea 2048: 1 dead units on the probe set",
+   "learnerId": "lrn_0000000000000f0a"
+  }
+ ],
+ "identification": [
+  {
+   "bestOther": 0.03677554554318976,
+   "bestOtherId": "lrn_0000000000000f04",
+   "learnerId": "lrn_0000000000000f00",
+   "ownInit": 0.9838116015433637
+  },
+  {
+   "bestOther": 0.02274024355320572,
+   "bestOtherId": "lrn_0000000000000f07",
+   "learnerId": "lrn_0000000000000f01",
+   "ownInit": 0.9844885011387435
+  },
+  {
+   "bestOther": 0.03752491985069608,
+   "bestOtherId": "lrn_0000000000000f05",
+   "learnerId": "lrn_0000000000000f02",
+   "ownInit": 0.9835426175955009
+  },
+  {
+   "bestOther": 0.04400042569650983,
+   "bestOtherId": "lrn_0000000000000f05",
+   "learnerId": "lrn_0000000000000f03",
+   "ownInit": 0.9842896871235253
+  },
+  {
+   "bestOther": 0.03446588562195462,
+   "bestOtherId": "lrn_0000000000000f00",
+   "learnerId": "lrn_0000000000000f04",
+   "ownInit": 0.9836592516410906
+  },
+  {
+   "bestOther": 0.03382050112967242,
+   "bestOtherId": "lrn_0000000000000f02",
+   "learnerId": "lrn_0000000000000f05",
+   "ownInit": 0.9840359202630389
+  },
+  {
+   "bestOther": 0.00844772170260682,
+   "bestOtherId": "lrn_0000000000000f02",
+   "learnerId": "lrn_0000000000000f06",
+   "ownInit": 0.9832120591747846
+  },
+  {
+   "bestOther": 0.08815013423046675,
+   "bestOtherId": "lrn_0000000000000f0b",
+   "learnerId": "lrn_0000000000000f07",
+   "ownInit": 0.9842971050025269
+  },
+  {
+   "bestOther": 0.0641687392604834,
+   "bestOtherId": "lrn_0000000000000f0b",
+   "learnerId": "lrn_0000000000000f08",
+   "ownInit": 0.9842225973464654
+  },
+  {
+   "bestOther": 0.034686035345887566,
+   "bestOtherId": "lrn_0000000000000f04",
+   "learnerId": "lrn_0000000000000f09",
+   "ownInit": 0.9836428021588242
+  },
+  {
+   "bestOther": 0.025807535183229435,
+   "bestOtherId": "lrn_0000000000000f03",
+   "learnerId": "lrn_0000000000000f0a",
+   "ownInit": 0.9835054073796582
+  },
+  {
+   "bestOther": 0.09469181976890796,
+   "bestOtherId": "lrn_0000000000000f07",
+   "learnerId": "lrn_0000000000000f0b",
+   "ownInit": 0.9849729927158692
+  }
+ ],
+ "lives": 12,
+ "manifestSha": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0",
+ "motion": [
+  {
+   "fovea": [
+    0.21587411623944064,
+    0.42876004576925697,
+    0.8705332788460868
+   ],
+   "genomeSha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+   "learnerId": "lrn_0000000000000f00",
+   "periphery": [
+    0.21572709369259124,
+    0.43013510156965423,
+    0.8602610542429935
+   ]
+  },
+  {
+   "fovea": [
+    0.2020860763300088,
+    0.39984541946027086,
+    0.80316364131101
+   ],
+   "genomeSha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+   "learnerId": "lrn_0000000000000f01",
+   "periphery": [
+    0.21675202792417406,
+    0.4296191947199181,
+    0.8744721675352484
+   ]
+  },
+  {
+   "fovea": [
+    0.22071544936905632,
+    0.4402814118955554,
+    0.8762966070310876
+   ],
+   "genomeSha": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+   "learnerId": "lrn_0000000000000f02",
+   "periphery": [
+    0.21596492496878533,
+    0.4306520742517147,
+    0.8695745056197064
+   ]
+  },
+  {
+   "fovea": [
+    0.2094798224160693,
+    0.4156445577234917,
+    0.8433321895246381
+   ],
+   "genomeSha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+   "learnerId": "lrn_0000000000000f03",
+   "periphery": [
+    0.21613433350405176,
+    0.4286909404189507,
+    0.8658709579560689
+   ]
+  },
+  {
+   "fovea": [
+    0.21822734708360045,
+    0.4344448081230809,
+    0.8741314182533545
+   ],
+   "genomeSha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+   "learnerId": "lrn_0000000000000f04",
+   "periphery": [
+    0.21739083070622028,
+    0.4308639859911595,
+    0.8568389238436658
+   ]
+  },
+  {
+   "fovea": [
+    0.21160434203361475,
+    0.423466786991526,
+    0.847968796491438
+   ],
+   "genomeSha": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+   "learnerId": "lrn_0000000000000f05",
+   "periphery": [
+    0.2184026254017911,
+    0.43465388848649733,
+    0.8681592354792482
+   ]
+  },
+  {
+   "fovea": [
+    0.22902452693964642,
+    0.45870569441475406,
+    0.9180019235137931
+   ],
+   "genomeSha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+   "learnerId": "lrn_0000000000000f06",
+   "periphery": [
+    0.21195193683755795,
+    0.4203503770980707,
+    0.8465848015603867
+   ]
+  },
+  {
+   "fovea": [
+    0.2107131278771461,
+    0.41599671063012045,
+    0.8358860444211582
+   ],
+   "genomeSha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+   "learnerId": "lrn_0000000000000f07",
+   "periphery": [
+    0.2180672894487678,
+    0.43601014783329933,
+    0.8694559291746269
+   ]
+  },
+  {
+   "fovea": [
+    0.21120986877396689,
+    0.4263459914485483,
+    0.8555072547522765
+   ],
+   "genomeSha": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+   "learnerId": "lrn_0000000000000f08",
+   "periphery": [
+    0.21554788091028093,
+    0.4272832130597994,
+    0.8500940363226743
+   ]
+  },
+  {
+   "fovea": [
+    0.21860610893335036,
+    0.44113899205002993,
+    0.8705294676208988
+   ],
+   "genomeSha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+   "learnerId": "lrn_0000000000000f09",
+   "periphery": [
+    0.21354007662092012,
+    0.4273891407123181,
+    0.8476824435792216
+   ]
+  },
+  {
+   "fovea": [
+    0.22264019534237378,
+    0.4467211661619697,
+    0.8901353352491665
+   ],
+   "genomeSha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+   "learnerId": "lrn_0000000000000f0a",
+   "periphery": [
+    0.21089403777266452,
+    0.4227976154528769,
+    0.8358805631496096
+   ]
+  },
+  {
+   "fovea": [
+    0.20328264446782704,
+    0.40689711764076314,
+    0.8142912974304023
+   ],
+   "genomeSha": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+   "learnerId": "lrn_0000000000000f0b",
+   "periphery": [
+    0.2203634599050831,
+    0.44170804530819885,
+    0.8804150005293214
+   ]
+  }
+ ],
+ "recipe": [
+  {
+   "between": 0.10315521784818883,
+   "encoder": "periphery",
+   "genomes": 3,
+   "p": 0.0002,
+   "within": 0.42271875779855095
+  },
+  {
+   "between": 0.25977767890182984,
+   "encoder": "fovea",
+   "genomes": 3,
+   "p": 0.0004,
+   "within": 0.5630646351473815
+  }
+ ],
+ "schemaVersion": 1,
+ "status": "ok"
+}

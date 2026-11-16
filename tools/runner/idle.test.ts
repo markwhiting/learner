@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_IDLE, descendantsOf, idleSecondsOf, onAcOf, wanted } from "./idle"
+import { DEFAULT_IDLE, descendantsOf, idleSecondsOf, onAcOf, orphansOf, wanted } from "./idle"
 
 describe("idle", () => {
   it("reads the idle time and the power source as macOS prints them", () => {
@@ -33,3 +33,16 @@ describe("agent", () => {
     expect(p).toContain("<string>/repo/a &amp; b/.local/runner.log</string>")
   })
 })
+
+describe("orphans", () => {
+  it("finds a browser left on this profile (parent launchd) and its helpers, not a live runner's, not another profile's", () => {
+    const ps = [
+      " 2198     1 /x/chrome-headless-shell --disable-gpu --user-data-dir=/p/a b/runner-profile --remote-debugging-pipe",
+      " 2201  2198 /x/chrome-headless-shell --type=gpu-process",
+      " 3000  2999 /x/chrome-headless-shell --user-data-dir=/p/a b/runner-profile",
+      " 4000     1 /x/chrome-headless-shell --user-data-dir=/p/a b/runner-profile2",
+    ].join("\n")
+    expect(orphansOf(ps, "/p/a b/runner-profile")).toEqual([2198, 2201])
+  })
+})
+

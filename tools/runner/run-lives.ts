@@ -17,7 +17,7 @@ import { execFileSync, spawn } from "node:child_process"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-import { DEFAULT_IDLE, readIdleSeconds, readOnAc, signalBrowser, wanted, type Wanted } from "./idle"
+import { DEFAULT_IDLE, killOrphans, readIdleSeconds, readOnAc, signalBrowser, wanted, type Wanted } from "./idle"
 
 export const SITE = "https://markwhiting.github.io/learner/"
 const TOKEN_KEY = "blanktab:githubToken" // packages/harness/src/token.ts
@@ -111,8 +111,13 @@ async function main(): Promise<void> {
   }
   holdAwake(true)
   const release = claimProfile(resolve(args.profile), process.pid, isAlive)
+  // The claim says no live runner has the profile, so any browser still on it is an orphan holding its storage.
+  const orphans = process.platform === "darwin" ? killOrphans(resolve(args.profile)) : 0
+  if (orphans > 0) log(`ended ${orphans} orphaned browser processes on ${args.profile}`)
   // A frozen browser cannot close: thaw it on the way out.
-  for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { if (args.whenIdle) signalBrowser("SIGCONT"); release(); process.exit(1) })
+  // On a stop (launchctl, Ctrl-C): thaw the browser, then end it. A runner that only exited left its browser behind,
+  // still frozen, holding the profile (2026-11-16); the next start also clears such orphans (killOrphans).
+  for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { signalBrowser("SIGCONT"); signalBrowser("SIGKILL"); holdAwake(false); release(); process.exit(1) })
   const { chromium } = await import("@playwright/test")
   const context = await chromium.launchPersistentContext(resolve(args.profile), {
     headless: !args.headed, args: ["--enable-unsafe-webgpu", "--use-angle=metal", "--enable-features=Vulkan"],

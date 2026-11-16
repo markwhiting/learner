@@ -56,8 +56,35 @@ export const readIdleSeconds = (): number | null => idleSecondsOf(sh("ioreg", ["
 export const readOnAc = (): boolean => onAcOf(sh("pmset", ["-g", "batt"]))
 
 /** Sends `sig` to every process under this one (the browser and its helpers), except caffeinate. */
-export function signalBrowser(sig: "SIGSTOP" | "SIGCONT"): number {
+export function signalBrowser(sig: "SIGSTOP" | "SIGCONT" | "SIGKILL"): number {
   const pids = descendantsOf(sh("ps", ["-A", "-o", "pid=,ppid=,comm="]), process.pid)
   for (const pid of pids) { try { process.kill(pid, sig) } catch { /* exited meanwhile */ } }
   return pids.length
 }
+
+/**
+ * Browsers left on `profile` by a runner that is gone, with their helpers: a process whose command line names the
+ * profile (`--user-data-dir=<profile>`) and whose parent is launchd (pid 1), from `ps -A -o pid=,ppid=,command=`. A
+ * runner stopped while its browser was frozen left one (2026-11-16): still stopped, it held the profile's storage, and
+ * the next runner read no token from it and exited.
+ */
+export function orphansOf(ps: string, profile: string): number[] {
+  const out: number[] = []
+  const flag = `--user-data-dir=${profile}`
+  for (const line of ps.split("\n")) {
+    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line)
+    if (!m || m[2] !== "1") continue
+    const at = m[3]!.indexOf(flag)
+    const next = at < 0 ? undefined : m[3]![at + flag.length]
+    if (at >= 0 && (next === undefined || next === " ")) out.push(Number(m[1]), ...descendantsOf(ps, Number(m[1])))
+  }
+  return out
+}
+
+/** Ends the orphaned browsers on `profile` (thawed first: a stopped process cannot exit). Only after the profile is claimed. */
+export function killOrphans(profile: string): number {
+  const pids = orphansOf(sh("ps", ["-A", "-o", "pid=,ppid=,command="]), profile)
+  for (const sig of ["SIGCONT", "SIGKILL"] as const) for (const pid of pids) { try { process.kill(pid, sig) } catch { /* gone */ } }
+  return pids.length
+}
+

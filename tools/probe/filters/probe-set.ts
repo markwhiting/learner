@@ -5,6 +5,7 @@
 // a learner, and nothing in packages/ or app/ imports tools/probe (tools/probe/test/isolation.test.ts).
 import { createHash } from "node:crypto"
 import { mkdirSync, writeFileSync } from "node:fs"
+import { gunzipSync, gzipSync } from "node:zlib"
 import { join } from "node:path"
 import { createCanvas } from "@napi-rs/canvas"
 import { createRng, hashSeed } from "@blanktab/detmath"
@@ -80,6 +81,50 @@ export async function renderProbeSet(m: ProbeManifest): Promise<Observation[]> {
     })
   }
   if (setSha(out) !== m.sha256) throw new Error("filter probe set: the frames' sha256 does not match the manifest's")
+  return out
+}
+
+const PERIPHERY_BYTES = PERIPHERY.width * PERIPHERY.height * PERIPHERY.channels, FOVEA_BYTES = FOVEA.width * FOVEA.height * FOVEA.channels
+/**
+ * One frame's bytes in the committed frames file: its periphery, its fovea, the cursor's x and y (float64,
+ * little-endian) and whether the button is held (1 byte). The whole observation, as the learner reads it.
+ */
+const FRAME_BYTES = PERIPHERY_BYTES + FOVEA_BYTES + 8 + 8 + 1
+
+/**
+ * The probe frames as committed (tools/probe/filter-probe-frames.bin.gz): every frame's whole observation (FRAME_BYTES), in
+ * manifest order, gzipped. The frames are committed, not re-rendered, because the canvas (Skia) draws different pixels
+ * on different platforms: frames rendered on macOS did not match on CI's Linux (2026-11-16). The spec's "fixed by a
+ * committed manifest" therefore means fixed pixels; rendering is only for --write-manifest, a recorded decision.
+ */
+export function encodeFrames(frames: readonly Observation[]): Buffer {
+  return gzipSync(Buffer.concat(frames.flatMap(o => {
+    const tail = Buffer.alloc(17)
+    tail.writeDoubleLE(o.cursor.x, 0); tail.writeDoubleLE(o.cursor.y, 8); tail.writeUInt8(o.buttonHeld ? 1 : 0, 16)
+    return [Buffer.from(o.periphery), Buffer.from(o.fovea), tail]
+  })), { level: 9 })
+}
+
+/**
+ * The committed frames, checked against `m`: the right count and size, each frame's periphery and fovea sha, and the
+ * whole set's. Throws, naming the seed and step, on the first frame that does not match (the file and the manifest
+ * were not written together, or the file is damaged).
+ */
+export function loadProbeSet(m: ProbeManifest, gz: Uint8Array): Observation[] {
+  const raw = gunzipSync(gz)
+  if (raw.length !== m.frames.length * FRAME_BYTES) throw new Error(`filter probe frames: ${raw.length} bytes, not ${m.frames.length} frames of ${FRAME_BYTES}`)
+  const out: Observation[] = m.frames.map((f, i) => {
+    const at = i * FRAME_BYTES, tail = at + PERIPHERY_BYTES + FOVEA_BYTES
+    const o: Observation = {
+      periphery: new Uint8Array(raw.subarray(at, at + PERIPHERY_BYTES)), fovea: new Uint8Array(raw.subarray(at + PERIPHERY_BYTES, tail)),
+      cursor: { x: raw.readDoubleLE(tail), y: raw.readDoubleLE(tail + 8) }, buttonHeld: raw.readUInt8(tail + 16) === 1,
+    }
+    if (sha(o.periphery) !== f.periphery || sha(o.fovea) !== f.fovea) {
+      throw new Error(`filter probe frames: the frame at seed ${f.seed} step ${f.step} does not match the manifest`)
+    }
+    return o
+  })
+  if (setSha(out) !== m.sha256) throw new Error("filter probe frames: the frames' sha256 does not match the manifest's")
   return out
 }
 

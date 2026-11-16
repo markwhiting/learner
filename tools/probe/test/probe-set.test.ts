@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
+import { gunzipSync, gzipSync } from "node:zlib"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { hashSeed } from "@blanktab/detmath"
@@ -8,9 +9,13 @@ import { MILESTONE_IDS, type LogFileV2 } from "@blanktab/harness/log"
 import { ROOM_KINDS } from "@blanktab/world"
 import { collectLives } from "../../eval/lives.ts"
 import { serialise } from "../../gate/serialise.ts"
-import { PROBE_SEEDS, PROBE_STEPS, buildManifest, renderProbeSet, type ProbeManifest } from "../filters/probe-set.ts"
+import { PROBE_SEEDS, PROBE_STEPS, buildManifest, encodeFrames, loadProbeSet, renderProbeSet, type ProbeManifest } from "../filters/probe-set.ts"
 
 const REPO = fileURLToPath(new URL("../../..", import.meta.url))
+const frames = (): Buffer => readFileSync(join(REPO, "tools/probe/filter-probe-frames.bin.gz"))
+// The committed frames were rendered on macOS, and the canvas (Skia) draws other pixels elsewhere (CI's Linux, 2026-11-16):
+// a render is compared with them only where they were made. Everywhere, the committed frames are checked (loadProbeSet).
+const MADE_HERE = process.platform === "darwin"
 const manifest = (): ProbeManifest => JSON.parse(readFileSync(join(REPO, "tools/probe/filter-probe-set.json"), "utf8")) as ProbeManifest
 
 describe("the filter probe set", () => {
@@ -26,11 +31,24 @@ describe("the filter probe set", () => {
     for (const r of ROOM_KINDS) expect(rooms.filter(x => x === r)).toHaveLength(4)
   })
 
-  it("renderProbeSet reproduces every committed frame sha (256 frames)", async () => {
-    expect(await renderProbeSet(manifest())).toHaveLength(256)
+  it("the committed frames load, and every frame matches its manifest sha (256 frames)", () => {
+    expect(loadProbeSet(manifest(), frames())).toHaveLength(256)
   })
 
-  it("a manifest with one frame sha changed makes renderProbeSet throw, naming the seed and step", async () => {
+  it("a frames file with one byte changed is refused, naming the frame's seed and step", () => {
+    const m = manifest()
+    const raw = gunzipSync(frames())
+    const at = 37 * (raw.length / 256) + 5
+    raw[at] = raw[at]! ^ 1
+    expect(() => loadProbeSet(m, gzipSync(raw))).toThrow(`seed ${m.frames[37]!.seed} step ${m.frames[37]!.step}`)
+    expect(() => loadProbeSet(m, gzipSync(raw.subarray(1)))).toThrow(/bytes, not 256 frames/)
+  })
+
+  it.runIf(MADE_HERE)("on macOS, rendering reproduces the committed frames byte for byte", async () => {
+    expect(encodeFrames(await renderProbeSet(manifest())).equals(frames())).toBe(true)
+  })
+
+  it.runIf(MADE_HERE)("a manifest with one frame sha changed makes renderProbeSet throw, naming the seed and step", async () => {
     const m = manifest()
     m.frames[37] = { ...m.frames[37]!, fovea: "0".repeat(64) }
     await expect(renderProbeSet(m)).rejects.toThrow(`seed ${m.frames[37]!.seed} step ${m.frames[37]!.step}`)
@@ -39,7 +57,7 @@ describe("the filter probe set", () => {
   it("buildManifest run twice gives identical bytes", async () => {
     const a = serialise(await buildManifest()), b = serialise(await buildManifest())
     expect(a).toBe(b)
-    expect(a).toBe(readFileSync(join(REPO, "tools/probe/filter-probe-set.json"), "utf8"))
+    if (MADE_HERE) expect(a).toBe(readFileSync(join(REPO, "tools/probe/filter-probe-set.json"), "utf8"))
   })
 
   it("no committed life has seen a probe world: for every life under data/runs and data/newborns, its training world seed (parseInt of learnerId hex 4–12, the page's seedsOf rule), hashSeed(learnerSeed, 'heldout'), and its checkup variant seeds lie outside 20000–20015", () => {

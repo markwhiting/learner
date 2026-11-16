@@ -1,8 +1,9 @@
 // The filter-convergence probe (spec §5.1, §10 "05c"; plan 05c; decision 0027): do fresh lives' first-layer filters
 // converge? Offline and harness-only (AGENTS.md invariant 2): it reads committed logs and writes only under --out.
 //
-//   npx tsx tools/probe/filter-convergence.ts [--runs data/runs] [--out .local/filter-probe] [--manifest tools/probe/filter-probe-set.json] [--genome knowledge/genome.json]
-//   npx tsx tools/probe/filter-convergence.ts --write-manifest     (renders the probe set; writes the manifest)
+//   npx tsx tools/probe/filter-convergence.ts [--runs data/runs] [--out .local/filter-probe] [--manifest tools/probe/filter-probe-set.json]
+//                                         [--frames tools/probe/filter-probe-frames.bin.gz] [--genome knowledge/genome.json]
+//   npx tsx tools/probe/filter-convergence.ts --write-manifest     (renders the probe set; writes the manifest and the frames)
 //   npx tsx tools/probe/filter-convergence.ts --frames-png <dir>    (8 probe frames as PNGs, for looking at)
 //   npx tsx tools/probe/filter-convergence.ts --filters-png <dir>   (init and 2,048 CU filter sheets of one life per genome)
 //
@@ -21,10 +22,12 @@ import { BAR, analyse, type Analysis, type ProbeReport } from "./filters/analyse
 import { probeGrams } from "./filters/layer.ts"
 import { ENCODERS, probeLives } from "./filters/lives.ts"
 import { writeFilterPngs } from "./filters/png.ts"
-import { buildManifest, renderProbeSet, writeFramePngs, type ProbeManifest } from "./filters/probe-set.ts"
+import { buildManifest, encodeFrames, loadProbeSet, renderProbeSet, writeFramePngs, type ProbeManifest } from "./filters/probe-set.ts"
 
 const REPO = fileURLToPath(new URL("../..", import.meta.url))
 export const MANIFEST_PATH = "tools/probe/filter-probe-set.json"
+/** The committed probe frames the manifest describes (probe-set.ts loadProbeSet). */
+export const FRAMES_PATH = "tools/probe/filter-probe-frames.bin.gz"
 
 export interface ProbeInputs { frames: readonly Observation[]; manifestSha: string; lives: readonly LifeInput[]; centreSha: string }
 export class ProbeRefusal extends Error {
@@ -93,8 +96,8 @@ async function centreShaOf(path: string): Promise<string> {
   return genomeSha(g.genomeSchema, g.values)
 }
 
-const FLAGS = ["--runs", "--out", "--manifest", "--genome"] as const
-const USAGE = "usage: filter-convergence.ts [--runs <dir>] [--out <dir>] [--manifest <file>] [--genome <file>] | --write-manifest | --frames-png <dir> | --filters-png <dir>"
+const FLAGS = ["--runs", "--out", "--manifest", "--frames", "--genome"] as const
+const USAGE = "usage: filter-convergence.ts [--runs <dir>] [--out <dir>] [--manifest <file>] [--frames <file>] [--genome <file>] | --write-manifest | --frames-png <dir> | --filters-png <dir>"
 
 /** The CLI: returns the exit code (0 ok, 2 identification failed, 1 nothing written). */
 export async function main(argv: readonly string[]): Promise<number> {
@@ -110,11 +113,14 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 1
   }
   const runs = opt.get("--runs") ?? join(REPO, "data/runs"), out = opt.get("--out") ?? join(REPO, ".local/filter-probe")
-  const manifestPath = opt.get("--manifest") ?? join(REPO, MANIFEST_PATH), genomePath = opt.get("--genome") ?? join(REPO, "knowledge/genome.json")
+  const manifestPath = opt.get("--manifest") ?? join(REPO, MANIFEST_PATH), framesPath = opt.get("--frames") ?? join(REPO, FRAMES_PATH)
+  const genomePath = opt.get("--genome") ?? join(REPO, "knowledge/genome.json")
 
   if (mode === "--write-manifest") {
-    writeFileSync(join(REPO, MANIFEST_PATH), serialise(await buildManifest()))
-    console.log(`wrote ${MANIFEST_PATH}`)
+    const m = await buildManifest()
+    writeFileSync(join(REPO, MANIFEST_PATH), serialise(m))
+    writeFileSync(join(REPO, FRAMES_PATH), encodeFrames(await renderProbeSet(m)))
+    console.log(`wrote ${MANIFEST_PATH} and ${FRAMES_PATH}`)
     return 0
   }
   if (mode === "--filters-png") {
@@ -133,7 +139,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const manifest = readManifest(manifestPath)
   let frames: Observation[]
   try {
-    frames = await renderProbeSet(manifest)
+    frames = loadProbeSet(manifest, readFileSync(framesPath))
   } catch (e) {
     console.error((e as Error).message)
     return 1

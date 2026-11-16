@@ -37,6 +37,13 @@ All of these were fixed, tested and committed **before** the probe first ran on 
 - **Activations at init and 2,048 CU only,** as the spec compares; the 512 and 1,024 snapshots get weight motion only (and 512 the identification check, below).
 - **A streamed two-pass centred Gram** over every (life, state, unit) column: pass 1 takes means, pass 2 accumulates centred cross-products; the activations themselves are never stored. A column that takes one value on every sample (a dead unit) is flagged, and its Gram row and column are exactly 0.
 
+### The metrics [agent's call, not yet confirmed]
+
+- **Linear CKA** between two states' 16-unit blocks of the centred Gram: ‖K_ab‖²_F / (‖K_aa‖_F · ‖K_bb‖_F) [KUH K27]; null (the pair skipped and counted) if a state's block is all zero.
+- **Signed matching.** Units are matched one to one by Hungarian matching on their signed correlation, not its absolute value: a ReLU unit's negative is a different detector. The matched value of a pair is the median of the 16 matched correlations (the mean of the 8th and 9th); over pairs, the median again (spec gap 4).
+- **Dead units** (one value on every probe sample) have correlation 0 with everything and are matched like any other unit.
+- **Ties.** Hungarian (our own Kuhn–Munkres with potentials, on −c, float64) adds rows in order; when two columns tie in a shortest-path step, a free column beats an assigned one, then the lower column index wins. An all-equal matrix gives the identity. (The plan said "the lowest column index, then the lowest row"; a free-column-first rule is what makes the all-equal case give the identity in this algorithm, so it is the rule implemented.)
+
 ## Alternatives considered
 
 Each section above names what it rejected.

@@ -3,7 +3,7 @@ import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS, emptyObservation, i
 import type { Action, Observation } from "@blanktab/interface"
 import { createCpuBackend, createRng } from "@blanktab/tensor"
 import type { Backend, Storage } from "@blanktab/tensor"
-import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
+import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, HELD_OUT_MAX, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
 import type { HeldOutSet, LearnerSettings, LearnerState, UpdateInfo } from "../src/learner"
 import { copyLastBaseline, targetsFromObs } from "../src/encode"
 import type { Widths } from "../src/model"
@@ -1476,5 +1476,72 @@ describe("whole-life replay (reservoirShare, Plan 06a)", { timeout: 60_000 }, ()
     // The untouched state is a good checkpoint.
     const ok = await createLearner({ backend: createCpuBackend(), state })
     ok.dispose()
+  })
+})
+
+describe("scoreSet: scoring any trajectory (Plan 06a)", { timeout: 60_000 }, () => {
+  const SET2 = syntheticHeldOut(9, 24)
+  const copyLastEach = (set: HeldOutSet) => set.actions.map((_, i) => copyLastBaseline(targetsFromObs(set.obs[i]!), targetsFromObs(set.obs[i + 1]!)))
+
+  it("a newborn scores copy-last on every transition; nothing but evalCU changes", async () => {
+    const be = createCpuBackend()
+    const learner = await createLearner({ backend: be, seed: 1, widths: TINY, settings: DEFAULT_SETTINGS })
+    const before = await learner.save()
+    const losses = await learner.scoreSet(SET2)
+    expect(losses).toBeInstanceOf(Float32Array)
+    expect(losses.length).toBe(SET2.actions.length)
+    const want = copyLastEach(SET2)
+    expect(want.some(v => v > 0)).toBe(true)
+    losses.forEach((l, i) => expect(Math.abs(l - want[i]!), `transition ${i}`).toBeLessThanOrEqual(1e-5 * Math.max(want[i]!, 1e-6)))
+    const after = await learner.save()
+    expect(after.stats.evalCU).toBeGreaterThan(0)
+    expect(firstDifference({ ...after, stats: { ...after.stats, evalCU: 0 } }, before)).toBeNull()
+    learner.dispose()
+    expect(be.stats.liveBuffers).toBe(0)
+  })
+
+  it("its mean over the learner's own held-out set is the held-out loss of the last sleep", async () => {
+    const be = createCpuBackend()
+    const learner = await createLearner({ backend: be, seed: 2, widths: TINY, settings: DEFAULT_SETTINGS, heldOut: SET2 })
+    const world = createSyntheticStream()
+    for (let i = 0; i < 60; i++) world.act(await learner.step(world.observe()))
+    await learner.sleep()
+    const losses = await learner.scoreSet(SET2)
+    const mean = losses.reduce((a, b) => a + b, 0) / losses.length
+    expect(Math.abs(mean / learner.stats().heldOutLoss - 1)).toBeLessThan(1e-5)
+    expect(Math.abs(mean / learner.stats().heldOutBaseline - 1)).toBeGreaterThan(1e-4) // it has learned something: not copy-last
+    learner.dispose()
+    expect(be.stats.liveBuffers).toBe(0)
+  })
+
+  it("a learner that scored a set mid-life continues bit-identically to a twin that did not", async () => {
+    const a = await run({ seed: 71, steps: 80, sleepEvery: 20 })
+    const b = await run({ seed: 71, steps: 80, sleepEvery: 20, at: async (i, l) => { if (i === 30 || i === 55) await l.scoreSet(SET2) } })
+    expect(b.actions).toEqual(a.actions)
+    expect(b.updates).toEqual(a.updates)
+    const [sa, sb] = [await a.learner.save(), await b.learner.save()]
+    expect(sb.stats.evalCU).toBeGreaterThan(sa.stats.evalCU)
+    expect(sb.stats.cu).toBe(sa.stats.cu)
+    expect(firstDifference({ ...sb, stats: { ...sb.stats, evalCU: sa.stats.evalCU } }, sa)).toBeNull()
+    for (const r of [a, b]) r.learner.dispose()
+    expect(b.be.stats.liveBuffers).toBe(0)
+  })
+
+  it("rejects a malformed or oversized set, and any call while a frozen run is open, leaking nothing", async () => {
+    const be = createCpuBackend()
+    const learner = await createLearner({ backend: be, seed: 3, widths: TINY, settings: DEFAULT_SETTINGS })
+    const live = be.stats.liveBuffers
+    const long = { obs: Array.from({ length: HELD_OUT_MAX + 2 }, () => SET2.obs[0]!), actions: Array.from({ length: HELD_OUT_MAX + 1 }, () => SET2.actions[0]!) }
+    for (const bad of [null, { obs: [], actions: [] }, { obs: SET2.obs.slice(0, 3), actions: SET2.actions.slice(0, 3) }, long]) {
+      await expect(learner.scoreSet(bad as unknown as HeldOutSet)).rejects.toThrow(RangeError)
+    }
+    const frozen = learner.frozenRun({ seed: 1, measureLoss: false })
+    await expect(learner.scoreSet(SET2)).rejects.toThrow(/frozen run is open/)
+    frozen.dispose()
+    expect((await learner.scoreSet(SET2)).length).toBe(SET2.actions.length)
+    expect(be.stats.liveBuffers).toBe(live)
+    learner.dispose()
+    await expect(learner.scoreSet(SET2)).rejects.toThrow(/used after dispose/)
+    expect(be.stats.liveBuffers).toBe(0)
   })
 })

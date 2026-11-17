@@ -182,6 +182,14 @@ export interface TrainableLearner extends Learner {
    * no update, no RNG draw, not counted in stats.cu.
    */
   replayLoss(): Promise<number>
+  /**
+   * The current weights' prediction loss on each transition of a trajectory the caller supplies (a HeldOutSet: at
+   * most HELD_OUT_MAX transitions), forward only, the core run along it from the zero recurrent state: the held-out
+   * check's scoring, on any set, one loss per transition (Plan 06a: the harness scores fresh-world sets with it and
+   * groups the losses itself; nothing about the set stays with the learner). No update, no RNG draw, nothing of the
+   * learner's state but stats.evalCU (its FLOPs). Rejects a malformed set with RangeError.
+   */
+  scoreSet(set: HeldOutSet): Promise<Float32Array>
   /** Every parameter's values, in checkpoint order (Model.params). May run alongside a step; rejects after dispose. */
   readParams(): Promise<Float32Array[]>
   /** Opens a frozen run (see FrozenRun). Throws while one is open, while a step, sleep or save runs, or after dispose. */
@@ -810,6 +818,46 @@ export async function createLearner(opts: {
     }
   }
 
+  /**
+   * scoreSet: as scoreHeldOut, but on the caller's set and keeping each transition's loss. The losses are gathered
+   * on the device into one [1, n] tensor (transition i's loss placed at column i by a one-hot matmul), so the whole
+   * set costs one read.
+   */
+  async function scoreSetNow(set: HeldOutSet): Promise<Float32Array> {
+    checkHeldOut(set, "scoreSet")
+    const flops0 = backend.stats.flops
+    const n = set.actions.length
+    const { keep, drop, T, freeAll, inputsOf, targetsOf } = tracker()
+    try {
+      let hh = keep(model.zeroState())
+      let all: Tensor | null = null
+      let base = targetsOf(targetsFromObs(set.obs[0]!))
+      for (let i = 0; i < n; i++) {
+        const inputs = inputsOf(set.obs[i]!)
+        const y = targetsOf(targetsFromObs(set.obs[i + 1]!))
+        const aT = T(actionOneHot(set.actions[i]!), [1, ACTION_DIM])
+        const at = new Float32Array(n)
+        at[i] = 1
+        const column = T(at, [1, n])
+        const h0 = hh
+        const hNext = keep(noGrad(() => composite(() => model.core(inputs, h0))))
+        drop(h0)
+        hh = hNext
+        const b = base
+        const li = keep(noGrad(() => composite(() => matmul(reshape(sizeWeightedLoss(model.predict(hNext, aT, b), y), [1, 1]), column))))
+        const prev: Tensor | null = all
+        all = prev ? keep(noGrad(() => composite(() => add(prev, li)))) : li
+        if (prev) drop(prev, li)
+        drop(b.periphery, b.fovea, inputs.periphery, inputs.fovea, inputs.proprio, aT, column)
+        base = y
+      }
+      return Float32Array.from(await all!.read())
+    } finally {
+      freeAll()
+      stats.evalCU += (backend.stats.flops - flops0) / 1e9
+    }
+  }
+
   async function replayLossNow(): Promise<number> {
     let total = 0
     // Each stored transition once: one held both as recent and in the reservoir is the same object.
@@ -1116,6 +1164,7 @@ export async function createLearner(opts: {
     sleep: () => exclusive(sleepNow),
     save: () => exclusive(saveNow),
     replayLoss: () => exclusive(replayLossNow),
+    scoreSet: (set: HeldOutSet) => exclusive(() => scoreSetNow(set)),
 
     stats: () => ({ ...stats }),
 

@@ -114,6 +114,11 @@ export interface FrozenRun {
  * ever scored, never trained on, and is kept for the learner's whole life (saved and restored with it).
  */
 export interface HeldOutSet { obs: Observation[]; actions: Action[] }
+/**
+ * scoreSet's result: for each transition, the mean squared error of each predicted view (the wide periphery and the
+ * close-up fovea). The loss the learner trains on is their size-weighted mean (VIEW_WEIGHTS).
+ */
+export interface SetLosses { periphery: Float32Array; fovea: Float32Array }
 /** Bounds on a held-out set's transitions (a hostile or corrupt checkpoint cannot make a sleep arbitrarily expensive). */
 export const HELD_OUT_MAX = 1024
 
@@ -185,11 +190,11 @@ export interface TrainableLearner extends Learner {
   /**
    * The current weights' prediction loss on each transition of a trajectory the caller supplies (a HeldOutSet: at
    * most HELD_OUT_MAX transitions), forward only, the core run along it from the zero recurrent state: the held-out
-   * check's scoring, on any set, one loss per transition (Plan 06a: the harness scores fresh-world sets with it and
-   * groups the losses itself; nothing about the set stays with the learner). No update, no RNG draw, nothing of the
-   * learner's state but stats.evalCU (its FLOPs). Rejects a malformed set with RangeError.
+   * check's scoring, on any set, per transition and per view (Plan 06a: the harness scores fresh-world sets with it
+   * and groups the losses itself; nothing about the set stays with the learner). No update, no RNG draw, nothing of
+   * the learner's state but stats.evalCU (its FLOPs). Rejects a malformed set with RangeError.
    */
-  scoreSet(set: HeldOutSet): Promise<Float32Array>
+  scoreSet(set: HeldOutSet): Promise<SetLosses>
   /** Every parameter's values, in checkpoint order (Model.params). May run alongside a step; rejects after dispose. */
   readParams(): Promise<Float32Array[]>
   /** Opens a frozen run (see FrozenRun). Throws while one is open, while a step, sleep or save runs, or after dispose. */
@@ -237,6 +242,8 @@ const PRED_F = PRED_FOVEA.width * PRED_FOVEA.height * PRED_FOVEA.channels
 /** Both outputs weighted by size: the MSE over their concatenation, comparable with copyLastBaseline. */
 const W_P = PRED_P / (PRED_P + PRED_F)
 const W_F = PRED_F / (PRED_P + PRED_F)
+/** Each view's share of the prediction loss (by its number of values): loss = periphery · MSE_p + fovea · MSE_f. */
+export const VIEW_WEIGHTS = Object.freeze({ periphery: W_P, fovea: W_F })
 
 const FACTORS = [MOVE_OPTIONS, BUTTON_OPTIONS, SCROLL_OPTIONS, KEYS.length] as const
 const OFFSETS = FACTORS.map((_, f) => FACTORS.slice(0, f).reduce((a, n) => a + n, 0))
@@ -819,11 +826,11 @@ export async function createLearner(opts: {
   }
 
   /**
-   * scoreSet: as scoreHeldOut, but on the caller's set and keeping each transition's loss. The losses are gathered
-   * on the device into one [1, n] tensor (transition i's loss placed at column i by a one-hot matmul), so the whole
-   * set costs one read.
+   * scoreSet: as scoreHeldOut, but on the caller's set and keeping each transition's loss, by view. The losses are
+   * gathered on the device into one [1, 2n] tensor (transition i's periphery loss placed at column 2i and its fovea
+   * loss at 2i + 1 by one-hot matmuls), so the whole set costs one read.
    */
-  async function scoreSetNow(set: HeldOutSet): Promise<Float32Array> {
+  async function scoreSetNow(set: HeldOutSet): Promise<SetLosses> {
     checkHeldOut(set, "scoreSet")
     const flops0 = backend.stats.flops
     const n = set.actions.length
@@ -836,22 +843,29 @@ export async function createLearner(opts: {
         const inputs = inputsOf(set.obs[i]!)
         const y = targetsOf(targetsFromObs(set.obs[i + 1]!))
         const aT = T(actionOneHot(set.actions[i]!), [1, ACTION_DIM])
-        const at = new Float32Array(n)
-        at[i] = 1
-        const column = T(at, [1, n])
+        const atP = new Float32Array(2 * n)
+        atP[2 * i] = 1
+        const atF = new Float32Array(2 * n)
+        atF[2 * i + 1] = 1
+        const colP = T(atP, [1, 2 * n])
+        const colF = T(atF, [1, 2 * n])
         const h0 = hh
         const hNext = keep(noGrad(() => composite(() => model.core(inputs, h0))))
         drop(h0)
         hh = hNext
         const b = base
-        const li = keep(noGrad(() => composite(() => matmul(reshape(sizeWeightedLoss(model.predict(hNext, aT, b), y), [1, 1]), column))))
+        const li = keep(noGrad(() => composite(() => {
+          const p = model.predict(hNext, aT, b)
+          return add(matmul(reshape(mse(p.periphery, y.periphery), [1, 1]), colP), matmul(reshape(mse(p.fovea, y.fovea), [1, 1]), colF))
+        })))
         const prev: Tensor | null = all
         all = prev ? keep(noGrad(() => composite(() => add(prev, li)))) : li
         if (prev) drop(prev, li)
-        drop(b.periphery, b.fovea, inputs.periphery, inputs.fovea, inputs.proprio, aT, column)
+        drop(b.periphery, b.fovea, inputs.periphery, inputs.fovea, inputs.proprio, aT, colP, colF)
         base = y
       }
-      return Float32Array.from(await all!.read())
+      const both = await all!.read()
+      return { periphery: Float32Array.from({ length: n }, (_, i) => both[2 * i]!), fovea: Float32Array.from({ length: n }, (_, i) => both[2 * i + 1]!) }
     } finally {
       freeAll()
       stats.evalCU += (backend.stats.flops - flops0) / 1e9

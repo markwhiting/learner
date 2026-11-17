@@ -7,8 +7,8 @@ import { createCpuBackend } from "@blanktab/tensor"
 import { ROOM_KINDS, type TraceEvent } from "@blanktab/world"
 import { emptyObservation } from "@blanktab/interface"
 import {
-  FRESH_EVENTS, FRESH_PARTS, FRESH_SEGMENTS, FRESH_SEGMENT_STEPS, FRESH_SET_VERSION, buildFreshSegment, buildFreshSet, freshEventOf, freshRatio, freshSeed,
-  scoreFresh, type FreshEvent, type FreshSegment,
+  FRESH_EVENTS, FRESH_PARTS, FRESH_SEGMENTS, FRESH_SEGMENT_STEPS, FRESH_SET_VERSION, FRESH_VIEWS, buildFreshSegment, buildFreshSet, freshEventOf, freshRatio,
+  freshSeed, scoreFresh, type FreshEvent, type FreshSegment,
 } from "../src/fresh"
 
 const canvas = () => createCanvas(320, 200)
@@ -113,7 +113,7 @@ describe("freshEventOf", () => {
 describe("scoreFresh", { timeout: 120_000 }, () => {
   const some = () => [0, 1, 2, 3].map(i => buildFreshSegment("random", i, canvas())).concat([0, 1, 2, 3, 4, 5, 6, 7].map(i => buildFreshSegment("probe", i, canvas())))
 
-  it("a newborn scores copy-last in every group: each ratio is 1, a group copy-last gets exactly has none", async () => {
+  it("a newborn scores copy-last in every group and each view: each ratio is 1, a group copy-last gets exactly has none", async () => {
     const be = createCpuBackend()
     const learner = await createLearner({ backend: be, seed: 5, widths: TINY, settings: DEFAULT_SETTINGS })
     const segs = some()
@@ -126,10 +126,15 @@ describe("scoreFresh", { timeout: 120_000 }, () => {
     expect(FRESH_EVENTS.reduce((n, e) => n + r.events[e].n, 0)).toBe(12 * FRESH_SEGMENT_STEPS)
     for (const g of [r.parts.random, r.parts.probe, ...FRESH_EVENTS.filter(e => e !== "static" && c[e] > 0).map(e => r.events[e])]) {
       expect(Math.abs(freshRatio(g)! - 1)).toBeLessThan(1e-4)
+      for (const v of FRESH_VIEWS) if (g.baseline[v] > 0) expect(Math.abs(freshRatio(g, v)! - 1), v).toBeLessThan(1e-4)
     }
-    expect(r.events.static.baseline).toBe(0)
-    expect(freshRatio(r.events.static)).toBeNull()
-    expect(freshRatio({ n: 0, loss: 0, baseline: 0 })).toBeNull()
+    expect(r.parts.random.baseline.fovea).toBeGreaterThan(r.parts.random.baseline.periphery) // the close-up changes far more per value
+    expect(r.events.static.baseline).toEqual({ periphery: 0, fovea: 0 })
+    for (const v of [undefined, ...FRESH_VIEWS]) expect(freshRatio(r.events.static, v)).toBeNull()
+    expect(freshRatio({ n: 0, loss: { periphery: 0, fovea: 0 }, baseline: { periphery: 0, fovea: 0 } })).toBeNull()
+    // Both views together weigh each by its share of the predicted values.
+    expect(freshRatio({ n: 1, loss: { periphery: 1, fovea: 3 }, baseline: { periphery: 2, fovea: 2 } })).toBeCloseTo((3000 * 1 + 768 * 3) / (3000 * 2 + 768 * 2), 12)
+    expect(freshRatio({ n: 1, loss: { periphery: 1, fovea: 3 }, baseline: { periphery: 2, fovea: 2 } }, "periphery")).toBe(0.5)
     expect(learner.stats().evalCU).toBeGreaterThan(0)
     expect(learner.stats().cu).toBe(0)
     learner.dispose()
@@ -138,7 +143,9 @@ describe("scoreFresh", { timeout: 120_000 }, () => {
 
   it("refuses losses that do not match the transitions, or are not finite", async () => {
     const segs = some().slice(0, 1)
-    await expect(scoreFresh({ scoreSet: () => Promise.resolve(new Float32Array(3)) }, segs)).rejects.toThrow(RangeError)
-    await expect(scoreFresh({ scoreSet: () => Promise.resolve(new Float32Array(FRESH_SEGMENT_STEPS).fill(Number.NaN)) }, segs)).rejects.toThrow(RangeError)
+    const ok = () => new Float32Array(FRESH_SEGMENT_STEPS)
+    await expect(scoreFresh({ scoreSet: () => Promise.resolve({ periphery: new Float32Array(3), fovea: ok() }) }, segs)).rejects.toThrow(RangeError)
+    await expect(scoreFresh({ scoreSet: () => Promise.resolve({ periphery: ok(), fovea: ok().fill(Number.NaN) }) }, segs)).rejects.toThrow(RangeError)
+    expect((await scoreFresh({ scoreSet: () => Promise.resolve({ periphery: ok(), fovea: ok() }) }, segs)).parts.random.n).toBe(FRESH_SEGMENT_STEPS)
   })
 })

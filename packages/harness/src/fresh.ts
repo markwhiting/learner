@@ -9,7 +9,7 @@
 // - "probe": a privileged prober that walks to things and clicks them, so the set holds enough of the events random
 //   play rarely reaches (a shape responding, a widget changing, a reveal, a navigation, a room switch).
 import { KEYS, MOVE_OPTIONS, SCROLL_OPTIONS, WORLD, decodeMove, type Action, type Observation } from "@blanktab/interface"
-import { copyLastBaseline, targetsFromObs, type HeldOutSet, type TrainableLearner } from "@blanktab/learner"
+import { VIEW_WEIGHTS, copyLastByView, targetsFromObs, type HeldOutSet, type TrainableLearner } from "@blanktab/learner"
 import { createRng } from "@blanktab/tensor"
 import { ROOM_KINDS, ROOM_VIEW, createWorld, hashSeed, type CanvasLike, type RoomKind, type TraceEvent, type World } from "@blanktab/world"
 import { uniformAction } from "./heldout"
@@ -159,8 +159,14 @@ export function buildFreshSet(canvas: () => CanvasLike): FreshSegment[] {
   return FRESH_PARTS.flatMap(part => Array.from({ length: FRESH_SEGMENTS[part] }, (_, i) => buildFreshSegment(part, i, canvas())))
 }
 
-/** Sums over a group of transitions: the learner's loss, copy-last's, and how many. The group's ratio is loss / baseline. */
-export interface FreshScore { n: number; loss: number; baseline: number }
+/** The two views a learner predicts: the wide periphery and the close-up fovea. */
+export type FreshView = "periphery" | "fovea"
+export const FRESH_VIEWS: readonly FreshView[] = ["periphery", "fovea"]
+/**
+ * Sums over a group of transitions, by view: the learner's loss, copy-last's, and how many transitions. The views are
+ * kept apart because they behave differently: the fovea has the shift prior (decision 0015), the periphery does not.
+ */
+export interface FreshScore { n: number; loss: Record<FreshView, number>; baseline: Record<FreshView, number> }
 export interface FreshResult {
   version: typeof FRESH_SET_VERSION
   parts: Record<FreshPart, FreshScore>
@@ -168,28 +174,39 @@ export interface FreshResult {
   events: Record<FreshEvent, FreshScore>
 }
 
-/** loss / baseline, or null when the group is empty or copy-last is exact on it (nothing to predict). */
-export const freshRatio = (s: FreshScore): number | null => (s.n > 0 && s.baseline > 0 ? s.loss / s.baseline : null)
+/**
+ * A group's score: Σ loss ÷ Σ copy-last, for one view, or without `view` for both weighted as the learner's own loss
+ * weights them (VIEW_WEIGHTS). Below 1 is better than assuming nothing changes. Null when the group is empty or
+ * copy-last is exact on it (nothing to predict).
+ */
+export function freshRatio(s: FreshScore, view?: FreshView): number | null {
+  const of = (x: Record<FreshView, number>) => (view ? x[view] : VIEW_WEIGHTS.periphery * x.periphery + VIEW_WEIGHTS.fovea * x.fovea)
+  const baseline = of(s.baseline)
+  return s.n > 0 && baseline > 0 ? of(s.loss) / baseline : null
+}
 
 /**
  * Scores `segments` with the learner's current weights (scoreSet: forward only, billed to evalCU) and groups the
- * per-transition losses by part and by event. Copy-last on the same transitions is computed here.
+ * per-transition losses by part and by event, each view apart. Copy-last on the same transitions is computed here.
  */
 export async function scoreFresh(learner: Pick<TrainableLearner, "scoreSet">, segments: readonly FreshSegment[]): Promise<FreshResult> {
-  const zero = (): FreshScore => ({ n: 0, loss: 0, baseline: 0 })
+  const zero = (): FreshScore => ({ n: 0, loss: { periphery: 0, fovea: 0 }, baseline: { periphery: 0, fovea: 0 } })
   const parts = Object.fromEntries(FRESH_PARTS.map(p => [p, zero()])) as Record<FreshPart, FreshScore>
   const events = Object.fromEntries(FRESH_EVENTS.map(e => [e, zero()])) as Record<FreshEvent, FreshScore>
   for (const seg of segments) {
     const losses = await learner.scoreSet(seg.set)
-    if (losses.length !== seg.events.length) throw new RangeError(`scoreFresh: ${losses.length} losses for ${seg.events.length} transitions`)
-    for (let i = 0; i < losses.length; i++) {
-      const loss = losses[i]!
-      if (!Number.isFinite(loss)) throw new RangeError(`scoreFresh: a non-finite loss (${seg.part} transition ${i})`)
-      const baseline = copyLastBaseline(targetsFromObs(seg.set.obs[i]!), targetsFromObs(seg.set.obs[i + 1]!))
+    const n = seg.events.length
+    if (losses.periphery.length !== n || losses.fovea.length !== n) throw new RangeError(`scoreFresh: ${losses.periphery.length} and ${losses.fovea.length} losses for ${n} transitions`)
+    for (let i = 0; i < n; i++) {
+      const baseline = copyLastByView(targetsFromObs(seg.set.obs[i]!), targetsFromObs(seg.set.obs[i + 1]!))
       for (const g of [parts[seg.part], events[seg.events[i]!]]) {
         g.n++
-        g.loss += loss
-        g.baseline += baseline
+        for (const v of FRESH_VIEWS) {
+          const loss = losses[v][i]!
+          if (!Number.isFinite(loss)) throw new RangeError(`scoreFresh: a non-finite ${v} loss (${seg.part} transition ${i})`)
+          g.loss[v] += loss
+          g.baseline[v] += baseline[v]
+        }
       }
     }
   }

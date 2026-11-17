@@ -119,9 +119,15 @@ async function main() {
   let freshNow: Record<string, unknown> = {}
   const scoreFreshNow = async () => {
     const r = await scoreFresh(learner, fresh!)
-    const ratio = (g: FreshScore) => { const v = freshRatio(g); return v === null ? null : +v.toFixed(4) }
+    // Each group as [both views, wide view (periphery), close-up (fovea)].
+    const round = (v: number | null) => (v === null ? null : +v.toFixed(4))
+    const ratio = (g: FreshScore) => [round(freshRatio(g)), round(freshRatio(g, "periphery")), round(freshRatio(g, "fovea"))]
+    const sum = (a: FreshScore, g: FreshScore): FreshScore => ({
+      n: a.n + g.n, loss: { periphery: a.loss.periphery + g.loss.periphery, fovea: a.loss.fovea + g.loss.fovea },
+      baseline: { periphery: a.baseline.periphery + g.baseline.periphery, fovea: a.baseline.fovea + g.baseline.fovea },
+    })
     const eventful = (["switch", "navigate", "reveal", "widget", "respond"] as const).map(e => r.events[e])
-      .reduce((a, g) => ({ n: a.n + g.n, loss: a.loss + g.loss, baseline: a.baseline + g.baseline }), { n: 0, loss: 0, baseline: 0 })
+      .reduce(sum, { n: 0, loss: { periphery: 0, fovea: 0 }, baseline: { periphery: 0, fovea: 0 } })
     return { fresh: { random: ratio(r.parts.random), probe: ratio(r.parts.probe), eventful: ratio(eventful), events: Object.fromEntries(FRESH_EVENTS.map(e => [e, ratio(r.events[e])])) } }
   }
   const flush = (step: number) => {

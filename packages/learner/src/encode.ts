@@ -76,6 +76,15 @@ export function actionOneHot(a: Action): Float32Array {
   return out
 }
 
+/** copyLastBaseline by view: each target's own mean squared change. Their size-weighted mean is copyLastBaseline. */
+export function copyLastByView(prev: Targets, next: Targets): { periphery: number; fovea: number } {
+  let p = 0
+  let f = 0
+  for (let i = 0; i < prev.periphery.length; i++) p += (prev.periphery[i]! - next.periphery[i]!) ** 2
+  for (let i = 0; i < prev.fovea.length; i++) f += (prev.fovea[i]! - next.fovea[i]!) ** 2
+  return { periphery: p / prev.periphery.length, fovea: f / prev.fovea.length }
+}
+
 // Mean squared error over the concatenation of both targets: the "nothing changes" guess.
 export function copyLastBaseline(prev: Targets, next: Targets): number {
   let sum = 0

@@ -3,9 +3,9 @@ import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS, emptyObservation, i
 import type { Action, Observation } from "@blanktab/interface"
 import { createCpuBackend, createRng } from "@blanktab/tensor"
 import type { Backend, Storage } from "@blanktab/tensor"
-import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, HELD_OUT_MAX, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
-import type { HeldOutSet, LearnerSettings, LearnerState, UpdateInfo } from "../src/learner"
-import { copyLastBaseline, targetsFromObs } from "../src/encode"
+import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, HELD_OUT_MAX, VIEW_WEIGHTS, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
+import type { HeldOutSet, LearnerSettings, LearnerState, SetLosses, UpdateInfo } from "../src/learner"
+import { copyLastBaseline, copyLastByView, targetsFromObs } from "../src/encode"
 import type { Widths } from "../src/model"
 import { createSyntheticStream } from "./synthetic"
 
@@ -1481,18 +1481,30 @@ describe("whole-life replay (reservoirShare, Plan 06a)", { timeout: 60_000 }, ()
 
 describe("scoreSet: scoring any trajectory (Plan 06a)", { timeout: 60_000 }, () => {
   const SET2 = syntheticHeldOut(9, 24)
-  const copyLastEach = (set: HeldOutSet) => set.actions.map((_, i) => copyLastBaseline(targetsFromObs(set.obs[i]!), targetsFromObs(set.obs[i + 1]!)))
+  const copyLastEach = (set: HeldOutSet) => set.actions.map((_, i) => copyLastByView(targetsFromObs(set.obs[i]!), targetsFromObs(set.obs[i + 1]!)))
+  /** The loss the learner trains on, from the two views' losses. */
+  const weighted = (l: SetLosses, i: number) => VIEW_WEIGHTS.periphery * l.periphery[i]! + VIEW_WEIGHTS.fovea * l.fovea[i]!
 
-  it("a newborn scores copy-last on every transition; nothing but evalCU changes", async () => {
+  it("the views' weights are their shares of the predicted values, and weight copy-last by view back to copyLastBaseline", () => {
+    expect(VIEW_WEIGHTS.periphery + VIEW_WEIGHTS.fovea).toBeCloseTo(1, 12)
+    expect(VIEW_WEIGHTS.periphery).toBeCloseTo(3000 / 3768, 12)
+    const [a, b] = [targetsFromObs(SET2.obs[0]!), targetsFromObs(SET2.obs[1]!)]
+    const v = copyLastByView(a, b)
+    expect(VIEW_WEIGHTS.periphery * v.periphery + VIEW_WEIGHTS.fovea * v.fovea).toBeCloseTo(copyLastBaseline(a, b), 12)
+  })
+
+  it("a newborn scores copy-last on every transition, in each view; nothing but evalCU changes", async () => {
     const be = createCpuBackend()
     const learner = await createLearner({ backend: be, seed: 1, widths: TINY, settings: DEFAULT_SETTINGS })
     const before = await learner.save()
     const losses = await learner.scoreSet(SET2)
-    expect(losses).toBeInstanceOf(Float32Array)
-    expect(losses.length).toBe(SET2.actions.length)
     const want = copyLastEach(SET2)
-    expect(want.some(v => v > 0)).toBe(true)
-    losses.forEach((l, i) => expect(Math.abs(l - want[i]!), `transition ${i}`).toBeLessThanOrEqual(1e-5 * Math.max(want[i]!, 1e-6)))
+    for (const view of ["periphery", "fovea"] as const) {
+      expect(losses[view]).toBeInstanceOf(Float32Array)
+      expect(losses[view].length).toBe(SET2.actions.length)
+      expect(want.some(v => v[view] > 0)).toBe(true)
+      losses[view].forEach((l, i) => expect(Math.abs(l - want[i]![view]), `${view} of transition ${i}`).toBeLessThanOrEqual(1e-5 * Math.max(want[i]![view], 1e-6)))
+    }
     const after = await learner.save()
     expect(after.stats.evalCU).toBeGreaterThan(0)
     expect(firstDifference({ ...after, stats: { ...after.stats, evalCU: 0 } }, before)).toBeNull()
@@ -1507,7 +1519,8 @@ describe("scoreSet: scoring any trajectory (Plan 06a)", { timeout: 60_000 }, () 
     for (let i = 0; i < 60; i++) world.act(await learner.step(world.observe()))
     await learner.sleep()
     const losses = await learner.scoreSet(SET2)
-    const mean = losses.reduce((a, b) => a + b, 0) / losses.length
+    const n = SET2.actions.length
+    const mean = Array.from({ length: n }, (_, i) => weighted(losses, i)).reduce((a, b) => a + b, 0) / n
     expect(Math.abs(mean / learner.stats().heldOutLoss - 1)).toBeLessThan(1e-5)
     expect(Math.abs(mean / learner.stats().heldOutBaseline - 1)).toBeGreaterThan(1e-4) // it has learned something: not copy-last
     learner.dispose()
@@ -1538,7 +1551,7 @@ describe("scoreSet: scoring any trajectory (Plan 06a)", { timeout: 60_000 }, () 
     const frozen = learner.frozenRun({ seed: 1, measureLoss: false })
     await expect(learner.scoreSet(SET2)).rejects.toThrow(/frozen run is open/)
     frozen.dispose()
-    expect((await learner.scoreSet(SET2)).length).toBe(SET2.actions.length)
+    expect((await learner.scoreSet(SET2)).fovea.length).toBe(SET2.actions.length)
     expect(be.stats.liveBuffers).toBe(live)
     learner.dispose()
     await expect(learner.scoreSet(SET2)).rejects.toThrow(/used after dispose/)

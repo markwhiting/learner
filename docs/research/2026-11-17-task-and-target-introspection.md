@@ -4,6 +4,12 @@
 **Follows:** `2026-11-16-calibration-flat.md` (why calibration came out flat) and `2026-11-16-filter-convergence.md`.
 **Status:** analysis and offline measurements by a research agent (AGENTS.md invariant 5). Nothing here changes the product. Every proposal is an agent's proposal, not yet confirmed.
 
+**Correction (2026-11-17, later the same day).** Point 3 below, section 3 and tweak 1 credit "replay drawn from the whole life". That arm changed how much is replayed and where it comes from at once, and a control run since separates them (`2026-11-17-predictor-fixes-and-fresh-world-test.md`):
+
+- **For a random explorer, where replay comes from does not matter.** Replaying only the last 2,000 steps, at the same rate and with the decay off, does as well (0.51 and 0.65 against 0.51 and 0.64). The gain is from switching the decay off and replaying about once per step.
+- **With curiosity on, it matters a great deal, and the decay turns out to be a real safeguard.** With the decay off and recent-only replay, the curiosity-driven learner's predictor ends 1.3 to 2.7 times worse than "nothing changes". Whole-life replay limits that.
+- **The gain is narrower than this note says.** Nearly all of it is the close-up view shifting with the cursor (the fovea-shift prior). On the wide view the predictor never beats "nothing changes" in any run here.
+
 ## In plain words
 
 1. **The learner is paid for making pixels change, so it learns to fling the cursor.** The "curiosity" reward is meant to be learning progress. As built, it tracks how much the picture changed. The policy's answer is to make the biggest diagonal jumps it can.

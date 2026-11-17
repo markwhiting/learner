@@ -12,6 +12,7 @@
     "./session": "./src/session.ts",
     "./knowledge": "./src/knowledge.ts",
     "./heldout": "./src/heldout.ts",
+    "./fresh": "./src/fresh.ts",
     "./milestones": "./src/milestones/index.ts",
     "./checkup": "./src/checkup.ts",
     "./caregiver": "./src/caregiver.ts",

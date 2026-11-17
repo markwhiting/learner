@@ -1,6 +1,6 @@
 // Offline diagnostic for docs/research/2026-11-17-task-and-target-introspection.md (not part of the product): the real learner on the CPU backend in the real four-room world with
 // the real caregiver and held-out set, instrumented from the harness side (privileged trace used for diagnosis only).
-//   npx tsx tools/probe/introspect-probe.ts --seed 1 --steps 25000 [--curiosityWeight 0] [--residualDecay 0 --bufferSize 25000 --replayPerSleep 250] [--rooms crib] [--ext respond] [--out file.json]
+//   npx tsx tools/probe/introspect-probe.ts --seed 1 --steps 25000 [--curiosityWeight 0] [--residualDecay 0 --bufferSize 25000 --replayPerSleep 250] [--reservoirShare 1] [--rooms crib] [--ext respond] [--freshEvery 5000] [--out file.json]
 // The environment switches X_LP, X_SHIFT_MOVE_ONLY and X_EXT_WEIGHT (with --ext respond) are read only by the experiment code on the branch diag/learner-introspect; on main they do nothing.
 import { createCanvas } from "@napi-rs/canvas"
 import { decodeMove, type Action, type Observation } from "@blanktab/interface"
@@ -9,6 +9,7 @@ import { composite, createCpuBackend, createRng, noGrad, tensor, type Tensor } f
 import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS } from "@blanktab/interface"
 import { createWorld, hashSeed } from "@blanktab/world"
 import { buildHeldOut } from "@blanktab/harness/heldout"
+import { FRESH_EVENTS, buildFreshSet, freshRatio, scoreFresh, type FreshScore } from "@blanktab/harness/fresh"
 import { CAREGIVER_DEFAULTS, createCaregiver } from "@blanktab/harness/caregiver"
 import { writeFileSync } from "node:fs"
 
@@ -19,9 +20,11 @@ const SEED = num("seed", 1), STEPS = num("steps", 5000), WIN = num("win", 2500),
 const widths = args.get("widths") === "gpu" ? GPU_WIDTHS : CPU_WIDTHS
 const settings: LearnerSettings = { ...DEFAULT_SETTINGS }
 for (const k of Object.keys(settings) as (keyof LearnerSettings)[]) if (args.has(k)) settings[k] = Number(args.get(k))
+if (args.has("reservoirShare")) settings.reservoirShare = Number(args.get("reservoirShare")) // optional, so not among the defaults' keys
 const NO_CAREGIVER = args.get("caregiver") === "off"
 const OUT = args.get("out")
 const BROAD = num("broad", 800)
+const FRESH_EVERY = num("freshEvery", 0) // score the fresh-world set (Plan 06a) every this many steps; 0: never
 const ROOMS = args.get("rooms")?.split(",") as Parameters<typeof createWorld>[0]["rooms"] | undefined
 const EXT = args.get("ext") // "respond": reward 1 when the action made an element respond
 
@@ -111,6 +114,16 @@ async function main() {
 
   const broad = BROAD > 0 ? broadSet(SEED, BROAD) : null
   let broadNow: Record<string, unknown> = {}
+  // The fresh-world set is the same for every life (its seeds are its own); "eventful" pools the five rarer events.
+  const fresh = FRESH_EVERY > 0 ? buildFreshSet(() => createCanvas(320, 200)) : null
+  let freshNow: Record<string, unknown> = {}
+  const scoreFreshNow = async () => {
+    const r = await scoreFresh(learner, fresh!)
+    const ratio = (g: FreshScore) => { const v = freshRatio(g); return v === null ? null : +v.toFixed(4) }
+    const eventful = (["switch", "navigate", "reveal", "widget", "respond"] as const).map(e => r.events[e])
+      .reduce((a, g) => ({ n: a.n + g.n, loss: a.loss + g.loss, baseline: a.baseline + g.baseline }), { n: 0, loss: 0, baseline: 0 })
+    return { fresh: { random: ratio(r.parts.random), probe: ratio(r.parts.probe), eventful: ratio(eventful), events: Object.fromEntries(FRESH_EVENTS.map(e => [e, ratio(r.events[e])])) } }
+  }
   const flush = (step: number) => {
     const n = win.length; if (!n) return
     const f = (p: (r: Row) => boolean) => win.filter(p).length / n
@@ -119,7 +132,7 @@ async function main() {
     const hist = (key: "move" | "button" | "scroll" | "key", k: number) => { const c = new Array<number>(k).fill(0); for (const r of win) c[r[key]]!++; return c }
     const st = learner.stats()
     const w = {
-      step, cu: +st.cu.toFixed(1), n, ...broadNow,
+      step, cu: +st.cu.toFixed(1), n, ...broadNow, ...freshNow,
       heldOut: +mean(heldSeries.splice(0)).toFixed(4), own: +(st.predLoss / st.baselineLoss).toFixed(4),
       meanCopyLast: +mean(cl).toExponential(3), meanCopyLastP: +mean(win.map(r => r.clP)).toExponential(3), meanCopyLastF: +mean(win.map(r => r.clF)).toExponential(3),
       meanReward: +mean(rs).toFixed(4), fracRewardPos: +f(r => r.r > 0).toFixed(3), fracRewardNeg: +f(r => r.r < 0).toFixed(3),
@@ -143,6 +156,7 @@ async function main() {
     windows.push(w)
     console.log(JSON.stringify(w))
     win = []
+    freshNow = {}
   }
 
   for (let step = 1; step <= STEPS; step++) {
@@ -187,6 +201,7 @@ async function main() {
       const to = caregiver.decide(world.state().room, world.rooms())
       if (to !== null) { world.bringToFront(to as Parameters<typeof world.bringToFront>[0]); carries++ }
     }
+    if (fresh && step % FRESH_EVERY === 0) freshNow = await scoreFreshNow()
     if (step % WIN === 0) { if (broad) broadNow = await scoreBroad(await learner.readParams(), widths, broad); flush(step) }
   }
   if (OUT) writeFileSync(OUT, JSON.stringify({ seed: SEED, steps: STEPS, settings, widths, windows }, null, 1))

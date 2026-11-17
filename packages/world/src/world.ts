@@ -58,6 +58,12 @@ export interface World extends WorldView {
   readonly tick: number
   drainTrace(): TraceEvent[]
   state(): PrivilegedState
+  /**
+   * Privileged; harness only. What is at screen point (x, y) right now: the element of the room in front there, a
+   * taskbar icon, or null (bare background, bare taskbar, or off the screen). It changes nothing and leaves no trace;
+   * `state().hovered` is this at the cursor.
+   */
+  inspect(x: number, y: number): ElementInfo | null
   rooms(): readonly RoomKind[] // taskbar order
   /**
    * Brings a room to the front; emits focus with `source` (default "caregiver": the caregiver "carries" the learner;
@@ -136,11 +142,12 @@ export function createWorld(opts: {
     slots.findIndex(s => x >= s.iconX && x < s.iconX + ICON.size && y >= ICON.y && y < ICON.y + ICON.size)
 
   const iconInfo = (i: number): ElementInfo => ({ id: taskbarId(slots[i]!.kind), interactive: true, responsive: true })
-  const hoveredInfo = (): ElementInfo | null => {
-    if (inView(cx, cy)) return slots[active]!.room.inspect(cx, cy)
-    const i = iconAt(cx, cy)
+  const infoAt = (x: number, y: number): ElementInfo | null => {
+    if (inView(x, y)) return slots[active]!.room.inspect(x, y)
+    const i = iconAt(x, y)
     return i >= 0 ? iconInfo(i) : null
   }
+  const hoveredInfo = (): ElementInfo | null => infoAt(cx, cy)
   /** A hover/click event for `info` (null = empty space: no id, both flags false). */
   const pointerEvent = (kind: "hover" | "click", info: ElementInfo | null): TraceEvent => {
     const t: TraceEvent = {
@@ -300,6 +307,8 @@ export function createWorld(opts: {
         scroll: copyScroll(room.scrollState()),
       }
     },
+
+    inspect: (x: number, y: number) => copyInfo(infoAt(x, y)),
 
     rooms: () => [...kinds],
 

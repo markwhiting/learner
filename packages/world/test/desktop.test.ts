@@ -371,3 +371,35 @@ describe("desktop: carried from review", () => {
     }
   })
 })
+
+describe("desktop: inspect (privileged, Plan 06a)", () => {
+  it("says what is at any screen point without moving the cursor, changing a pixel or leaving a trace", () => {
+    const w = makeWorld(1, { rooms: ["crib", "toys"] })
+    const shape = layoutCrib(hashSeed(1, "crib")).shapes[0]!
+    const at = { x: Math.round(shape.x + shape.size / 2), y: Math.round(shape.y + shape.size / 2) }
+    moveTo(w, 300, 100)
+    w.drainTrace()
+    const before = { obs: w.observe(), state: w.state(), tick: w.tick }
+    expect(w.inspect(at.x, at.y)).toEqual({ id: shape.id, interactive: true, responsive: true })
+    expect(w.inspect(iconCentre(0).x, iconCentre(0).y)).toEqual({ id: "taskbar:crib", interactive: true, responsive: true })
+    expect(w.inspect(iconCentre(1).x, iconCentre(1).y)).toEqual({ id: "taskbar:toys", interactive: true, responsive: true })
+    expect(w.inspect(300, ICON_Y + 6)).toBeNull() // bare taskbar
+    for (const [x, y] of [[-1, 5], [5, -1], [WORLD.width, 5], [5, WORLD.height], [Number.NaN, 5]] as const) expect(w.inspect(x, y)).toBeNull()
+    expect(w.drainTrace()).toEqual([])
+    expect(w.tick).toBe(before.tick)
+    expect(w.state()).toEqual(before.state)
+    expect(w.observe()).toEqual(before.obs)
+  })
+
+  it("at the cursor it is state().hovered, in the room in front", () => {
+    const w = makeWorld(1, { rooms: ["crib", "toys"] })
+    const shape = layoutCrib(hashSeed(1, "crib")).shapes[0]!
+    moveTo(w, Math.round(shape.x + shape.size / 2), Math.round(shape.y + shape.size / 2))
+    const c = w.state().cursor
+    expect(w.inspect(c.x, c.y)).toEqual(w.state().hovered)
+    expect(w.state().hovered?.id).toBe(shape.id)
+    w.bringToFront("toys")
+    expect(w.inspect(c.x, c.y)).toEqual(w.state().hovered) // the crib's shape is no longer in front
+    expect(w.inspect(c.x, c.y)?.id).not.toBe(shape.id)
+  })
+})

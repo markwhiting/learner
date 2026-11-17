@@ -389,6 +389,36 @@ describe("checkpoint frames (write volume)", { timeout: 60_000 }, () => {
     again.dispose()
   })
 
+  it("packs a whole-life reservoir's frames with the replay's (each distinct observation once) and restores it exactly", async () => {
+    const world = stream()
+    const l = await createLearner({ backend: createCpuBackend(), seed: 3, widths: TINY, settings: { ...DEFAULT_SETTINGS, bufferSize: 40, replayPerSleep: 4, reservoirShare: 0.5 } })
+    for (let i = 0; i < 120; i++) {
+      world.act(await l.step(world.observe()))
+      if (i % 25 === 24) await l.sleep()
+    }
+    const state = await l.save()
+    l.dispose()
+    expect(state.reservoir!.items.length).toBe(20)
+    const distinct = new Set([...state.replay, ...state.reservoir!.items].flatMap(tr => [tr.obs, tr.next]))
+    expect(distinct.size).toBeGreaterThan(state.replay.length + 1) // the reservoir holds frames the recent ones do not
+    const idb = new IDBFactory()
+    await saveCheckpoint(idb, learnerCp(state))
+    const stored = (await rawRecord(idb, A))!.learnerState
+    const frames = stored.frames as { codec: string; count: number }
+    expect(frames.codec).toBe("gzip")
+    expect(frames.count).toBe(distinct.size)
+    const packed = stored.reservoir as { items: { obs: unknown; next: unknown }[]; seen: number }
+    expect(packed.seen).toBe(state.reservoir!.seen)
+    expect(packed.items.every(tr => Number.isInteger(tr.obs) && Number.isInteger(tr.next))).toBe(true) // indices, not frames
+    const back = (await loadCheckpoint(idb, A))!.learnerState as LearnerState
+    expect(back).toEqual(state)
+    // What was one object before is one object again: a transition held as recent and in the reservoir, and its frames.
+    const shared = state.reservoir!.items.findIndex(tr => state.replay.includes(tr))
+    if (shared >= 0) expect(back.replay).toContain(back.reservoir!.items[shared])
+    const again = await createLearner({ backend: createCpuBackend(), state: back })
+    again.dispose()
+  })
+
   it("a learner resumed from a stored (packed) checkpoint goes on bit-identically to one resumed from its unstored state", async () => {
     const { l, world } = await lived(60)
     const state = await l.save()

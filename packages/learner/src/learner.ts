@@ -9,7 +9,7 @@ import { ACTION_DIM, actionOneHot, copyLastBaseline, obsToInputs, targetsFromObs
 import type { Inputs, Targets } from "./encode"
 import { createModel } from "./model"
 import type { Widths } from "./model"
-import { ReplayBuffer } from "./replay"
+import { ReplayBuffer, Reservoir, reservoirSlots, sampleStored } from "./replay"
 import type { Transition } from "./replay"
 import { LEARNER_STATE_VERSION } from "./version"
 /** The checkpoint format version (in ./version, a leaf module, so plain-Node build tools can read it). */
@@ -46,6 +46,15 @@ export interface LearnerSettings {
    * GAMMA_RANGE.
    */
   gamma: number
+  /**
+   * Whole-life replay (Plan 06a): this share of the bufferSize slots is a reservoir, a uniform sample of every
+   * transition of the life so far (reservoirSlots: the nearest whole number of slots, always leaving one recent
+   * slot); the rest stay the FIFO of recent transitions. A sleep replays uniformly over both. Each stored transition
+   * is offered to the reservoir with the learner's RNG, which it draws from only once it is full. Absent or 0: no
+   * reservoir, and bit-exact to the learner without it (it is not one of DEFAULT_SETTINGS, so today's settings and
+   * saved states are unchanged). Clamped into RESERVOIR_SHARE_RANGE.
+   */
+  reservoirShare?: number
 }
 /** The default TD discount (DEFAULT_SETTINGS.gamma), and the one a state saved without gamma resumes with. */
 export const GAMMA = 0.9
@@ -129,8 +138,13 @@ export interface LearnerState {
   h: Float32Array
   /** The previous step (null before the first step): its observation, the action taken, and h_{t-2}. */
   last: { obs: Observation; action: Action; hIn: Float32Array } | null
-  /** The replay buffer, oldest first. */
+  /** The replay buffer (the FIFO of recent transitions), oldest first. */
   replay: Transition[]
+  /**
+   * The whole-life reservoir (settings.reservoirShare): the kept transitions in slot order, and how many were ever
+   * offered. Present exactly when the settings give it at least one slot.
+   */
+  reservoir?: { items: Transition[]; seen: number }
   stats: LearnerStats
   /** The learner's held-out set (fixed at birth), or null for a learner born without one. */
   heldOut: HeldOutSet | null
@@ -154,7 +168,7 @@ export interface TrainableLearner extends Learner {
   stats(): LearnerStats
   /**
    * Consolidation condition A: replayPerSleep prediction updates, each on one transition sampled uniformly from
-   * the replay buffer with the learner's RNG (core from the stored h_{t-2} and obs, predict with the stored action
+   * the stored ones (the replay buffer, then the reservoir if any: sampleStored) with the learner's RNG (core from the stored h_{t-2} and obs, predict with the stored action
    * against the next frame; size-weighted MSE, Adam). Counts one sleep, even on an empty buffer (no updates).
    * Then, if the learner has a held-out set, scores it (no update, no RNG draw): stats heldOutLoss and
    * heldOutBaseline, its FLOPs billed to evalCU, not cu.
@@ -163,7 +177,8 @@ export interface TrainableLearner extends Learner {
   /** A snapshot of the whole learner (independent of it: later steps do not change it, nor it them). */
   save(): Promise<LearnerState>
   /**
-   * Mean prediction loss over every buffered transition with the current weights (NaN if empty). Measurement only:
+   * Mean prediction loss over every stored transition (recent or in the reservoir, each once) with the current weights
+   * (NaN if none). Measurement only:
    * no update, no RNG draw, not counted in stats.cu.
    */
   replayLoss(): Promise<number>
@@ -171,7 +186,7 @@ export interface TrainableLearner extends Learner {
   readParams(): Promise<Float32Array[]>
   /** Opens a frozen run (see FrozenRun). Throws while one is open, while a step, sleep or save runs, or after dispose. */
   frozenRun(opts: FrozenRunOptions): FrozenRun
-  /** The FIFO replay buffer (raw frames; do not mutate). */
+  /** The FIFO replay buffer of recent transitions (raw frames; do not mutate). A reservoir, if any, is not part of it. */
   readonly replay: ReplayBuffer
   /**
    * Frees the learner (idempotent). Later calls reject "learner: used after dispose" at once; a call in flight (step,
@@ -204,6 +219,8 @@ export const EXPLORE_EPSILON_RANGE = [0, 0.5] as const
 export const RESIDUAL_DECAY_RANGE = [0, 1e-2] as const
 /** gamma is clamped into this range. */
 export const GAMMA_RANGE = [0, 0.999] as const
+/** reservoirShare, when given, is clamped into this range. */
+export const RESERVOIR_SHARE_RANGE = [0, 1] as const
 /** Smoothing of the predLoss / baselineLoss moving averages. */
 export const STATS_ALPHA = 0.01
 
@@ -237,11 +254,15 @@ export function clampSettings(s: LearnerSettings): LearnerSettings {
   const given: unknown = (s as { gamma?: unknown }).gamma
   const gamma = given === undefined ? GAMMA : given
   if (typeof gamma !== "number" || !Number.isFinite(gamma)) throw new RangeError(`gamma must be a finite number, got ${String(gamma)}`)
+  // Optional: only an absent reservoirShare means no reservoir; when given it must be a finite number.
+  const share: unknown = (s as { reservoirShare?: unknown }).reservoirShare
+  if (share !== undefined && !(typeof share === "number" && Number.isFinite(share))) throw new RangeError(`reservoirShare must be a finite number, got ${String(share)}`)
   const clamp = (v: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, v))
   return {
     ...s, lr: clamp(s.lr, LR_RANGE), headLrScale: clamp(s.headLrScale, HEAD_LR_SCALE_RANGE),
     exploreEpsilon: clamp(s.exploreEpsilon, EXPLORE_EPSILON_RANGE), residualDecay: clamp(s.residualDecay, RESIDUAL_DECAY_RANGE),
     gamma: clamp(gamma, GAMMA_RANGE),
+    ...(share !== undefined ? { reservoirShare: clamp(share, RESERVOIR_SHARE_RANGE) } : {}),
   }
 }
 
@@ -372,6 +393,7 @@ function checkState(s: LearnerState): void {
     if (k === "gamma" && s.settings.gamma === undefined) continue
     if (clamped[k] !== s.settings[k]) fail(`settings.${k} = ${s.settings[k]} is not a clamped setting`)
   }
+  if (clamped.reservoirShare !== s.settings.reservoirShare) fail(`settings.reservoirShare = ${s.settings.reservoirShare} is not a clamped setting`)
   const n = s.params.length
   if (n <= OUTPUT_PARAMS) fail(`${n} parameters`)
   const split = [s.params.slice(0, n - OUTPUT_PARAMS), s.params.slice(n - OUTPUT_PARAMS)]
@@ -401,14 +423,28 @@ function checkState(s: LearnerState): void {
     if (s.last.hIn.length !== hidden) fail(`last.hIn has ${s.last.hIn.length} values, hidden is ${hidden}`)
     if (!allFinite(s.last.hIn)) fail("last.hIn has a non-finite value")
   }
-  if (s.replay.length > s.settings.bufferSize) fail(`${s.replay.length} transitions exceed bufferSize ${s.settings.bufferSize}`)
-  s.replay.forEach((tr, i) => {
-    checkObs(tr.obs, `replay[${i}].obs`)
-    checkObs(tr.next, `replay[${i}].next`)
-    if (!isValidAction(tr.action)) fail(`replay[${i}].action is not a valid action`)
-    if (tr.hIn.length !== hidden) fail(`replay[${i}].hIn has ${tr.hIn.length} values, hidden is ${hidden}`)
-    if (!allFinite(tr.hIn)) fail(`replay[${i}].hIn has a non-finite value`)
+  const slots = reservoirSlots(s.settings.bufferSize, s.settings.reservoirShare)
+  if (s.replay.length > s.settings.bufferSize - slots) fail(`${s.replay.length} transitions exceed the ${s.settings.bufferSize - slots} recent slots of bufferSize ${s.settings.bufferSize}`)
+  const checkTransitions = (trs: Transition[], where: string) => trs.forEach((tr, i) => {
+    checkObs(tr.obs, `${where}[${i}].obs`)
+    checkObs(tr.next, `${where}[${i}].next`)
+    if (!isValidAction(tr.action)) fail(`${where}[${i}].action is not a valid action`)
+    if (tr.hIn.length !== hidden) fail(`${where}[${i}].hIn has ${tr.hIn.length} values, hidden is ${hidden}`)
+    if (!allFinite(tr.hIn)) fail(`${where}[${i}].hIn has a non-finite value`)
   })
+  checkTransitions(s.replay, "replay")
+  // The reservoir is there exactly when the settings give it a slot, and is one a Reservoir can continue from.
+  if ((s.reservoir !== undefined) !== (slots > 0)) fail(slots > 0 ? "a learner with reservoirShare has no reservoir" : "a reservoir without reservoirShare")
+  if (s.reservoir !== undefined) {
+    const r: unknown = s.reservoir
+    if (!isRecord(r) || !Array.isArray(r.items) || !r.items.every(tr => isRecord(tr) && isRecord(tr.obs) && isRecord(tr.next) && isRecord(tr.action) && tr.hIn instanceof Float32Array)) {
+      fail("reservoir is malformed")
+    }
+    const { items, seen } = s.reservoir
+    if (items.length > slots) fail(`reservoir: ${items.length} transitions exceed its ${slots} slots`)
+    if (!(Number.isSafeInteger(seen) && (items.length < slots ? seen === items.length : seen >= items.length))) fail(`reservoir: seen ${String(seen)} does not fit ${items.length} kept of ${slots} slots`)
+    checkTransitions(items, "reservoir.items")
+  }
   for (const k of ["steps", "skippedUpdates", "consecutiveSkips", "sleeps"] as const) {
     if (!(Number.isInteger(s.stats[k]) && s.stats[k] >= 0)) fail(`stats.${k} = ${s.stats[k]}`)
   }
@@ -459,7 +495,8 @@ interface Last {
  *     learner's seeded RNG, uniformly with probability exploreEpsilon (sampleAction);
  *  4. updates the actor-critic on a_{t-1}: A = curiosityWeight·r + γ·V(h_t) − V(h_{t-1}),
  *     loss = −logπ(a_{t-1})·stopgrad(A) + A² − entropyWeight·H(π), one Adam step;
- *  5. stores (obs_{t-1}, h_{t-2}, a_{t-1}, obs_t) in the FIFO replay buffer and carries h ← h_t (detached).
+ *  5. stores (obs_{t-1}, h_{t-2}, a_{t-1}, obs_t) in the FIFO replay buffer, offers it to the whole-life reservoir
+ *     if there is one (settings.reservoirShare), and carries h ← h_t (detached).
  *
  * Steps 1 and 4 are separate backward passes because r depends on the prediction update. They touch disjoint
  * parameters — the policy/value heads read the detached h_{t-1}, so the actor-critic gradient does not enter
@@ -510,7 +547,11 @@ export async function createLearner(opts: {
   const outputSet = new Set(model.outputParams)
   // Action sampling has its own stream, independent of the initializer's.
   const rng = createRng((seed ^ 0x9e3779b9) >>> 0)
-  const replay = new ReplayBuffer(settings.bufferSize)
+  // The bufferSize slots: a whole-life reservoir of reservoirSlots of them (none without reservoirShare), the rest the
+  // FIFO of recent transitions.
+  const keptSlots = reservoirSlots(settings.bufferSize, settings.reservoirShare)
+  const replay = new ReplayBuffer(settings.bufferSize - keptSlots)
+  const reservoir = keptSlots > 0 ? new Reservoir(keptSlots, saved?.reservoir) : null
   const stats: LearnerStats = {
     steps: 0, cu: 0, predLoss: Number.NaN, baselineLoss: Number.NaN, skippedUpdates: 0, consecutiveSkips: 0, sleeps: 0,
     evalCU: 0, heldOutLoss: Number.NaN, heldOutBaseline: Number.NaN, lastLoss: Number.NaN,
@@ -704,8 +745,9 @@ export async function createLearner(opts: {
 
   async function sleepNow(): Promise<void> {
     const flops0 = backend.stats.flops
-    for (let k = 0; k < settings.replayPerSleep && replay.size > 0; k++) {
-      const tr = replay.at(Math.min(replay.size - 1, Math.floor(rng() * replay.size)))
+    for (let k = 0; k < settings.replayPerSleep; k++) {
+      const tr = sampleStored(replay, reservoir, rng)
+      if (!tr) break // nothing stored yet: no update, no draw
       const r = replayed(tr)
       let loss: Tensor | null = null
       try {
@@ -770,7 +812,9 @@ export async function createLearner(opts: {
 
   async function replayLossNow(): Promise<number> {
     let total = 0
-    for (const tr of replay.toArray()) {
+    // Each stored transition once: one held both as recent and in the reservoir is the same object.
+    const stored = [...new Set([...replay.toArray(), ...(reservoir?.toArray() ?? [])])]
+    for (const tr of stored) {
       const r = replayed(tr)
       try {
         const loss = noGrad(() => composite(r.loss))
@@ -783,7 +827,7 @@ export async function createLearner(opts: {
         r.free()
       }
     }
-    return replay.size > 0 ? total / replay.size : Number.NaN
+    return stored.length > 0 ? total / stored.length : Number.NaN
   }
 
   async function saveNow(): Promise<LearnerState> {
@@ -801,6 +845,7 @@ export async function createLearner(opts: {
       h: hData,
       last: last && { obs: last.obs, action: last.action, hIn: hInData },
       replay: replay.toArray(),
+      ...(reservoir ? { reservoir: { items: reservoir.toArray(), seen: reservoir.seen } } : {}),
       stats: { ...stats },
       heldOut,
     } satisfies LearnerState)
@@ -947,7 +992,11 @@ export async function createLearner(opts: {
       if (info) countUpdate(!info.skipped)
 
       // 5. Store the transition, carry the state, free the rest.
-      if (last) replay.push({ obs: last.obs, hIn: hInData, action: last.action, next: obs })
+      if (last) {
+        const stored: Transition = { obs: last.obs, hIn: hInData, action: last.action, next: obs }
+        replay.push(stored)
+        reservoir?.offer(stored, rng) // one draw once the reservoir is full; none without one
+      }
       tr.drop(aT, after, headsT)
       tr.release(inputs.periphery, inputs.fovea, inputs.proprio, yT.periphery, yT.fovea, hNext)
       if (last) disposeLast(last)

@@ -3,7 +3,7 @@ import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS, emptyObservation, i
 import type { Action, Observation } from "@blanktab/interface"
 import { createCpuBackend, createRng } from "@blanktab/tensor"
 import type { Backend, Storage } from "@blanktab/tensor"
-import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
+import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
 import type { HeldOutSet, LearnerSettings, LearnerState, UpdateInfo } from "../src/learner"
 import { copyLastBaseline, targetsFromObs } from "../src/encode"
 import type { Widths } from "../src/model"
@@ -1363,5 +1363,118 @@ describe("gamma setting (Plan 05a)", { timeout: 60_000 }, () => {
     expect(adv(a)).not.toEqual(adv(b))
     expect((await a.learner.save()).settings.gamma).toBe(0.6)
     for (const r of [a, b]) r.learner.dispose()
+  })
+})
+
+describe("whole-life replay (reservoirShare, Plan 06a)", { timeout: 60_000 }, () => {
+  it("is not one of DEFAULT_SETTINGS: today's learner has no reservoir, and its settings keys are unchanged", () => {
+    expect("reservoirShare" in DEFAULT_SETTINGS).toBe(false)
+    expect(Object.keys(DEFAULT_SETTINGS).at(-1)).toBe("gamma")
+    expect(RESERVOIR_SHARE_RANGE).toEqual([0, 1])
+  })
+
+  it("clampSettings: absent stays absent; 0.5 → 0.5; 1.2 → 1; −0.1 → 0; NaN, null or a string → RangeError", () => {
+    expect("reservoirShare" in clampSettings(DEFAULT_SETTINGS)).toBe(false)
+    expect(clampSettings({ ...DEFAULT_SETTINGS, reservoirShare: 0.5 }).reservoirShare).toBe(0.5)
+    expect(clampSettings({ ...DEFAULT_SETTINGS, reservoirShare: 1.2 }).reservoirShare).toBe(1)
+    expect(clampSettings({ ...DEFAULT_SETTINGS, reservoirShare: -0.1 }).reservoirShare).toBe(0)
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, null, "0.5"]) {
+      expect(() => clampSettings({ ...DEFAULT_SETTINGS, reservoirShare: bad as unknown as number }), String(bad)).toThrow(RangeError)
+    }
+  })
+
+  it("share 0 is bit-identical to a learner without the setting, and saves no reservoir", async () => {
+    const a = await run({ seed: 61, steps: 120, sleepEvery: 20, settings: { bufferSize: 16 } })
+    const b = await run({ seed: 61, steps: 120, sleepEvery: 20, settings: { bufferSize: 16, reservoirShare: 0 } })
+    expect(b.actions).toEqual(a.actions)
+    expect(b.updates).toEqual(a.updates)
+    const [sa, sb] = [await a.learner.save(), await b.learner.save()]
+    expect("reservoir" in sa).toBe(false)
+    expect("reservoir" in sb).toBe(false)
+    const { reservoirShare, ...rest } = sb.settings
+    expect(reservoirShare).toBe(0)
+    expect(firstDifference({ ...sb, settings: rest }, sa)).toBeNull()
+    for (const r of [a, b]) r.learner.dispose()
+  })
+
+  it("share 0.5 of 16 slots: 8 recent transitions and 8 kept from the whole life, most of them older than the recent ones", async () => {
+    const { learner, be } = await run({ seed: 62, steps: 100, sleepEvery: 20, settings: { bufferSize: 16, reservoirShare: 0.5 } })
+    const state = await learner.save()
+    expect(state.replay.length).toBe(8)
+    expect(state.reservoir!.items.length).toBe(8)
+    expect(state.reservoir!.seen).toBe(99) // every transition so far was offered: one per step after the first
+    const recent = new Set(state.replay)
+    expect(state.reservoir!.items.filter(tr => !recent.has(tr)).length).toBeGreaterThanOrEqual(6)
+    learner.dispose()
+    expect(be.stats.liveBuffers).toBe(0)
+  })
+
+  it("replaying the whole life changes what is learned at sleep (same seed, same stream, share 0 against 1)", async () => {
+    const a = await run({ seed: 63, steps: 80, sleepEvery: 40, settings: { bufferSize: 8 } })
+    const b = await run({ seed: 63, steps: 80, sleepEvery: 40, settings: { bufferSize: 8, reservoirShare: 1 } })
+    const sb = await b.learner.save()
+    expect(sb.replay.length).toBe(1) // one slot always stays with the most recent transition
+    expect(sb.reservoir!.items.length).toBe(7)
+    expect(firstDifference(await b.learner.readParams(), await a.learner.readParams())).not.toBeNull()
+    for (const r of [a, b]) r.learner.dispose()
+  })
+
+  it("save at step 60 with a full reservoir, load, 60 more steps = an uninterrupted 120-step run", async () => {
+    const settings = { bufferSize: 16, reservoirShare: 0.5 }
+    const full = await run({ seed: 64, steps: 120, sleepEvery: 20, settings })
+    const world = createSyntheticStream()
+    const first = await run({ seed: 64, steps: 60, sleepEvery: 20, stream: world, settings })
+    const state = await first.learner.save()
+    expect(state.reservoir!.seen).toBe(59)
+    first.learner.dispose()
+    expect(first.be.stats.liveBuffers).toBe(0)
+    const second = await run({ seed: -1, steps: 60, sleepEvery: 20, stream: world, state })
+    expect([...first.actions, ...second.actions]).toEqual(full.actions)
+    expect([...first.updates, ...second.updates]).toEqual(full.updates)
+    expect(firstDifference(await second.learner.save(), await full.learner.save())).toBeNull()
+    for (const r of [full, second]) r.learner.dispose()
+    expect(second.be.stats.liveBuffers).toBe(0)
+  })
+
+  it("replayLoss covers the kept transitions too, each once", async () => {
+    const { learner } = await run({ seed: 65, steps: 60, settings: { bufferSize: 8, reservoirShare: 0.5 } })
+    const state = await learner.save()
+    const distinct = new Set([...state.replay, ...state.reservoir!.items]).size
+    expect(distinct).toBeGreaterThan(4)
+    const flops = learner.stats().evalCU
+    expect(Number.isFinite(await learner.replayLoss())).toBe(true)
+    expect(learner.stats().evalCU).toBe(flops)
+    learner.dispose()
+  })
+
+  it("a state whose reservoir does not fit its settings is a bad checkpoint", async () => {
+    const { learner } = await run({ seed: 66, steps: 40, settings: { bufferSize: 8, reservoirShare: 0.5 } })
+    const state = await learner.save()
+    learner.dispose()
+    const plain = await run({ seed: 66, steps: 5 })
+    const plainState = await plain.learner.save()
+    plain.learner.dispose()
+    const r = state.reservoir!
+    const bad: [string, unknown][] = [
+      ["a reservoir on a learner without the setting", { ...plainState, reservoir: { items: [], seen: 0 } }],
+      ["no reservoir on a learner with the setting", Object.fromEntries(Object.entries(state).filter(([k]) => k !== "reservoir"))],
+      ["more kept than slots", { ...state, reservoir: { items: [...r.items, r.items[0]!], seen: r.seen + 1 } }],
+      ["seen below what is kept", { ...state, reservoir: { items: r.items, seen: 2 } }],
+      ["seen not an integer", { ...state, reservoir: { items: r.items, seen: 39.5 } }],
+      ["not full, yet more seen than kept", { ...state, reservoir: { items: r.items.slice(0, 2), seen: 30 } }],
+      ["a kept transition with a bad recurrent state", { ...state, reservoir: { items: [{ ...r.items[0]!, hIn: new Float32Array(3) }, ...r.items.slice(1)], seen: r.seen } }],
+      ["a kept transition with a bad action", { ...state, reservoir: { items: [{ ...r.items[0]!, action: { move: 99, button: 0, scroll: 0, key: 0 } }, ...r.items.slice(1)], seen: r.seen } }],
+      ["a kept transition with a bad frame", { ...state, reservoir: { items: [{ ...r.items[0]!, obs: { ...r.items[0]!.obs, fovea: new Uint8Array(4) } }, ...r.items.slice(1)], seen: r.seen } }],
+      ["a malformed reservoir", { ...state, reservoir: { items: "none", seen: 0 } }],
+      ["a share that is not a clamped setting", { ...state, settings: { ...state.settings, reservoirShare: 1.5 } }],
+    ]
+    for (const [what, s] of bad) {
+      const be = createCpuBackend()
+      await expect(createLearner({ backend: be, state: s as LearnerState }), what).rejects.toThrow(RangeError)
+      expect(be.stats.liveBuffers, what).toBe(0)
+    }
+    // The untouched state is a good checkpoint.
+    const ok = await createLearner({ backend: createCpuBackend(), state })
+    ok.dispose()
   })
 })

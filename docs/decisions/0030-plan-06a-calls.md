@@ -41,4 +41,5 @@
 
 - Nothing is live: no setting in the genome, no checkup records the score, no evaluator reads it. Those are Plan 06a tasks 7–9 and Plan 06d.
 - The pinned hash is of frames rendered in Node. A browser must be shown to render the same set before a tab's score is compared with an offline life's.
+  - **Correction, 2026-11-19 (agent).** The pin covers the set's rooms, actions, labels and cursor path, not its pixels. The first pin hashed the frames as well and failed in CI: the canvas on Linux draws a few anti-aliased pixels differently from the one on macOS, with the same actions and labels. Frames are therefore whatever a platform's canvas draws (as for the world's own determinism test, which pins no pixels). Scores compare exactly between lives scored on one platform. Across platforms they are on near-identical frames, and how much that moves a score is not yet measured (Plan 06a task 8).
 - The prober's habits and the set's size are guesses. Changing them is a new set version.

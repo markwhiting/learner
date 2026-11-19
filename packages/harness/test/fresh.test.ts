@@ -75,10 +75,14 @@ describe("the fresh-world set (Plan 06a)", { timeout: 120_000 }, () => {
   })
 
   it(`is version ${FRESH_SET_VERSION}: its content is pinned (a change to the worlds, the prober or the labels must bump the version)`, () => {
+    // Pinned: everything but the pixels (rooms, actions, labels, the cursor's path, the button). The frames themselves
+    // are whatever this platform's canvas draws: they differ in anti-aliased pixels between macOS and Linux (seen in
+    // CI, 2026-11-19), as the world's own determinism test allows for, so no pixel hash is pinned here. Scores are
+    // comparable between lives scored on one platform; across platforms they are on near-identical frames.
     const h = createHash("sha256")
     for (const s of set) {
       h.update(`${s.part}/${s.room}/${s.events.join(",")}/${JSON.stringify(s.set.actions)}`)
-      for (const o of s.set.obs) { h.update(o.periphery); h.update(o.fovea); h.update(`${o.cursor.x},${o.cursor.y},${o.buttonHeld}`) }
+      for (const o of s.set.obs) h.update(`${o.cursor.x},${o.cursor.y},${o.buttonHeld}`)
     }
     expect({ version: FRESH_SET_VERSION, sha256: h.digest("hex"), events: count(set) }).toEqual(PINNED)
   })
@@ -86,7 +90,7 @@ describe("the fresh-world set (Plan 06a)", { timeout: 120_000 }, () => {
 
 const PINNED = {
   version: 1,
-  sha256: "f7e5c8cfd4bc8cb42b46e564f231e8b0863d594df98ca8dc76a9877d31ebc3bd",
+  sha256: "e423aeeed8ffb1e135e29d94faa5710a2c6ae581a79077bef1f7da53719562bd",
   events: { switch: 23, navigate: 51, reveal: 61, widget: 111, respond: 216, scroll: 275, move: 4256, static: 127 },
 }
 

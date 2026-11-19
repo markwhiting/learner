@@ -10,7 +10,9 @@ import { BUILD_INPUTS, buildManifest, codeShaOf, computeKnowledgeSha, resolveCod
 
 let dir: string
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "manifest-")) })
-afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+// Retries: a `git commit` in the temp repo can leave a background maintenance process still writing under .git/objects
+// when the directory is removed (seen once as ENOTEMPTY under load). The git helper below also turns that off.
+afterEach(() => { rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 }) })
 const sha = (s: string) => createHash("sha256").update(s).digest("hex")
 
 describe("computeKnowledgeSha", () => {
@@ -61,7 +63,7 @@ describe("the committed knowledge directory", () => {
 
 // Each case runs git several times in a temporary repository: slow on a busy machine, so a generous timeout.
 describe("codeShaOf: the last commit that changed a build input (BUILD_INPUTS)", { timeout: 60_000 }, () => {
-  const git = (...args: string[]) => execFileSync("git", args, { cwd: dir, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" } }).trim()
+  const git = (...args: string[]) => execFileSync("git", ["-c", "gc.auto=0", "-c", "maintenance.auto=false", ...args], { cwd: dir, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" } }).trim()
   const commit = (path: string, text: string) => {
     mkdirSync(join(dir, path, ".."), { recursive: true })
     writeFileSync(join(dir, path), text)

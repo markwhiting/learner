@@ -1,10 +1,22 @@
-import { FOVEA, KEYS, MOVE_OPTIONS, BUTTON_OPTIONS, SCROLL_OPTIONS, PERIPHERY, PRED_FOVEA, PRED_PERIPHERY } from "@blanktab/interface"
+import { FOVEA, KEYS, MOVE_OPTIONS, BUTTON_OPTIONS, SCROLL_OPTIONS, PERIPHERY, PRED_FOVEA, PRED_PERIPHERY, WORLD } from "@blanktab/interface"
 import type { Action, Observation } from "@blanktab/interface"
 
 export const ACTION_DIM = MOVE_OPTIONS + BUTTON_OPTIONS + SCROLL_OPTIONS + KEYS.length // 76
 
 export interface Inputs { periphery: Float32Array; fovea: Float32Array; proprio: Float32Array }
-export interface Targets { periphery: Float32Array; fovea: Float32Array }
+export interface Targets {
+  periphery: Float32Array
+  fovea: Float32Array
+  /** The fovea's surround (foveaSurround), when asked for: only ever a prediction's base, never a target. */
+  surround?: Float32Array
+}
+
+/** Fovea-target cells of surround on each side of the fovea: the fovea shift's reach (shift.ts checks they agree). */
+export const SURROUND_MARGIN = 8
+/** The fovea's surround, in fovea-target cells (HWC, 0..1): the fovea target with SURROUND_MARGIN cells around it. */
+export const SURROUND = Object.freeze({
+  width: PRED_FOVEA.width + 2 * SURROUND_MARGIN, height: PRED_FOVEA.height + 2 * SURROUND_MARGIN, channels: PRED_FOVEA.channels,
+})
 
 type Dims = { width: number; height: number; channels: number }
 
@@ -54,13 +66,52 @@ export function obsToInputs(o: Observation): Inputs {
   }
 }
 
-export function targetsFromObs(o: Observation): Targets {
-  const t = { periphery: boxDown2("periphery", o.periphery, PERIPHERY), fovea: boxDown2("fovea", o.fovea, FOVEA) }
+/** The prediction targets of a frame; with `surround`, also the fovea's surround (a base's, see foveaSurround). */
+export function targetsFromObs(o: Observation, surround = false): Targets {
+  const t: Targets = { periphery: boxDown2("periphery", o.periphery, PERIPHERY), fovea: boxDown2("fovea", o.fovea, FOVEA) }
   if (t.periphery.length !== PRED_PERIPHERY.width * PRED_PERIPHERY.height * PRED_PERIPHERY.channels
     || t.fovea.length !== PRED_FOVEA.width * PRED_FOVEA.height * PRED_FOVEA.channels) {
     throw new Error("target size does not match PRED_* constants")
   }
+  if (surround) t.surround = foveaSurround(o, t.fovea)
   return t
+}
+
+/** World pixels per fovea-target cell (2) and per periphery cell (4): the sensors' geometry, not learned. */
+const CELL_PX = FOVEA.width / PRED_FOVEA.width
+const PERIPHERY_PX = WORLD.width / PERIPHERY.width
+
+/**
+ * The fovea's surround (Plan 06a1): what the learner already sees around its close-up, at the close-up's target scale.
+ * A SURROUND image centred on the cursor: the middle is the fovea target `fovea` (targetsFromObs(o).fovea) and each
+ * cell around it takes the periphery cell under its centre (the periphery is coarser: one of its cells covers 2×2 of
+ * these); a cell off the screen is black, as the fovea's own padding is. It uses only what the observation declares
+ * (both frames and the cursor position) and the sensors' fixed geometry: the fovea is the FOVEA window centred on the
+ * cursor, and the periphery is the whole WORLD scaled down. Integer arithmetic on the cursor's pixel, so it is the
+ * same on every platform.
+ */
+export function foveaSurround(o: Observation, fovea: Float32Array): Float32Array {
+  const { width: SW, height: SH, channels: C } = SURROUND
+  const out = new Float32Array(SW * SH * C)
+  const cx = Math.round(unit(o.cursor.x) * WORLD.width), cy = Math.round(unit(o.cursor.y) * WORLD.height)
+  // World pixel of the surround's top-left corner: the fovea's corner, less the margin.
+  const x0 = cx - FOVEA.width / 2 - SURROUND_MARGIN * CELL_PX, y0 = cy - FOVEA.height / 2 - SURROUND_MARGIN * CELL_PX
+  for (let i = 0; i < SH; i++) {
+    for (let j = 0; j < SW; j++) {
+      const at = (i * SW + j) * C
+      const u = i - SURROUND_MARGIN, v = j - SURROUND_MARGIN
+      if (u >= 0 && u < PRED_FOVEA.height && v >= 0 && v < PRED_FOVEA.width) {
+        for (let c = 0; c < C; c++) out[at + c] = fovea[(u * PRED_FOVEA.width + v) * C + c]!
+        continue
+      }
+      // The cell covers CELL_PX world pixels from (x0 + j·CELL_PX, y0 + i·CELL_PX): its centre picks the periphery cell.
+      const wx = x0 + j * CELL_PX + CELL_PX / 2, wy = y0 + i * CELL_PX + CELL_PX / 2
+      if (wx < 0 || wx >= WORLD.width || wy < 0 || wy >= WORLD.height) continue
+      const from = (Math.floor(wy / PERIPHERY_PX) * PERIPHERY.width + Math.floor(wx / PERIPHERY_PX)) * PERIPHERY.channels
+      for (let c = 0; c < C; c++) out[at + c] = o.periphery[from + c]! / 255
+    }
+  }
+  return out
 }
 
 export function actionOneHot(a: Action): Float32Array {

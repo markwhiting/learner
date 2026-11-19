@@ -12,6 +12,17 @@ export const GPU_WIDTHS: Widths = { conv1: 16, conv2: 32, enc: 128, hidden: 256 
 /** CPU fallback: half width. */
 export const CPU_WIDTHS: Widths = { conv1: 8, conv2: 16, enc: 64, hidden: 128 }
 /**
+ * Optional mechanisms of the predictor (Plan 06a1). Each is off unless asked for; a model with none of them is exactly
+ * the model from before. Neither adds a parameter, so the parameter list (the checkpoint format) is the same with them.
+ */
+export interface ModelOptions {
+  /** The fovea shift draws on the fovea's surround: predict's base must carry `surround`. */
+  foveaSurround?: boolean
+  /** The gain on the fovea shift's learned kernel logits; absent or 1: none (createFoveaShift). */
+  shiftGain?: number
+}
+
+/**
  * Indices in Model.params of the first layer's filters (spec §5.1, the harness's meta.filters): periphery conv1 w
  * [conv1, 75] and b [conv1, 1], then fovea conv1 w [conv1, 27] and b [conv1, 1]. 104·conv1 values in all.
  */
@@ -50,8 +61,10 @@ export interface Model {
    * targets (targetsFromObs of the observation the core just saw): periphery [1,3000], fovea [1,768] (HWC, 0..1). The fovea also gets an action-conditioned
    * translation of its base: + g(a)·(shift(base; kx(a) ⊗ ky(a)) − base), see ./shift.ts. The output layers and the gate
    * g start at zero, so a fresh model predicts exactly copy-last (no change) and learns only the change.
+   * With options.foveaSurround, `base.surround` [1, SURROUND] (the fovea's surround, encode.ts) is required and the
+   * translation draws on it.
    */
-  predict(h: Tensor, action: Tensor, base: { periphery: Tensor; fovea: Tensor }): { periphery: Tensor; fovea: Tensor }
+  predict(h: Tensor, action: Tensor, base: { periphery: Tensor; fovea: Tensor; surround?: Tensor }): { periphery: Tensor; fovea: Tensor }
   /** [1,hidden] zeros, caller-owned. */
   zeroState(): Tensor
   /** Frees every parameter (and any gradient on it). The model must not be used afterwards. */
@@ -68,11 +81,11 @@ const PRED_F = PRED_FOVEA.width * PRED_FOVEA.height * PRED_FOVEA.channels
  * Model.params order), with copies of those values. A checkpoint that does not fit these widths throws RangeError
  * and leaks nothing.
  */
-export function createModel(backend: Backend, seed: number, widths: Widths, initial?: readonly Float32Array[]): Model {
+export function createModel(backend: Backend, seed: number, widths: Widths, initial?: readonly Float32Array[], options: ModelOptions = {}): Model {
   const params: Tensor[] = []
   let model: Model | undefined
   try {
-    model = buildModel(backend, seed, widths, initial, params)
+    model = buildModel(backend, seed, widths, initial, params, options)
     if (initial && initial.length !== params.length) throw new RangeError(`createModel: ${initial.length} saved parameters, the model has ${params.length}`)
     return model
   } catch (e) {
@@ -83,7 +96,7 @@ export function createModel(backend: Backend, seed: number, widths: Widths, init
   }
 }
 
-function buildModel(backend: Backend, seed: number, widths: Widths, initial: readonly Float32Array[] | undefined, params: Tensor[]): Model {
+function buildModel(backend: Backend, seed: number, widths: Widths, initial: readonly Float32Array[] | undefined, params: Tensor[], options: ModelOptions): Model {
   const { conv1, conv2, enc, hidden } = widths
   const rng = createRng(seed)
   /** The saved values for the next parameter (a copy is uploaded), or null when drawing fresh weights. */
@@ -142,7 +155,7 @@ function buildModel(backend: Backend, seed: number, widths: Widths, initial: rea
   const headF = { w: p0([enc, PRED_F]), b: p0([PRED_F]) }
 
   // The fovea-shift operator's constants (caller-owned): freed in dispose, or by createModel if this build fails later.
-  const shift = createFoveaShift(backend)
+  const shift = createFoveaShift(backend, { surround: options.foveaSurround === true, gain: options.shiftGain ?? 1 })
   const shiftParams = { x: shiftX, y: shiftY, gate: shiftGate }
 
   return {
@@ -171,9 +184,12 @@ function buildModel(backend: Backend, seed: number, widths: Widths, initial: rea
       // Leaky (decision 0015 §2): with plain ReLU every z unit died once there was nothing for it to learn, and the
       // gradient into the output layers stayed exactly 0 for the rest of the life.
       const z = leakyRelu(add(linear(h, predH.w, predH.b), linear(action, predA.w, predA.b)))
+      if (options.foveaSurround && !base.surround) throw new Error("model: predict needs base.surround (options.foveaSurround)")
+      // Without the option the shift gets no context: its term is then exactly the one from before Plan 06a1.
+      const ctx = options.foveaSurround ? { surround: base.surround! } : undefined
       return {
         periphery: add(base.periphery, tanh(linear(z, headP.w, headP.b))),
-        fovea: add(add(base.fovea, shift.term(action, base.fovea, shiftParams)), tanh(linear(z, headF.w, headF.b))),
+        fovea: add(add(base.fovea, shift.term(action, base.fovea, shiftParams, ctx)), tanh(linear(z, headF.w, headF.b))),
       }
     },
 

@@ -5,7 +5,7 @@ import {
   neg, noGrad, reshape, scale, settleAll, square, sum, tensor,
 } from "@blanktab/tensor"
 import type { AdamState, Backend, Tensor } from "@blanktab/tensor"
-import { ACTION_DIM, actionOneHot, copyLastBaseline, obsToInputs, targetsFromObs } from "./encode"
+import { ACTION_DIM, SURROUND, actionOneHot, copyLastBaseline, obsToInputs, targetsFromObs } from "./encode"
 import type { Inputs, Targets } from "./encode"
 import { createModel } from "./model"
 import type { Widths } from "./model"
@@ -55,7 +55,23 @@ export interface LearnerSettings {
    * saved states are unchanged). Clamped into RESERVOIR_SHARE_RANGE.
    */
   reservoirShare?: number
+  /**
+   * The predictor's optional on/off mechanisms (Plan 06a1; MECHANISMS, model.ts ModelOptions): 1 for on, and absent or
+   * 0 for off. Without them the learner is bit-exact to the one before (none is among DEFAULT_SETTINGS). Fixed for a
+   * life: what the shift's weights learn depends on them. Clamped to 0 or 1.
+   * - foveaSurround: what a move brings into the close-up comes from the wide view around it, not black
+   *   (encode.ts foveaSurround).
+   */
+  foveaSurround?: number
+  /**
+   * The gain on the fovea shift's learned kernel logits (Plan 06a1; shift.ts createFoveaShift). Absent: 1, and
+   * bit-exact to the learner without it (it is not among DEFAULT_SETTINGS). Clamped into SHIFT_GAIN_RANGE. Fixed for a
+   * life: what the kernels' weights mean depends on it.
+   */
+  shiftGain?: number
 }
+/** The optional on/off predictor mechanisms among the settings. */
+export const MECHANISMS = ["foveaSurround"] as const
 /** The default TD discount (DEFAULT_SETTINGS.gamma), and the one a state saved without gamma resumes with. */
 export const GAMMA = 0.9
 export const DEFAULT_SETTINGS: LearnerSettings = Object.freeze({
@@ -234,6 +250,8 @@ export const RESIDUAL_DECAY_RANGE = [0, 1e-2] as const
 export const GAMMA_RANGE = [0, 0.999] as const
 /** reservoirShare, when given, is clamped into this range. */
 export const RESERVOIR_SHARE_RANGE = [0, 1] as const
+/** shiftGain, when given, is clamped into this range. */
+export const SHIFT_GAIN_RANGE = [1, 64] as const
 /** Smoothing of the predLoss / baselineLoss moving averages. */
 export const STATS_ALPHA = 0.01
 
@@ -272,12 +290,24 @@ export function clampSettings(s: LearnerSettings): LearnerSettings {
   // Optional: only an absent reservoirShare means no reservoir; when given it must be a finite number.
   const share: unknown = (s as { reservoirShare?: unknown }).reservoirShare
   if (share !== undefined && !(typeof share === "number" && Number.isFinite(share))) throw new RangeError(`reservoirShare must be a finite number, got ${String(share)}`)
+  // Optional mechanisms: absent means off; when given, a finite number, read as on from 0.5 up.
+  const mechanisms: Partial<Record<(typeof MECHANISMS)[number], number>> = {}
+  for (const k of MECHANISMS) {
+    const v: unknown = (s as { [K in (typeof MECHANISMS)[number]]?: unknown })[k]
+    if (v === undefined) continue
+    if (!(typeof v === "number" && Number.isFinite(v))) throw new RangeError(`${k} must be a finite number, got ${String(v)}`)
+    mechanisms[k] = v >= 0.5 ? 1 : 0
+  }
+  const gain: unknown = (s as { shiftGain?: unknown }).shiftGain
+  if (gain !== undefined && !(typeof gain === "number" && Number.isFinite(gain))) throw new RangeError(`shiftGain must be a finite number, got ${String(gain)}`)
   const clamp = (v: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, v))
   return {
     ...s, lr: clamp(s.lr, LR_RANGE), headLrScale: clamp(s.headLrScale, HEAD_LR_SCALE_RANGE),
     exploreEpsilon: clamp(s.exploreEpsilon, EXPLORE_EPSILON_RANGE), residualDecay: clamp(s.residualDecay, RESIDUAL_DECAY_RANGE),
     gamma: clamp(gamma, GAMMA_RANGE),
     ...(share !== undefined ? { reservoirShare: clamp(share, RESERVOIR_SHARE_RANGE) } : {}),
+    ...mechanisms,
+    ...(gain !== undefined ? { shiftGain: clamp(gain, SHIFT_GAIN_RANGE) } : {}),
   }
 }
 
@@ -409,6 +439,7 @@ function checkState(s: LearnerState): void {
     if (clamped[k] !== s.settings[k]) fail(`settings.${k} = ${s.settings[k]} is not a clamped setting`)
   }
   if (clamped.reservoirShare !== s.settings.reservoirShare) fail(`settings.reservoirShare = ${s.settings.reservoirShare} is not a clamped setting`)
+  for (const k of [...MECHANISMS, "shiftGain"] as const) if (clamped[k] !== s.settings[k]) fail(`settings.${k} = ${s.settings[k]} is not a clamped setting`)
   const n = s.params.length
   if (n <= OUTPUT_PARAMS) fail(`${n} parameters`)
   const split = [s.params.slice(0, n - OUTPUT_PARAMS), s.params.slice(n - OUTPUT_PARAMS)]
@@ -485,7 +516,9 @@ const copyObs = (o: Observation): Observation => ({
 
 interface InputTensors { periphery: Tensor; fovea: Tensor; proprio: Tensor }
 
-interface TargetTensors { periphery: Tensor; fovea: Tensor }
+/** A frame's targets on the device; `surround` (the fovea's, with settings.foveaSurround) only serves it as a base. */
+interface TargetTensors { periphery: Tensor; fovea: Tensor; surround?: Tensor }
+const SURROUND_LEN = SURROUND.width * SURROUND.height * SURROUND.channels
 
 /** The previous step: what the next step learns from (all caller-owned). */
 interface Last {
@@ -550,7 +583,9 @@ export async function createLearner(opts: {
   const widths: Widths = saved ? saved.widths : (opts as { widths: Widths }).widths
   // A saved state without gamma (from before Plan 05a) resumes at GAMMA, and its next save() writes it.
   const settings = saved ? { ...saved.settings, gamma: saved.settings.gamma ?? GAMMA } : clampSettings((opts as { settings: LearnerSettings }).settings)
-  const model = createModel(backend, seed, widths, saved?.params)
+  /** With foveaSurround every base carries the fovea's surround (a frame's targets are the next transition's base). */
+  const surroundOn = settings.foveaSurround === 1
+  const model = createModel(backend, seed, widths, saved?.params, { foveaSurround: surroundOn, ...(settings.shiftGain !== undefined ? { shiftGain: settings.shiftGain } : {}) })
   // Two optimizers over disjoint parameters: the residual output layers at lr × headLrScale (they start at zero and
   // see near-zero gradients over static background, where Adam's normalized step at full lr is pure jitter that
   // outweighs what they learn), everything else at lr. Each step runs both: one Adam step per parameter.
@@ -586,10 +621,13 @@ export async function createLearner(opts: {
   })
   const disposeLast = (l: Last) => {
     for (const x of [l.inputs.periphery, l.inputs.fovea, l.inputs.proprio, l.targetTensors.periphery, l.targetTensors.fovea]) x.dispose()
+    l.targetTensors.surround?.dispose()
   }
   const scalar = async (x: Tensor) => (await x.read())[0]!
   const hTensor = (d: Float32Array) => t(d, [1, widths.hidden])
-  const targetTensors = (y: Targets): TargetTensors => ({ periphery: t(y.periphery, [1, PRED_P]), fovea: t(y.fovea, [1, PRED_F]) })
+  const targetTensors = (y: Targets): TargetTensors => ({
+    periphery: t(y.periphery, [1, PRED_P]), fovea: t(y.fovea, [1, PRED_F]), ...(y.surround ? { surround: t(y.surround, [1, SURROUND_LEN]) } : {}),
+  })
   /** Every update outcome goes through here (online and replayed). */
   const countUpdate = (applied: boolean) => {
     if (applied) stats.consecutiveSkips = 0
@@ -645,7 +683,7 @@ export async function createLearner(opts: {
       hData = saved.h
       if (saved.last) {
         const { obs, action } = saved.last
-        const y = targetsFromObs(obs)
+        const y = targetsFromObs(obs, surroundOn)
         hIn = hTensor(saved.last.hIn)
         hInData = saved.last.hIn
         last = { obs, inputs: upload(obsToInputs(obs)), action, targets: y, targetTensors: targetTensors(y) }
@@ -709,7 +747,9 @@ export async function createLearner(opts: {
           proprio: T(ins.proprio, [1, 3]),
         }
       },
-      targetsOf: (y: Targets): TargetTensors => ({ periphery: T(y.periphery, [1, PRED_P]), fovea: T(y.fovea, [1, PRED_F]) }),
+      targetsOf: (y: Targets): TargetTensors => ({
+        periphery: T(y.periphery, [1, PRED_P]), fovea: T(y.fovea, [1, PRED_F]), ...(y.surround ? { surround: T(y.surround, [1, SURROUND_LEN]) } : {}),
+      }),
     }
   }
 
@@ -741,13 +781,13 @@ export async function createLearner(opts: {
     const free = () => { for (const x of made.splice(0)) x.dispose() }
     const T = (d: Float32Array, shape: number[]) => { const x = t(d, shape); made.push(x); return x }
     try {
-      const ins = obsToInputs(tr.obs), b = targetsFromObs(tr.obs), n = targetsFromObs(tr.next)
+      const ins = obsToInputs(tr.obs), b = targetsFromObs(tr.obs, surroundOn), n = targetsFromObs(tr.next)
       const inputs: InputTensors = {
         periphery: T(ins.periphery, [PERIPHERY.channels, PERIPHERY.height, PERIPHERY.width]),
         fovea: T(ins.fovea, [FOVEA.channels, FOVEA.height, FOVEA.width]),
         proprio: T(ins.proprio, [1, 3]),
       }
-      const base = { periphery: T(b.periphery, [1, PRED_P]), fovea: T(b.fovea, [1, PRED_F]) }
+      const base: TargetTensors = { periphery: T(b.periphery, [1, PRED_P]), fovea: T(b.fovea, [1, PRED_F]), ...(b.surround ? { surround: T(b.surround, [1, SURROUND_LEN]) } : {}) }
       const y = { periphery: T(n.periphery, [1, PRED_P]), fovea: T(n.fovea, [1, PRED_F]) }
       const hT = T(tr.hIn, [1, widths.hidden])
       const aT = T(actionOneHot(tr.action), [1, ACTION_DIM])
@@ -798,10 +838,10 @@ export async function createLearner(opts: {
     try {
       let hh = keep(model.zeroState())
       let total: Tensor | null = null
-      let base = targetsOf(targetsFromObs(heldOut.obs[0]!))
+      let base = targetsOf(targetsFromObs(heldOut.obs[0]!, surroundOn))
       for (let i = 0; i < n; i++) {
         const inputs = inputsOf(heldOut.obs[i]!)
-        const y = targetsOf(targetsFromObs(heldOut.obs[i + 1]!))
+        const y = targetsOf(targetsFromObs(heldOut.obs[i + 1]!, surroundOn))
         const aT = T(actionOneHot(heldOut.actions[i]!), [1, ACTION_DIM])
         const h0 = hh
         const hNext = keep(noGrad(() => composite(() => model.core(inputs, h0))))
@@ -813,7 +853,7 @@ export async function createLearner(opts: {
         total = prev ? keep(noGrad(() => composite(() => add(prev, li)))) : li
         if (prev) drop(prev, li) // li is held until it is merged into the running total
         // This step's constants are done with, except y: it is the next transition's base.
-        drop(b.periphery, b.fovea, inputs.periphery, inputs.fovea, inputs.proprio, aT)
+        drop(b.periphery, b.fovea, b.surround ?? null, inputs.periphery, inputs.fovea, inputs.proprio, aT)
         base = y
       }
       const loss = (await scalar(total!)) / n
@@ -838,10 +878,10 @@ export async function createLearner(opts: {
     try {
       let hh = keep(model.zeroState())
       let all: Tensor | null = null
-      let base = targetsOf(targetsFromObs(set.obs[0]!))
+      let base = targetsOf(targetsFromObs(set.obs[0]!, surroundOn))
       for (let i = 0; i < n; i++) {
         const inputs = inputsOf(set.obs[i]!)
-        const y = targetsOf(targetsFromObs(set.obs[i + 1]!))
+        const y = targetsOf(targetsFromObs(set.obs[i + 1]!, surroundOn))
         const aT = T(actionOneHot(set.actions[i]!), [1, ACTION_DIM])
         const atP = new Float32Array(2 * n)
         atP[2 * i] = 1
@@ -861,7 +901,7 @@ export async function createLearner(opts: {
         const prev: Tensor | null = all
         all = prev ? keep(noGrad(() => composite(() => add(prev, li)))) : li
         if (prev) drop(prev, li)
-        drop(b.periphery, b.fovea, inputs.periphery, inputs.fovea, inputs.proprio, aT, colP, colF)
+        drop(b.periphery, b.fovea, b.surround ?? null, inputs.periphery, inputs.fovea, inputs.proprio, aT, colP, colF)
         base = y
       }
       const both = await all!.read()
@@ -963,7 +1003,7 @@ export async function createLearner(opts: {
   async function learnAndAct(o: Observation): Promise<Action> {
     const flops0 = backend.stats.flops
     const obs = copyObs(o)
-    const y = targetsFromObs(obs) // validates the frames (RangeError) before any state changes
+    const y = targetsFromObs(obs, surroundOn) // validates the frames (RangeError) before any state changes
     /**
      * This step's own tensors (inputs, yT, aT, after, hNext, headsT). If the step throws part-way they are all freed (the
      * graphs and the advantage are freed where they are made), and h, hIn and last are left as they were.
@@ -1061,6 +1101,7 @@ export async function createLearner(opts: {
       }
       tr.drop(aT, after, headsT)
       tr.release(inputs.periphery, inputs.fovea, inputs.proprio, yT.periphery, yT.fovea, hNext)
+      if (yT.surround) tr.release(yT.surround)
       if (last) disposeLast(last)
       hIn?.dispose()
       hIn = h
@@ -1113,7 +1154,7 @@ export async function createLearner(opts: {
 
     async function frozenStep(ob: Observation): Promise<Action> {
       if (failed) throw new Error("learner: this frozen run failed part-way (dispose it)")
-      const y = targetsFromObs(ob) // validates the frames (RangeError) before anything is allocated
+      const y = targetsFromObs(ob, surroundOn) // validates the frames (RangeError) before anything is allocated
       const flops0 = backend.stats.flops
       stepping = true
       try {
@@ -1140,7 +1181,7 @@ export async function createLearner(opts: {
           baseSum += b[0]!
           transitions++
         }
-        tr.drop(inputs.periphery, inputs.fovea, inputs.proprio, h0, headsT, aT, lossT, baseT, prev?.base?.periphery ?? null, prev?.base?.fovea ?? null)
+        tr.drop(inputs.periphery, inputs.fovea, inputs.proprio, h0, headsT, aT, lossT, baseT, prev?.base?.periphery ?? null, prev?.base?.fovea ?? null, prev?.base?.surround ?? null)
         hh = hNext
         prev = { action, base: yT }
         return action

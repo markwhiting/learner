@@ -3,7 +3,7 @@ import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS, emptyObservation, i
 import type { Action, Observation } from "@blanktab/interface"
 import { createCpuBackend, createRng } from "@blanktab/tensor"
 import type { Backend, Storage } from "@blanktab/tensor"
-import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, HELD_OUT_MAX, VIEW_WEIGHTS, LEARNER_STATE_VERSION, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
+import { DEFAULT_SETTINGS, GAMMA, GAMMA_RANGE, LearnerStateVersionError, EXPLORE_EPSILON_RANGE, HEAD_LR_SCALE_RANGE, RESIDUAL_DECAY_RANGE, RESERVOIR_SHARE_RANGE, SHIFT_GAIN_RANGE, HELD_OUT_MAX, VIEW_WEIGHTS, LEARNER_STATE_VERSION, MECHANISMS, clampSettings, createLearner, curiosityReward, LR_RANGE, sampleAction } from "../src/learner"
 import type { HeldOutSet, LearnerSettings, LearnerState, SetLosses, UpdateInfo } from "../src/learner"
 import { copyLastBaseline, copyLastByView, targetsFromObs } from "../src/encode"
 import type { Widths } from "../src/model"
@@ -1556,5 +1556,122 @@ describe("scoreSet: scoring any trajectory (Plan 06a)", { timeout: 60_000 }, () 
     learner.dispose()
     await expect(learner.scoreSet(SET2)).rejects.toThrow(/used after dispose/)
     expect(be.stats.liveBuffers).toBe(0)
+  })
+})
+
+describe("the predictor's optional mechanisms (foveaSurround, shiftGain; Plan 06a1)", { timeout: 120_000 }, () => {
+  const ALL = { foveaSurround: 1, shiftGain: 4 }
+
+  it("are not among DEFAULT_SETTINGS: today's learner has none, and its settings keys are unchanged", () => {
+    expect(MECHANISMS).toEqual(["foveaSurround"])
+    for (const k of MECHANISMS) expect(k in DEFAULT_SETTINGS).toBe(false)
+    expect(Object.keys(DEFAULT_SETTINGS).at(-1)).toBe("gamma")
+  })
+
+  it("clampSettings: absent stays absent; from 0.5 up is 1, below is 0; NaN, null or a string → RangeError", () => {
+    for (const k of MECHANISMS) {
+      expect(k in clampSettings(DEFAULT_SETTINGS)).toBe(false)
+      for (const [given, want] of [[1, 1], [0, 0], [0.5, 1], [7, 1], [0.49, 0], [-3, 0]] as const) expect(clampSettings({ ...DEFAULT_SETTINGS, [k]: given })[k], `${k} ${given}`).toBe(want)
+      for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, null, "1", true]) {
+        expect(() => clampSettings({ ...DEFAULT_SETTINGS, [k]: bad as unknown as number }), `${k} ${String(bad)}`).toThrow(RangeError)
+      }
+    }
+  })
+
+  it("foveaSurround at 0 is bit-identical to a learner without the setting", async () => {
+    const a = await run({ seed: 71, steps: 100, sleepEvery: 20, settings: { bufferSize: 16 } })
+    const b = await run({ seed: 71, steps: 100, sleepEvery: 20, settings: { bufferSize: 16, foveaSurround: 0 } })
+    expect(b.actions).toEqual(a.actions)
+    expect(b.updates).toEqual(a.updates)
+    const [sa, sb] = [await a.learner.save(), await b.learner.save()]
+    const { foveaSurround, ...rest } = sb.settings
+    expect(foveaSurround).toBe(0)
+    expect(firstDifference({ ...sb, settings: rest }, sa)).toBeNull()
+    for (const r of [a, b]) r.learner.dispose()
+  })
+
+  it("foveaSurround on changes what is learned, starts from copy-last, adds no parameter and frees everything", async () => {
+    // No sleeps and 120 steps: in the synthetic stream the block rides the cursor, so the close-up only changes near the
+    // screen's edge (black padding comes in), which this run reaches after some thirty steps.
+    const plain = await run({ seed: 72, steps: 120, settings: { bufferSize: 16 } })
+    const plainParams = await plain.learner.readParams()
+    for (const k of MECHANISMS) {
+      const r = await run({ seed: 72, steps: 120, settings: { bufferSize: 16, [k]: 1 } })
+      // The first update's loss before any learning is copy-last's: the mechanism starts as nothing.
+      expect(r.updates[0]!.lossBefore, k).toBe(plain.updates[0]!.lossBefore)
+      expect(r.updates.every(u => Number.isFinite(u.lossBefore) && Number.isFinite(u.lossAfter)), k).toBe(true)
+      const params = await r.learner.readParams()
+      expect(params.map(q => q.length), k).toEqual(plainParams.map(q => q.length))
+      expect(firstDifference(params, plainParams), k).not.toBeNull()
+      r.learner.dispose()
+      expect(r.be.stats.liveBuffers, k).toBe(0)
+    }
+    plain.learner.dispose()
+  })
+
+  it("with both: save at step 60, load, 60 more steps = an uninterrupted 120-step run", async () => {
+    const settings = { bufferSize: 16, ...ALL }
+    const full = await run({ seed: 73, steps: 120, sleepEvery: 20, settings })
+    const world = createSyntheticStream()
+    const first = await run({ seed: 73, steps: 60, sleepEvery: 20, stream: world, settings })
+    const state = await first.learner.save()
+    expect(state.settings).toMatchObject(ALL)
+    first.learner.dispose()
+    expect(first.be.stats.liveBuffers).toBe(0)
+    const second = await run({ seed: -1, steps: 60, sleepEvery: 20, stream: world, state })
+    expect([...first.actions, ...second.actions]).toEqual(full.actions)
+    expect([...first.updates, ...second.updates]).toEqual(full.updates)
+    expect(firstDifference(await second.learner.save(), await full.learner.save())).toBeNull()
+    for (const r of [full, second]) r.learner.dispose()
+    expect(second.be.stats.liveBuffers).toBe(0)
+  })
+
+  it("with both: scoreSet, the held-out check, replayLoss and a frozen run all work and leak nothing", async () => {
+    const be = createCpuBackend()
+    const set = syntheticHeldOut(7, 12)
+    const learner = await createLearner({ backend: be, seed: 74, widths: TINY, settings: { ...DEFAULT_SETTINGS, bufferSize: 16, replayPerSleep: 4, ...ALL }, heldOut: set })
+    const world = createSyntheticStream()
+    for (let i = 0; i < 40; i++) world.act(await learner.step(world.observe()))
+    await learner.sleep()
+    expect(Number.isFinite(learner.stats().heldOutLoss)).toBe(true)
+    const losses = await learner.scoreSet(set)
+    expect(losses.periphery.length).toBe(12)
+    expect([...losses.periphery, ...losses.fovea].every(Number.isFinite)).toBe(true)
+    expect(Number.isFinite(await learner.replayLoss())).toBe(true)
+    const live = be.stats.liveBuffers
+    const frozen = learner.frozenRun({ seed: 3, measureLoss: true })
+    const other = createSyntheticStream()
+    for (let i = 0; i < 20; i++) other.act(await frozen.step(other.observe()))
+    expect(Number.isFinite(frozen.result().predLoss)).toBe(true)
+    frozen.dispose()
+    expect(be.stats.liveBuffers).toBe(live)
+    learner.dispose()
+    expect(be.stats.liveBuffers).toBe(0)
+  })
+
+  it("shiftGain: absent stays absent and is gain 1 bit for bit; clamped into [1, 64]; changes how fast the shift sharpens", async () => {
+    expect("shiftGain" in DEFAULT_SETTINGS).toBe(false)
+    expect(SHIFT_GAIN_RANGE).toEqual([1, 64])
+    expect("shiftGain" in clampSettings(DEFAULT_SETTINGS)).toBe(false)
+    for (const [given, want] of [[16, 16], [1, 1], [0.5, 1], [-2, 1], [100, 64]] as const) expect(clampSettings({ ...DEFAULT_SETTINGS, shiftGain: given }).shiftGain).toBe(want)
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, null, "8"]) expect(() => clampSettings({ ...DEFAULT_SETTINGS, shiftGain: bad as unknown as number }), String(bad)).toThrow(RangeError)
+    // Seed 72 without sleeps: in the synthetic stream the close-up only changes near the screen's edge, which this run reaches.
+    const a = await run({ seed: 72, steps: 120, settings: { bufferSize: 16 } })
+    const b = await run({ seed: 72, steps: 120, settings: { bufferSize: 16, shiftGain: 1 } })
+    const c = await run({ seed: 72, steps: 120, settings: { bufferSize: 16, shiftGain: 16 } })
+    expect(b.updates).toEqual(a.updates)
+    expect(firstDifference(await b.learner.readParams(), await a.learner.readParams())).toBeNull()
+    expect(firstDifference(await c.learner.readParams(), await a.learner.readParams())).not.toBeNull()
+    const state = await c.learner.save()
+    expect(state.settings.shiftGain).toBe(16)
+    await expect(createLearner({ backend: createCpuBackend(), state: { ...state, settings: { ...state.settings, shiftGain: 100 } } })).rejects.toThrow(/shiftGain/)
+    for (const r of [a, b, c]) r.learner.dispose()
+  })
+
+  it("a saved state's mechanisms are part of it: a value that is not 0 or 1 is refused", async () => {
+    const { learner } = await run({ seed: 75, steps: 30, settings: { bufferSize: 8, ...ALL } })
+    const state = await learner.save()
+    learner.dispose()
+    await expect(createLearner({ backend: createCpuBackend(), state: { ...state, settings: { ...state.settings, foveaSurround: 0.7 } } })).rejects.toThrow(/foveaSurround/)
   })
 })

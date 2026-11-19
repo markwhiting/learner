@@ -122,5 +122,51 @@ The wide view's scroll score at each 2,500 steps of four lives (gain 1; **bold**
 - **A higher gain and whole-life replay made it worse, not better.** At gain 16 the mean wide-view score over a life was 0.93–1.17. With half the replay memory a whole-life reservoir it was 0.95–1.05, and scrolling was then never learned well (0.64–0.99).
 - **So this is not plain forgetting.** The gate could not say "a scroll action, in this room". Replaying only the current room it learned "a scroll action scrolls", which is wrong everywhere else, so it was unlearned there. Replaying every room at once it learned the average, which is weak everywhere.
 
-@@LATER@@
+@@WIDE2@@
+
+## 8. The built-in curiosity with the better predictor: no longer ruinous, still worse than random
+
+Plan 06a found that with the decay off and recent-only replay, the built-in curiosity wrecked the predictor (1.3 to 2.7 times worse than copy-last, up to 5 times on the fresh-world test). The same comparison with the surround on, same predictor in every arm (fresh-world score, random part / probe part):
+
+| Learner (surround on, gain 1) | seed 1 | seed 2 | seed 3 | seed 4 |
+|---|---|---|---|---|
+| random explorer, recent-only replay | 0.67 / 0.38 | 0.67 / 0.37 | 0.68 / 0.38 | 0.69 / 0.39 |
+| random explorer, half whole-life replay | 0.68 / 0.39 | 0.70 / 0.41 | 0.67 / 0.38 | 0.67 / 0.40 |
+| curiosity, recent-only replay | 0.79 / 0.50 | 0.82 / 0.54 | 0.89 / 0.58 | 0.97 / 0.58 |
+| curiosity, half whole-life replay | 0.75 / 0.45 | 0.74 / 0.44 | 0.76 / 0.43 | 0.80 / 0.55 |
+
+What the policies did over their last 10,000 steps:
+
+| | random explorer | curiosity |
+|---|---|---|
+| share of moves that are 16 px jumps | 0.31–0.32 | 0.66–0.83 |
+| share of steps with the cursor at a screen edge | 0.10–0.16 | 0.45–0.70 |
+| clicks that made something respond, per 1,000 steps | 5–10 | 0–6 |
+
+- **Curiosity no longer wrecks the predictor.** Every curious life ends below 1 on both parts.
+- **It is still worse than doing things at random,** in all eight lives, on both parts. The bar of 0029 (beat a random explorer at equal compute) is not met.
+- **Whole-life replay helps the curious learner** (three seeds of four end at 0.43–0.45 on the probe part against 0.50–0.58) and makes no difference to the random one. That is 06a's pattern again: where replay comes from matters once experience is narrow.
+- **It still chases pixel change, and has found a new place for it.** The curious policy makes big jumps and spends half its life against the screen's edge, where the close-up is half black padding and every jump changes it most. It all but stops clicking things.
+- **So a better predictor does not fix the drive.** The reward is the loss a step's update removes, which is largest where the error is largest, and the largest errors are still the largest pixel changes. Which signal replaces it is Plan 06b's question (Q31).
+
+## What this changes
+
+@@CHANGES@@
+
+## What this does not establish
+
+- **Four seeds, one world, half width, a random explorer.** These say what the predictor can learn from broad experience at CPU widths. GPU widths, live tabs and other policies are untested.
+- **The gain, the kernel sizes and the mask prior are single values,** chosen by arithmetic and not tuned.
+- **The oracles are ceilings for these mechanisms, not for prediction.** A predictor that also handled in-place change (a press or a hover recolouring what is under the cursor, 5 to 8% of the close-up's error) could go lower.
+- **Nothing here is an interest signal.** A curious learner with this predictor still explores worse than a random one.
+- **Frames differ slightly between platforms** (0030's correction), so these scores are comparable among themselves and not yet with a browser's.
+
+## Sources
+
+- Code: `packages/learner/src/encode.ts` (`foveaSurround`), `shift.ts`, `wide-shift.ts`, `model.ts` (`ModelOptions`), `learner.ts` (`MECHANISMS`, `shiftGain`); tests beside them and `packages/learner/test/gpu/learning.gpu.test.ts`.
+- Probe: `tools/probe/introspect-probe.ts` (`--foveaSurround 1 --stateShift 1 --wideShift 1 --shiftGain 16 --reservoirShare 0.5`).
+- Runs: `2026-11-19-what-the-predictor-can-learn/runs.json`. The arms of §5 and §6 ran the first versions of `stateShift` and `wideShift`, which are not in the merged code.
+- Earlier notes: `2026-11-17-predictor-fixes-and-fresh-world-test.md` (the reference, the fresh-world test), `2026-11-17-task-and-target-introspection.md` (curiosity tracks pixel change).
+- Decisions: 0015 (fovea-shift prior), 0018 (genes, centre off), 0021 (bit-identical when off), 0029, 0030, 0031 (proposed).
+
 

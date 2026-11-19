@@ -144,6 +144,13 @@ describe("fovea shift over the surround (Plan 06a1)", () => {
     const got = await shift.term(act, b, { ...p, state: { gate: T(w, [HID, 1]), bias: T(Float32Array.of(bias), [1, 1]) } }, { surround: s, h }).read()
     const here = 1 / (1 + Math.exp(-(w.reduce((acc, v, k) => acc + v * hv[k]!, 0) + bias)))
     for (const k of [0, 100, 500, PF - 1]) expect(got[k]).toBeCloseTo(without[k]! * here, 5)
+    // With a gain the state gate's logit counts that many times over, as the kernels' do.
+    const gained = createFoveaShift(be, { surround: true, gain: 8 })
+    const flat = { x: T(new Float32Array(ACTION_DIM * SHIFT_TAPS), [ACTION_DIM, SHIFT_TAPS]), y: T(new Float32Array(ACTION_DIM * SHIFT_TAPS), [ACTION_DIM, SHIFT_TAPS]), gate: p.gate }
+    const open = { gate: T(new Float32Array(HID), [HID, 1]), bias: T(Float32Array.of(0.25), [1, 1]) } // sigmoid(8 · 0.25) = sigmoid(2)
+    const [g0, g1] = [await gained.term(act, b, flat, { surround: s }).read(), await gained.term(act, b, { ...flat, state: open }, { surround: s, h }).read()]
+    for (const k of [0, 100, 500, PF - 1]) expect(g1[k]).toBeCloseTo(g0[k]! / (1 + Math.exp(-2)), 5)
+    gained.dispose()
     shift.dispose()
   })
 

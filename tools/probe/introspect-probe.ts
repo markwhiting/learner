@@ -4,7 +4,7 @@
 // The environment switches X_LP, X_SHIFT_MOVE_ONLY and X_EXT_WEIGHT (with --ext respond) are read only by the experiment code on the branch diag/learner-introspect; on main they do nothing.
 import { createCanvas } from "@napi-rs/canvas"
 import { decodeMove, type Action, type Observation } from "@blanktab/interface"
-import { CPU_WIDTHS, DEFAULT_SETTINGS, GPU_WIDTHS, MECHANISMS, actionOneHot, createLearner, createModel, obsToInputs, targetsFromObs, type LearnerSettings, type UpdateInfo, type Widths } from "@blanktab/learner"
+import { CPU_WIDTHS, DEFAULT_SETTINGS, GPU_WIDTHS, MECHANISMS, actionOneHot, copyLastByView, createLearner, createModel, obsToInputs, targetsFromObs, type LearnerSettings, type SetLosses, type UpdateInfo, type Widths } from "@blanktab/learner"
 import { composite, createCpuBackend, createRng, noGrad, tensor, type Tensor } from "@blanktab/tensor"
 import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS } from "@blanktab/interface"
 import { createWorld, hashSeed } from "@blanktab/world"
@@ -26,6 +26,7 @@ if (args.has("shiftGain")) settings.shiftGain = Number(args.get("shiftGain"))
 const modelOptions = { foveaSurround: settings.foveaSurround === 1, stateShift: settings.stateShift === 1, wideShift: settings.wideShift === 1, ...(settings.shiftGain !== undefined ? { shiftGain: settings.shiftGain } : {}) }
 const NO_CAREGIVER = args.get("caregiver") === "off"
 const OUT = args.get("out")
+const DUMP_PARAMS = args.get("dumpParams") // write the final weights (Model.params order) as JSON, for offline analysis
 const BROAD = num("broad", 800)
 const FRESH_EVERY = num("freshEvery", 0) // score the fresh-world set (Plan 06a) every this many steps; 0: never
 const ROOMS = args.get("rooms")?.split(",") as Parameters<typeof createWorld>[0]["rooms"] | undefined
@@ -123,7 +124,19 @@ async function main() {
   const fresh = FRESH_EVERY > 0 ? buildFreshSet(() => createCanvas(320, 200)) : null
   let freshNow: Record<string, unknown> = {}
   const scoreFreshNow = async () => {
-    const r = await scoreFresh(learner, fresh!)
+    const perSegment: SetLosses[] = []
+    const r = await scoreFresh({ scoreSet: async set => { const l = await learner.scoreSet(set); perSegment.push(l); return l } }, fresh!)
+    // Plain moves' wide-view score by the room the trajectory started in and by whether the action held a scroll:
+    // [transitions, loss ÷ copy-last, mean loss]. A wide-view shift that fires where nothing scrolls shows up here.
+    const byRoom: Record<string, { n: number; loss: number; base: number }> = {}
+    fresh!.forEach((seg, k) => seg.events.forEach((e, i) => {
+      if (e !== "move") return
+      const g = (byRoom[`${seg.room}/${seg.set.actions[i]!.scroll ? "scroll" : "none"}`] ??= { n: 0, loss: 0, base: 0 })
+      g.n++
+      g.loss += perSegment[k]!.periphery[i]!
+      g.base += copyLastByView(targetsFromObs(seg.set.obs[i]!), targetsFromObs(seg.set.obs[i + 1]!)).periphery
+    }))
+    const moveWideByRoom = Object.fromEntries(Object.entries(byRoom).sort().map(([k, g]) => [k, [g.n, +(g.loss / g.base).toFixed(2), +(g.loss / g.n).toExponential(2)]]))
     // Each group as [both views, wide view (periphery), close-up (fovea)].
     const round = (v: number | null) => (v === null ? null : +v.toFixed(4))
     const ratio = (g: FreshScore) => [round(freshRatio(g)), round(freshRatio(g, "periphery")), round(freshRatio(g, "fovea"))]
@@ -133,7 +146,7 @@ async function main() {
     })
     const eventful = (["switch", "navigate", "reveal", "widget", "respond"] as const).map(e => r.events[e])
       .reduce(sum, { n: 0, loss: { periphery: 0, fovea: 0 }, baseline: { periphery: 0, fovea: 0 } })
-    return { fresh: { random: ratio(r.parts.random), probe: ratio(r.parts.probe), eventful: ratio(eventful), events: Object.fromEntries(FRESH_EVENTS.map(e => [e, ratio(r.events[e])])) } }
+    return { fresh: { random: ratio(r.parts.random), probe: ratio(r.parts.probe), eventful: ratio(eventful), events: Object.fromEntries(FRESH_EVENTS.map(e => [e, ratio(r.events[e])])), moveWideByRoom } }
   }
   const flush = (step: number) => {
     const n = win.length; if (!n) return
@@ -216,6 +229,7 @@ async function main() {
     if (step % WIN === 0) { if (broad) broadNow = await scoreBroad(await learner.readParams(), widths, broad); flush(step) }
   }
   if (OUT) writeFileSync(OUT, JSON.stringify({ seed: SEED, steps: STEPS, settings, widths, windows }, null, 1))
+  if (DUMP_PARAMS) writeFileSync(DUMP_PARAMS, JSON.stringify((await learner.readParams()).map(p => Array.from(p))))
   learner.dispose()
 }
 await main()

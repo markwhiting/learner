@@ -7,7 +7,7 @@ import type { Backend, Tensor } from "@blanktab/tensor"
  * one piece (a page scrolls), which a linear readout of the predictor's hidden layer cannot express. Here the next
  * periphery may be the current one translated by a separable kernel kx ⊗ ky, in the cells a mask selects:
  *   term = g · m ⊙ (translate(base; kx, ky) − base)
- * with kx, ky = softmax(gain·(a·A) + centre prior), the gate g = (a·Ag) · sigmoid(h·Hg + c) and the mask
+ * with kx, ky = softmax(gain·(a·A) + centre prior), the gate g = (a·Ag) · sigmoid(gain·(h·Hg + c)) and the mask
  * m = sigmoid(gain·b + prior) per cell, where a is the action one-hot, h the core's state and gain a fixed number
  * (createWideShift; 1 unless given: see createFoveaShift on why a gain). The gate is a product: "this action, in this
  * situation". (A first version added a term in the predictor's hidden layer to the gate and the kernels instead; it
@@ -77,7 +77,7 @@ export interface WideShift {
   translate(base: Tensor, kx: Tensor, ky: Tensor): Tensor
   /** The mask [cells, 1] in (0, 1): sigmoid(gain·maskB + prior). */
   mask(p: WideShiftParams): Tensor
-  /** The gate [1, 1]: (action·agate) · sigmoid(h·hgate + hbias); 0 while the action's gate is 0. */
+  /** The gate [1, 1]: (action·agate) · sigmoid(gain·(h·hgate + hbias)); 0 while the action's gate is 0. */
   gate(action: Tensor, h: Tensor, p: WideShiftParams): Tensor
   /** The prediction term g · m ⊙ (translate(base) − base), [1, PRED_P]; 0 while the gate g is 0. */
   term(action: Tensor, h: Tensor, base: Tensor, p: WideShiftParams): Tensor
@@ -118,7 +118,7 @@ export function createWideShift(backend: Backend, opts: { gain?: number } = {}):
   })
   const mask = (p: WideShiftParams): Tensor => composite(() => reshape(sigmoid(add(gained(p.maskB), maskPrior)), [CELLS, 1]))
   const gate = (action: Tensor, h: Tensor, p: WideShiftParams): Tensor =>
-    composite(() => mul(matmul(action, p.agate), sigmoid(add(matmul(h, p.hgate), p.hbias))))
+    composite(() => mul(matmul(action, p.agate), sigmoid(gained(add(matmul(h, p.hgate), p.hbias)))))
 
   return {
     kernel,

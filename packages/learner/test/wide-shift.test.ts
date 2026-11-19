@@ -90,7 +90,7 @@ describe("wide-view shift (Plan 06a1)", () => {
     wide.dispose()
   })
 
-  it("a gain multiplies the learned kernel and mask logits before their priors are added", async () => {
+  it("a gain multiplies the learned kernel, mask and state-gate logits (the kernel's and the mask's before their priors are added)", async () => {
     const be = createCpuBackend()
     const wide = createWideShift(be, { gain: 8 })
     const T = (d: Float32Array, shape: number[]) => tensor(d, shape, { backend: be })
@@ -104,6 +104,11 @@ describe("wide-view shift (Plan 06a1)", () => {
     const m = await wide.mask(params(be, key => (key === "maskB" ? b : new Float32Array(size(key))))).read()
     expect(m[5]).toBeCloseTo(0.5, 6)
     expect(m[6]).toBeCloseTo(1 / (1 + Math.exp(-2)), 6)
+    // The state gate: sigmoid(8 · (h·w + c)), here with h·w = 0 and c = 0.25.
+    const ag = new Float32Array(ACTION_DIM)
+    ag[3] = 1
+    const g = await wide.gate(T(action(), [1, ACTION_DIM]), T(new Float32Array(HID), [1, HID]), params(be, key => (key === "agate" ? ag : key === "hbias" ? Float32Array.of(0.25) : new Float32Array(size(key))))).read()
+    expect(g[0]).toBeCloseTo(1 / (1 + Math.exp(-2)), 6)
     for (const bad of [0, -1, Number.NaN]) expect(() => createWideShift(be, { gain: bad }), String(bad)).toThrow(RangeError)
     wide.dispose()
   })

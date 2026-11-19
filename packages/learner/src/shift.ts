@@ -74,7 +74,7 @@ export interface ShiftParams {
   /** [ACTION_DIM, SHIFT_TAPS] */ y: Tensor
   /** [ACTION_DIM, 1] */ gate: Tensor
   /**
-   * The state gate (Plan 06a1, optional): the action's gate is multiplied by sigmoid(h·gate + bias), with h the core's
+   * The state gate (Plan 06a1, optional): the action's gate is multiplied by sigmoid(gain·(h·gate + bias)), with h the core's
    * state [1, hidden], `gate` [hidden, 1] and `bias` [1, 1]. Whether an action shifts the view can depend on the
    * situation (a move against the screen's edge does not), and a product says "this action, here" directly.
    * Zero-initialised: the factor starts at one half everywhere.
@@ -183,7 +183,8 @@ export function createFoveaShift(backend: Backend, opts: { surround?: boolean; g
     term: (action, base, p, ctx) => composite(() => {
       const kx = kernel(action, p.x), ky = kernel(action, p.y)
       const moved = ctx?.surround ? translateSurround(ctx.surround, kx, ky) : translate(base, kx, ky)
-      const here = p.state && ctx?.h ? sigmoid(add(matmul(ctx.h, p.state.gate), p.state.bias)) : null
+      const logit = p.state && ctx?.h ? add(matmul(ctx.h, p.state.gate), p.state.bias) : null
+      const here = logit ? sigmoid(gain === 1 ? logit : scale(logit, gain)) : null
       const gate = here ? mul(matmul(action, p.gate), here) : matmul(action, p.gate)
       return mul(sub(moved, base), gate)
     }),

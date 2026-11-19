@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest"
 import { Adam, add, backward, readSyncCpu, createCpuBackend, createRng, detach, disposeGraph, getDefaultBackend, gradCheck, mean, tensor } from "@blanktab/tensor"
 import type { Tensor } from "@blanktab/tensor"
 import { PERIPHERY, FOVEA } from "@blanktab/interface"
-import { ACTION_DIM } from "../src/encode"
+import { ACTION_DIM, SURROUND } from "../src/encode"
 import { CPU_WIDTHS, FIRST_LAYER_PARAMS, GPU_WIDTHS, SHIFT_TAPS, createModel } from "../src/model"
-import type { Widths } from "../src/model"
+import type { ModelOptions, Widths } from "../src/model"
+import { WIDE_TAPS } from "../src/wide-shift"
 
 const rand = (n: number, seed: number) => {
   const r = createRng(seed)
@@ -248,6 +249,114 @@ describe("model", () => {
     expect(m.params.every((t) => t.grad === null)).toBe(true)
     h.dispose()
     for (const t of [x.periphery, x.fovea, x.proprio, a, b.periphery, b.fovea]) (t as Tensor).dispose()
+    opt.dispose()
+    m.dispose()
+    expect(be.stats.liveBuffers).toBe(0)
+  })
+})
+
+describe("the predictor's optional mechanisms (Plan 06a1)", () => {
+  const TINY: Widths = { conv1: 2, conv2: 2, enc: 4, hidden: 4 }
+  const ALL: ModelOptions = { foveaSurround: true, stateShift: true, wideShift: true }
+  const SUR = SURROUND.width * SURROUND.height * SURROUND.channels
+  /** A base with a surround whose middle is the base's fovea. */
+  const baseWithSurround = (be = getDefaultBackend()) => {
+    const fovea = rand(768, 5), sur = rand(SUR, 6)
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) for (let c = 0; c < 3; c++) sur[((y + 8) * SURROUND.width + x + 8) * 3 + c] = fovea[(y * 16 + x) * 3 + c]!
+    return { periphery: tensor(rand(3000, 4), [1, 3000], { backend: be }), fovea: tensor(fovea, [1, 768], { backend: be }), surround: tensor(sur, [1, SUR], { backend: be }) }
+  }
+
+  it("each adds its parameters after every earlier one and before the output layers, all zero; the rest start the same", async () => {
+    const be = createCpuBackend()
+    const plain = createModel(be, 5, TINY)
+    const n = plain.params.length
+    const shapesOf = (o: ModelOptions) => { const m = createModel(be, 5, TINY, undefined, o); const sh = m.params.map(t => t.shape.join("x")); m.dispose(); return sh }
+    expect(shapesOf({})).toEqual(plain.params.map(t => t.shape.join("x")))
+    expect(shapesOf({ foveaSurround: true })).toEqual(shapesOf({})) // no parameters of its own
+    const state = [`4x${SHIFT_TAPS}`, `4x${SHIFT_TAPS}`, "4x1"]
+    const wide = [`${ACTION_DIM}x${WIDE_TAPS}`, `${ACTION_DIM}x${WIDE_TAPS}`, `${ACTION_DIM}x1`, `4x${WIDE_TAPS}`, `4x${WIDE_TAPS}`, "4x1", "4x1000", "1000"]
+    const head = shapesOf({}).slice(0, n - 4), tail = shapesOf({}).slice(n - 4)
+    expect(shapesOf({ stateShift: true })).toEqual([...head, ...state, ...tail])
+    expect(shapesOf({ wideShift: true })).toEqual([...head, ...wide, ...tail])
+    expect(shapesOf(ALL)).toEqual([...head, ...state, ...wide, ...tail])
+
+    const all = createModel(be, 5, TINY, undefined, ALL)
+    const added = all.params.slice(n - 4, all.params.length - 4)
+    expect(added.length).toBe(11)
+    for (const t of added) expect((await t.read()).every(v => v === 0)).toBe(true)
+    // Nothing is drawn from the seed for them: every other weight starts as in the plain model.
+    for (let i = 0; i < n - 4; i++) expect(await all.params[i]!.read()).toEqual(await plain.params[i]!.read())
+    all.outputParams.forEach((t, i) => expect(t).toBe(all.params[all.params.length - 4 + i]))
+    // residualParams: the shift gate, the optional gates (state gate, wide action gate, wide state gate), the output layers.
+    expect(all.residualParams).toEqual([all.params[n - 9], added[2], added[5], added[8], ...all.outputParams])
+    expect(all.paramCount).toBe(plain.paramCount + 2 * 4 * SHIFT_TAPS + 4 + 2 * ACTION_DIM * WIDE_TAPS + ACTION_DIM + 2 * 4 * WIDE_TAPS + 4 + 4 * 1000 + 1000)
+    plain.dispose()
+    all.dispose()
+    expect(be.stats.liveBuffers).toBe(0)
+  })
+
+  it("a newborn with every mechanism predicts exactly copy-last for any state and action", async () => {
+    const be = createCpuBackend()
+    const m = createModel(be, 7, CPU_WIDTHS, undefined, ALL)
+    const b = baseWithSurround(be)
+    const h = m.core(inputs(be), m.zeroState())
+    for (const comps of [[0, 25, 28, 40], [12, 26, 30, 75], [24, 27, 32, 41]]) {
+      const a = new Float32Array(ACTION_DIM)
+      for (const i of comps) a[i] = 1
+      const p = m.predict(h, tensor(a, [1, ACTION_DIM], { backend: be }), b)
+      expect(await p.periphery.read()).toEqual(await b.periphery.read())
+      expect(await p.fovea.read()).toEqual(await b.fovea.read())
+    }
+  })
+
+  it("with foveaSurround, predict refuses a base without its surround; without it, a surround is ignored", async () => {
+    const be = createCpuBackend()
+    const withIt = createModel(be, 2, TINY, undefined, { foveaSurround: true })
+    expect(() => withIt.predict(withIt.zeroState(), oneHot(be), base(be))).toThrow(/base\.surround/)
+    const plain = createModel(be, 2, TINY)
+    for (const t of plain.params.slice(-11, -8)) poke(t, i => ((i * 7) % 5 - 2) * 0.3) // a live shift, so the fovea is not just its base
+    const b = baseWithSurround(be)
+    const [withSur, without] = [plain.predict(plain.zeroState(), oneHot(be), b), plain.predict(plain.zeroState(), oneHot(be), { periphery: b.periphery, fovea: b.fovea })]
+    expect(await withSur.fovea.read()).toEqual(await without.fovea.read())
+  })
+
+  it("passes gradCheck on predict with every mechanism live, at tiny widths", () => {
+    const m = createModel(getDefaultBackend(), 3, TINY, undefined, ALL)
+    const r0 = createRng(12)
+    // Everything that starts at zero is made non-zero (the shift's three, the optional eleven, the four output layers).
+    for (const t of m.params.slice(-(4 + 11 + 4 + 3))) if ((readSyncCpu(t.storage) as Float32Array).every(v => v === 0)) poke(t, () => (r0() < 0.5 ? -1 : 1) * (0.2 + 0.4 * r0()))
+    const r = createRng(11)
+    const h = Float32Array.from({ length: 4 }, () => (r() < 0.5 ? -1 : 1) * (0.3 + 0.5 * r()))
+    const a = Float32Array.from({ length: ACTION_DIM }, () => (r() < 0.5 ? -1 : 1) * (0.3 + 0.5 * r()))
+    const b = baseWithSurround()
+    for (const which of ["periphery", "fovea"] as const) {
+      const err = gradCheck((hh, aa) => m.predict(hh, aa, b)[which], [{ data: h, shape: [1, 4] }, { data: a, shape: [1, ACTION_DIM] }])
+      expect(err).toBeLessThan(5e-2)
+    }
+  }, 240_000)
+
+  it("leaves liveBuffers unchanged over 3 training iterations with every mechanism, and dispose frees everything", () => {
+    const be = createCpuBackend()
+    const m = createModel(be, 1, TINY, undefined, ALL)
+    const opt = new Adam([...m.params], { lr: 1e-3 })
+    const x = inputs(be), a = oneHot(be), b = baseWithSurround(be)
+    let h = m.zeroState()
+    const counts: number[] = []
+    for (let i = 0; i < 3; i++) {
+      const h2 = m.core(x, h)
+      const p = m.predict(h2, a, b)
+      const loss = add(mean(p.periphery), mean(p.fovea))
+      backward(loss)
+      opt.step()
+      opt.zeroGrad()
+      const next = detach(h2)
+      disposeGraph(loss, [])
+      h.dispose()
+      h = next
+      counts.push(be.stats.liveBuffers)
+    }
+    expect(new Set(counts).size).toBe(1)
+    for (const t of [h, a, x.periphery, x.fovea, x.proprio, b.periphery, b.fovea, b.surround]) t.dispose()
     opt.dispose()
     m.dispose()
     expect(be.stats.liveBuffers).toBe(0)

@@ -1,5 +1,5 @@
 import { PRED_FOVEA } from "@blanktab/interface"
-import { add, composite, gatherRows, matmul, mul, reshape, scale, softmax, sub, tensor } from "@blanktab/tensor"
+import { add, composite, gatherRows, matmul, mul, reshape, scale, sigmoid, softmax, sub, tensor } from "@blanktab/tensor"
 import type { Backend, Tensor } from "@blanktab/tensor"
 import { SURROUND, SURROUND_MARGIN } from "./encode"
 
@@ -74,18 +74,20 @@ export interface ShiftParams {
   /** [ACTION_DIM, SHIFT_TAPS] */ y: Tensor
   /** [ACTION_DIM, 1] */ gate: Tensor
   /**
-   * The state-dependent part (Plan 06a1, optional): the same three as linear maps of the predictor's hidden layer z
-   * [1, enc], added to the action's ([enc, SHIFT_TAPS] twice and [enc, 1]). Zero-initialised, so they start as nothing.
+   * The state gate (Plan 06a1, optional): the action's gate is multiplied by sigmoid(h·gate + bias), with h the core's
+   * state [1, hidden], `gate` [hidden, 1] and `bias` [1, 1]. Whether an action shifts the view can depend on the
+   * situation (a move against the screen's edge does not), and a product says "this action, here" directly.
+   * Zero-initialised: the factor starts at one half everywhere.
    */
-  state?: { x: Tensor; y: Tensor; gate: Tensor }
+  state?: { gate: Tensor; bias: Tensor }
 }
 
 /** What else a prediction's shift may draw on (Plan 06a1). */
 export interface ShiftContext {
   /** The fovea's surround [1, SURROUND] (HWC, encode.ts foveaSurround): what a move brings in comes from it, not black. */
   surround?: Tensor
-  /** The predictor's hidden layer z [1, enc], for ShiftParams.state. */
-  z?: Tensor
+  /** The core's state h [1, hidden], for ShiftParams.state. */
+  h?: Tensor
 }
 
 /**
@@ -95,10 +97,10 @@ export interface ShiftContext {
 export interface FoveaShift {
   /**
    * One axis's kernel for `action` [1,ACTION_DIM]: softmax(action·w + centre prior), [1,SHIFT_TAPS], sums to 1. With
-   * `z` [1,enc] and `v` [enc,SHIFT_TAPS], z·v is added to the logits. With a gain (createFoveaShift), the learned
-   * logits are multiplied by it before the centre prior is added: softmax(gain·(action·w + z·v) + centre prior).
+   * a gain (createFoveaShift), the learned logits are multiplied by it before the centre prior is added:
+   * softmax(gain·(action·w) + centre prior).
    */
-  kernel(action: Tensor, w: Tensor, z?: Tensor, v?: Tensor): Tensor
+  kernel(action: Tensor, w: Tensor): Tensor
   /**
    * `base` [1,PRED_F] (HWC) translated by the separable kernel kx ⊗ ky [1,SHIFT_TAPS] each, zero-filled at the edges:
    * out[y,x,c] = Σ_i Σ_j ky[i]·kx[j]·base[y + i − R, x + j − R, c]. A one-hot kernel at tap R + k shifts by exactly k.
@@ -111,9 +113,9 @@ export interface FoveaShift {
    */
   translateSurround(surround: Tensor, kx: Tensor, ky: Tensor): Tensor
   /**
-   * The prediction term g·(translate(base; kx, ky) − base), [1,PRED_F]; 0 while g = 0. The kernels and the gate g are
-   * the action's (kernel(a, p.x), kernel(a, p.y), a·p.gate), plus z's when `p.state` and `ctx.z` are given. With
-   * `ctx.surround` the translation is translateSurround of it (its middle must be `base`).
+   * The prediction term g·(translate(base; kx, ky) − base), [1,PRED_F]; 0 while g = 0. The kernels are the action's
+   * (kernel(a, p.x), kernel(a, p.y)) and the gate g is a·p.gate, times the state gate when `p.state` and `ctx.h` are
+   * given. With `ctx.surround` the translation is translateSurround of it (its middle must be `base`).
    */
   term(action: Tensor, base: Tensor, p: ShiftParams, ctx?: ShiftContext): Tensor
   dispose(): void
@@ -151,9 +153,9 @@ export function createFoveaShift(backend: Backend, opts: { surround?: boolean; g
     throw e
   }
 
-  // Without z and at gain 1 the expression is exactly the one from before Plan 06a1 (bit-exact).
-  const kernel = (action: Tensor, w: Tensor, z?: Tensor, v?: Tensor): Tensor => composite(() => {
-    const learned = z && v ? add(matmul(action, w), matmul(z, v)) : matmul(action, w)
+  // At gain 1 the expression is exactly the one from before Plan 06a1 (bit-exact).
+  const kernel = (action: Tensor, w: Tensor): Tensor => composite(() => {
+    const learned = matmul(action, w)
     return softmax(add(gain === 1 ? learned : scale(learned, gain), centre))
   })
   // composite: the gathers of a constant base have no graph node and would otherwise leak (tensor README rule 2).
@@ -179,10 +181,10 @@ export function createFoveaShift(backend: Backend, opts: { surround?: boolean; g
     translate,
     translateSurround,
     term: (action, base, p, ctx) => composite(() => {
-      const z = p.state && ctx?.z ? ctx.z : undefined
-      const kx = kernel(action, p.x, z, p.state?.x), ky = kernel(action, p.y, z, p.state?.y)
+      const kx = kernel(action, p.x), ky = kernel(action, p.y)
       const moved = ctx?.surround ? translateSurround(ctx.surround, kx, ky) : translate(base, kx, ky)
-      const gate = z ? add(matmul(action, p.gate), matmul(z, p.state!.gate)) : matmul(action, p.gate)
+      const here = p.state && ctx?.h ? sigmoid(add(matmul(ctx.h, p.state.gate), p.state.bias)) : null
+      const gate = here ? mul(matmul(action, p.gate), here) : matmul(action, p.gate)
       return mul(sub(moved, base), gate)
     }),
     dispose() {

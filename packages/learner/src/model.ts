@@ -20,7 +20,7 @@ export const CPU_WIDTHS: Widths = { conv1: 8, conv2: 16, enc: 64, hidden: 128 }
 export interface ModelOptions {
   /** The fovea shift draws on the fovea's surround: predict's base must carry `surround`. No parameters. */
   foveaSurround?: boolean
-  /** The fovea shift's kernels and gate also depend on the predictor's hidden layer z (ShiftParams.state). */
+  /** The fovea shift's gate is multiplied by a learned function of the core's state (ShiftParams.state). */
   stateShift?: boolean
   /** The wide-view shift (./wide-shift.ts). */
   wideShift?: boolean
@@ -157,12 +157,11 @@ function buildModel(backend: Backend, seed: number, widths: Widths, initial: rea
   const predH = dense(hidden, enc)
   const predA = dense(ACTION_DIM, enc)
   // Plan 06a1's optional mechanisms: created only when on, zero-initialised, before the output layers.
-  const shiftState = options.stateShift ? { x: p0([enc, SHIFT_TAPS]), y: p0([enc, SHIFT_TAPS]), gate: p0([enc, 1]) } : undefined
+  const shiftState = options.stateShift ? { gate: p0([hidden, 1]), bias: p0([1, 1]) } : undefined
   const wideParams = options.wideShift
     ? {
         ax: p0([ACTION_DIM, WIDE_TAPS]), ay: p0([ACTION_DIM, WIDE_TAPS]), agate: p0([ACTION_DIM, 1]),
-        zx: p0([enc, WIDE_TAPS]), zy: p0([enc, WIDE_TAPS]), zgate: p0([enc, 1]),
-        maskW: p0([enc, PRED_PERIPHERY.width * PRED_PERIPHERY.height]), maskB: p0([PRED_PERIPHERY.width * PRED_PERIPHERY.height]),
+        hgate: p0([hidden, 1]), hbias: p0([1, 1]), maskB: p0([1, PRED_PERIPHERY.width * PRED_PERIPHERY.height]),
       }
     : null
   // Residual output layers, zero-initialised (weights and biases): the predictor starts at copy-last.
@@ -180,7 +179,9 @@ function buildModel(backend: Backend, seed: number, widths: Widths, initial: rea
     shift.dispose()
     throw e
   }
-  const optionalGates = [...(shiftState ? [shiftState.gate] : []), ...(wideParams ? [wideParams.agate, wideParams.zgate] : [])]
+  // The wide shift's action gate starts at zero and expresses deviation from copy-last, as the fovea's does. The state
+  // gates do not: at zero they are one half, not nothing.
+  const optionalGates = wideParams ? [wideParams.agate] : []
 
   return {
     params,
@@ -211,9 +212,9 @@ function buildModel(backend: Backend, seed: number, widths: Widths, initial: rea
       if (options.foveaSurround && !base.surround) throw new Error("model: predict needs base.surround (options.foveaSurround)")
       // No context at all without the options: the shift term is then exactly the one from before Plan 06a1.
       const ctx = options.foveaSurround || shiftState
-        ? { ...(options.foveaSurround ? { surround: base.surround! } : {}), ...(shiftState ? { z } : {}) }
+        ? { ...(options.foveaSurround ? { surround: base.surround! } : {}), ...(shiftState ? { h } : {}) }
         : undefined
-      const moved = wide && wideParams ? add(base.periphery, wide.term(action, z, base.periphery, wideParams)) : base.periphery
+      const moved = wide && wideParams ? add(base.periphery, wide.term(action, h, base.periphery, wideParams)) : base.periphery
       return {
         periphery: add(moved, tanh(linear(z, headP.w, headP.b))),
         fovea: add(add(base.fovea, shift.term(action, base.fovea, shiftParams, ctx)), tanh(linear(z, headF.w, headF.b))),

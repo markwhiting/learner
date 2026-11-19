@@ -7,10 +7,13 @@ import type { Backend, Tensor } from "@blanktab/tensor"
  * one piece (a page scrolls), which a linear readout of the predictor's hidden layer cannot express. Here the next
  * periphery may be the current one translated by a separable kernel kx ⊗ ky, in the cells a mask selects:
  *   term = g · m ⊙ (translate(base; kx, ky) − base)
- * with kx, ky = softmax(gain·(a·A + z·Z) + centre prior), the gate g = a·Ag + z·Zg and the mask
- * m = sigmoid(gain·(z·M + b) + prior) per cell, where a is the action one-hot, z the predictor's hidden layer and gain
- * a fixed number (createWideShift; 1 unless given: see createFoveaShift on why a gain). Whether anything moves, by how much and
- * where are all learned; nothing here knows the world. Rows and columns that would come in from beyond the frame
+ * with kx, ky = softmax(gain·(a·A) + centre prior), the gate g = (a·Ag) · sigmoid(h·Hg + c) and the mask
+ * m = sigmoid(gain·b + prior) per cell, where a is the action one-hot, h the core's state and gain a fixed number
+ * (createWideShift; 1 unless given: see createFoveaShift on why a gain). The gate is a product: "this action, in this
+ * situation". (A first version added a term in the predictor's hidden layer to the gate and the kernels instead; it
+ * learned to scroll in the room that scrolls and unlearned it in every other room, docs/research/2026-11-19-what-the-
+ * predictor-can-learn.md §4.) By how much things move, for which action, in which situation and in which cells are
+ * all learned; nothing here knows the world. The mask is one per learner, not per situation. Rows and columns that would come in from beyond the frame
  * repeat the frame's edge (the mask can turn them off).
  */
 
@@ -57,25 +60,27 @@ const BAND_Y = (() => {
 export interface WideShiftParams {
   /** Action → kernel logits per axis [ACTION_DIM, WIDE_TAPS] and gate [ACTION_DIM, 1]. */
   ax: Tensor; ay: Tensor; agate: Tensor
-  /** z → kernel logits per axis [enc, WIDE_TAPS] and gate [enc, 1]. */
-  zx: Tensor; zy: Tensor; zgate: Tensor
-  /** z → mask logits per cell: [enc, cells] and [cells]. */
-  maskW: Tensor; maskB: Tensor
+  /** The state gate: h → logit [hidden, 1], and its bias [1, 1]. Zero: the factor starts at one half. */
+  hgate: Tensor; hbias: Tensor
+  /** Mask logits per cell [1, cells]. */
+  maskB: Tensor
 }
 
 /** The operator on one backend. It owns only constants, which `dispose` frees. Every method is a composite. */
 export interface WideShift {
-  /** One axis's kernel: softmax(gain·(action·a + z·zw) + centre prior), [1, WIDE_TAPS], sums to 1. */
-  kernel(action: Tensor, a: Tensor, z: Tensor, zw: Tensor): Tensor
+  /** One axis's kernel: softmax(gain·(action·a) + centre prior), [1, WIDE_TAPS], sums to 1. */
+  kernel(action: Tensor, a: Tensor): Tensor
   /**
    * `base` [1, PRED_P] (HWC) translated by kx ⊗ ky, the frame's edge repeated beyond it:
    * out[y,x,c] = Σ_i Σ_j ky[i]·kx[j]·base[clamp(y + i − R), clamp(x + j − R), c].
    */
   translate(base: Tensor, kx: Tensor, ky: Tensor): Tensor
-  /** The mask [cells, 1] in (0, 1): sigmoid(gain·(z·maskW + maskB) + prior). */
-  mask(z: Tensor, p: WideShiftParams): Tensor
+  /** The mask [cells, 1] in (0, 1): sigmoid(gain·maskB + prior). */
+  mask(p: WideShiftParams): Tensor
+  /** The gate [1, 1]: (action·agate) · sigmoid(h·hgate + hbias); 0 while the action's gate is 0. */
+  gate(action: Tensor, h: Tensor, p: WideShiftParams): Tensor
   /** The prediction term g · m ⊙ (translate(base) − base), [1, PRED_P]; 0 while the gate g is 0. */
-  term(action: Tensor, z: Tensor, base: Tensor, p: WideShiftParams): Tensor
+  term(action: Tensor, h: Tensor, base: Tensor, p: WideShiftParams): Tensor
   dispose(): void
 }
 
@@ -102,8 +107,7 @@ export function createWideShift(backend: Backend, opts: { gain?: number } = {}):
     throw e
   }
 
-  const kernel = (action: Tensor, a: Tensor, z: Tensor, zw: Tensor): Tensor =>
-    composite(() => softmax(add(gained(add(matmul(action, a), matmul(z, zw))), centre)))
+  const kernel = (action: Tensor, a: Tensor): Tensor => composite(() => softmax(add(gained(matmul(action, a)), centre)))
   const translate = (base: Tensor, kx: Tensor, ky: Tensor): Tensor => composite(() => {
     const bx = reshape(matmul(kx, bandX), [PW, PW])
     const by = reshape(matmul(ky, bandY), [PH, PH])
@@ -112,17 +116,19 @@ export function createWideShift(backend: Backend, opts: { gain?: number } = {}):
     const moved = matmul(by, reshape(matmul(rows, bx), [PH, PC * PW]))
     return reshape(gatherRows(reshape(moved, [PP, 1]), YCX_TO_HWC), [1, PP])
   })
-  const mask = (z: Tensor, p: WideShiftParams): Tensor =>
-    composite(() => reshape(sigmoid(add(gained(add(matmul(z, p.maskW), p.maskB)), maskPrior)), [CELLS, 1]))
+  const mask = (p: WideShiftParams): Tensor => composite(() => reshape(sigmoid(add(gained(p.maskB), maskPrior)), [CELLS, 1]))
+  const gate = (action: Tensor, h: Tensor, p: WideShiftParams): Tensor =>
+    composite(() => mul(matmul(action, p.agate), sigmoid(add(matmul(h, p.hgate), p.hbias))))
 
   return {
     kernel,
     translate,
     mask,
-    term: (action, z, base, p) => composite(() => {
-      const moved = translate(base, kernel(action, p.ax, z, p.zx), kernel(action, p.ay, z, p.zy))
-      const masked = reshape(mul(reshape(sub(moved, base), [CELLS, PC]), mask(z, p)), [1, PP])
-      return mul(masked, add(matmul(action, p.agate), matmul(z, p.zgate)))
+    gate,
+    term: (action, h, base, p) => composite(() => {
+      const moved = translate(base, kernel(action, p.ax), kernel(action, p.ay))
+      const masked = reshape(mul(reshape(sub(moved, base), [CELLS, PC]), mask(p)), [1, PP])
+      return mul(masked, gate(action, h, p))
     }),
     dispose() {
       for (const t of consts) t.dispose()

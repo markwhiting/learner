@@ -1601,7 +1601,7 @@ describe("the predictor's optional mechanisms (foveaSurround, stateShift, wideSh
       expect(r.updates[0]!.lossBefore, k).toBe(plain.updates[0]!.lossBefore)
       expect(r.updates.every(u => Number.isFinite(u.lossBefore) && Number.isFinite(u.lossAfter)), k).toBe(true)
       const params = await r.learner.readParams()
-      expect(params.length, k).toBe(plainParams.length + { foveaSurround: 0, stateShift: 3, wideShift: 8 }[k])
+      expect(params.length, k).toBe(plainParams.length + { foveaSurround: 0, stateShift: 2, wideShift: 6 }[k])
       // What both models share (everything before the mechanism's own parameters) has been trained differently.
       expect(firstDifference(params.slice(0, 10), plainParams.slice(0, 10)), k).not.toBeNull()
       r.learner.dispose()

@@ -123,33 +123,27 @@ describe("fovea shift over the surround (Plan 06a1)", () => {
     plain.dispose()
   })
 
-  it("the state part adds z·v to each kernel's logits and z·g to the gate; zero state weights change nothing", async () => {
+  it("the state gate multiplies the action's gate by sigmoid(h·w + b): one half at zero weights, and it follows h", async () => {
     const be = createCpuBackend()
     const shift = createFoveaShift(be, { surround: true })
-    const ENC = 5
+    const HID = 5
     const T = (d: Float32Array, shape: number[]) => tensor(d, shape, { backend: be })
     const a = new Float32Array(ACTION_DIM)
     for (const i of [3, 25, 28, 40]) a[i] = 1
-    const act = T(a, [1, ACTION_DIM]), z = T(signed(ENC), [1, ENC])
+    const act = T(a, [1, ACTION_DIM]), hv = signed(HID), h = T(hv, [1, HID])
     const p = { x: T(signed(ACTION_DIM * SHIFT_TAPS), [ACTION_DIM, SHIFT_TAPS]), y: T(signed(ACTION_DIM * SHIFT_TAPS), [ACTION_DIM, SHIFT_TAPS]), gate: T(signed(ACTION_DIM), [ACTION_DIM, 1]) }
-    const zero = { x: T(new Float32Array(ENC * SHIFT_TAPS), [ENC, SHIFT_TAPS]), y: T(new Float32Array(ENC * SHIFT_TAPS), [ENC, SHIFT_TAPS]), gate: T(new Float32Array(ENC), [ENC, 1]) }
     const src = surroundImage()
     const s = T(src, [1, PS]), b = T(middleOf(src), [1, PF])
     const without = await shift.term(act, b, p, { surround: s }).read()
-    expect(await shift.term(act, b, { ...p, state: zero }, { surround: s, z }).read()).toEqual(without)
-    // a state gate alone moves the term: gate = a·g + z·zg
-    const zg = signed(ENC)
-    const gated = await shift.term(act, b, { ...p, state: { ...zero, gate: T(zg, [ENC, 1]) } }, { surround: s, z }).read()
-    const zv = await z.read(), gv = await p.gate.read()
-    const g0 = [3, 25, 28, 40].reduce((acc, i) => acc + gv[i]!, 0), g1 = g0 + zg.reduce((acc, v, i) => acc + v * zv[i]!, 0)
-    for (const i of [0, 100, 500, PF - 1]) expect(gated[i]! * g0).toBeCloseTo(without[i]! * g1, 4)
-    // the kernel with state logits is the softmax of the sum
-    const v = signed(ENC * SHIFT_TAPS)
-    const k = await shift.kernel(act, p.x, z, T(v, [ENC, SHIFT_TAPS])).read()
-    const xv = await p.x.read()
-    const logits = Array.from({ length: SHIFT_TAPS }, (_, j) => [3, 25, 28, 40].reduce((acc, i) => acc + xv[i * SHIFT_TAPS + j]!, 0) + zv.reduce((acc, zz, e) => acc + zz * v[e * SHIFT_TAPS + j]!, 0) + (j === R ? 4 : 0))
-    const mx = Math.max(...logits), den = logits.reduce((acc, l) => acc + Math.exp(l - mx), 0)
-    logits.forEach((l, j) => expect(k[j]).toBeCloseTo(Math.exp(l - mx) / den, 5))
+    // Zero state weights: exactly half the term (a product by 0.5 is exact in floating point).
+    const zero = { gate: T(new Float32Array(HID), [HID, 1]), bias: T(new Float32Array(1), [1, 1]) }
+    expect(await shift.term(act, b, { ...p, state: zero }, { surround: s, h }).read()).toEqual(without.map(v => 0.5 * v))
+    // Without h in the context, or without state parameters, the gate is the action's alone.
+    expect(await shift.term(act, b, { ...p, state: zero }, { surround: s }).read()).toEqual(without)
+    const w = signed(HID), bias = 0.3
+    const got = await shift.term(act, b, { ...p, state: { gate: T(w, [HID, 1]), bias: T(Float32Array.of(bias), [1, 1]) } }, { surround: s, h }).read()
+    const here = 1 / (1 + Math.exp(-(w.reduce((acc, v, k) => acc + v * hv[k]!, 0) + bias)))
+    for (const k of [0, 100, 500, PF - 1]) expect(got[k]).toBeCloseTo(without[k]! * here, 5)
     shift.dispose()
   })
 
@@ -170,20 +164,19 @@ describe("fovea shift over the surround (Plan 06a1)", () => {
     for (const sft of [plain, one, eight]) sft.dispose()
   })
 
-  it("passes gradCheck on its term over every parameter, z, the action, the base and the surround (with a gain)", () => {
+  it("passes gradCheck on its term over every parameter, h, the action, the base and the surround (with a gain)", () => {
     const shift = createFoveaShift(getDefaultBackend(), { surround: true, gain: 2 })
-    const ENC = 3
+    const HID = 3
     const src = surroundImage()
     const err = gradCheck(
-      (x, y, gate, zx, zy, zgate, z, a, b, s) => shift.term(a, b, { x, y, gate, state: { x: zx, y: zy, gate: zgate } }, { surround: s, z }),
+      (x, y, gate, hgate, hbias, h, a, b, s) => shift.term(a, b, { x, y, gate, state: { gate: hgate, bias: hbias } }, { surround: s, h }),
       [
         { data: signed(ACTION_DIM * SHIFT_TAPS), shape: [ACTION_DIM, SHIFT_TAPS] },
         { data: signed(ACTION_DIM * SHIFT_TAPS), shape: [ACTION_DIM, SHIFT_TAPS] },
         { data: signed(ACTION_DIM), shape: [ACTION_DIM, 1] },
-        { data: signed(ENC * SHIFT_TAPS), shape: [ENC, SHIFT_TAPS] },
-        { data: signed(ENC * SHIFT_TAPS), shape: [ENC, SHIFT_TAPS] },
-        { data: signed(ENC), shape: [ENC, 1] },
-        { data: signed(ENC).map(v => 0.5 * v), shape: [1, ENC] },
+        { data: signed(HID), shape: [HID, 1] },
+        { data: signed(1), shape: [1, 1] },
+        { data: signed(HID).map(v => 0.5 * v), shape: [1, HID] },
         { data: signed(ACTION_DIM).map(v => 0.3 * v), shape: [1, ACTION_DIM] },
         { data: middleOf(src), shape: [1, PF] },
         { data: src, shape: [1, PS] },
@@ -200,10 +193,10 @@ describe("fovea shift over the surround (Plan 06a1)", () => {
     const T = (n: number, shape: number[]) => tensor(new Float32Array(n), shape, { backend: be })
     const held = [T(ACTION_DIM, [1, ACTION_DIM]), T(PF, [1, PF]), T(PS, [1, PS]), T(4, [1, 4]),
       T(ACTION_DIM * SHIFT_TAPS, [ACTION_DIM, SHIFT_TAPS]), T(ACTION_DIM * SHIFT_TAPS, [ACTION_DIM, SHIFT_TAPS]), T(ACTION_DIM, [ACTION_DIM, 1]),
-      T(4 * SHIFT_TAPS, [4, SHIFT_TAPS]), T(4 * SHIFT_TAPS, [4, SHIFT_TAPS]), T(4, [4, 1])] as const
-    const [act, b, s, z, x, y, gate, zx, zy, zgate] = held
+      T(4, [4, 1]), T(1, [1, 1])] as const
+    const [act, b, s, h, x, y, gate, hgate, hbias] = held
     const live = be.stats.liveBuffers
-    const t = shift.term(act, b, { x, y, gate, state: { x: zx, y: zy, gate: zgate } }, { surround: s, z })
+    const t = shift.term(act, b, { x, y, gate, state: { gate: hgate, bias: hbias } }, { surround: s, h })
     expect(be.stats.liveBuffers).toBe(live + 1)
     t.dispose()
     for (const h of held) h.dispose()

@@ -3,6 +3,7 @@ import { createCpuBackend, createWebGpuBackend, isSoftwareAdapter } from "@blank
 import type { Backend } from "@blanktab/tensor"
 import { isValidAction, type Action } from "@blanktab/interface"
 import { DEFAULT_SETTINGS, createLearner } from "../../src/learner"
+import type { LearnerSettings } from "../../src/learner"
 import type { Widths } from "../../src/model"
 import { createSyntheticStream, heldOutSet } from "../synthetic"
 
@@ -14,9 +15,10 @@ const STEPS = 300
 const SEED = 1
 const allowSoftware = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env.GPU_ALLOW_SOFTWARE === "1"
 
-async function live(backend: Backend) {
-  const learner = await createLearner({ backend, seed: SEED, widths: TINY, settings: { ...DEFAULT_SETTINGS }, heldOut: heldOutSet() })
-  const world = createSyntheticStream()
+/** `start`: where the synthetic block starts (near the screen's edge the close-up changes as it moves, see synthetic.ts). */
+async function live(backend: Backend, extra: Partial<LearnerSettings> = {}, start?: { x: number; y: number }) {
+  const learner = await createLearner({ backend, seed: SEED, widths: TINY, settings: { ...DEFAULT_SETTINGS, ...extra }, heldOut: heldOutSet() })
+  const world = createSyntheticStream(start ? { start } : {})
   const moves: number[] = []
   for (let i = 0; i < STEPS; i++) {
     const a = await learner.step(world.observe())
@@ -59,6 +61,27 @@ describe("the learner on WebGPU", () => {
     expect(onGpu.stats.heldOutBaseline).toBe(cpu.stats.heldOutBaseline)
     expect(onGpu.stats.evalCU).toBeCloseTo(cpu.stats.evalCU, 12)
     expect(onGpu.stats.evalCU).toBeGreaterThan(0)
+  })
+
+  it(`with every optional predictor mechanism (Plan 06a1) it still learns like the CPU learner: ${STEPS} steps, predLoss within 2%, nothing leaks`, async () => {
+    const gpu = await createWebGpuBackend({ powerPreference: "high-performance" })
+    if (!gpu) throw new Error("WebGPU backend unavailable")
+    if (!allowSoftware && isSoftwareAdapter(gpu.adapterInfo)) throw new Error(`software adapter ${JSON.stringify(gpu.adapterInfo)}`)
+    const all = { foveaSurround: 1, stateShift: 1, wideShift: 1, shiftGain: 16 }
+    // Started beside the screen's corner, so the close-up's padding and surround are in play from the first steps.
+    const start = { x: 12, y: 12 }
+    const before = gpu.stats.liveBuffers
+    const cpu = await live(createCpuBackend(), all, start)
+    const onGpu = await live(gpu, all, start)
+    const rel = Math.abs(onGpu.stats.predLoss - cpu.stats.predLoss) / cpu.stats.predLoss
+    console.log(JSON.stringify({ mechanisms: all, cpu: { predLoss: cpu.stats.predLoss, cu: cpu.stats.cu }, gpu: { predLoss: onGpu.stats.predLoss, cu: onGpu.stats.cu, skipped: onGpu.stats.skippedUpdates }, relPredLoss: rel,
+      heldOut: { cpu: cpu.stats.heldOutLoss, gpu: onGpu.stats.heldOutLoss }, sameMoves: `${onGpu.moves.filter((m, i) => m === cpu.moves[i]).length}/${STEPS}` }))
+    expect(Number.isFinite(onGpu.stats.predLoss)).toBe(true)
+    expect(onGpu.stats.skippedUpdates).toBe(0)
+    expect(rel).toBeLessThanOrEqual(0.02)
+    expect(Math.abs(onGpu.stats.heldOutLoss - cpu.stats.heldOutLoss) / cpu.stats.heldOutLoss).toBeLessThanOrEqual(0.02)
+    expect(onGpu.stats.cu).toBeCloseTo(cpu.stats.cu, 9) // the same operations, counted alike
+    expect(gpu.stats.liveBuffers).toBe(before)
   })
 
   it("a 300-step frozen run on WebGPU: valid actions, liveBuffers back to its value before", async () => {

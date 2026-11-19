@@ -273,8 +273,8 @@ describe("the predictor's optional mechanisms (Plan 06a1)", () => {
     const shapesOf = (o: ModelOptions) => { const m = createModel(be, 5, TINY, undefined, o); const sh = m.params.map(t => t.shape.join("x")); m.dispose(); return sh }
     expect(shapesOf({})).toEqual(plain.params.map(t => t.shape.join("x")))
     expect(shapesOf({ foveaSurround: true })).toEqual(shapesOf({})) // no parameters of its own
-    const state = [`4x${SHIFT_TAPS}`, `4x${SHIFT_TAPS}`, "4x1"]
-    const wide = [`${ACTION_DIM}x${WIDE_TAPS}`, `${ACTION_DIM}x${WIDE_TAPS}`, `${ACTION_DIM}x1`, `4x${WIDE_TAPS}`, `4x${WIDE_TAPS}`, "4x1", "4x1000", "1000"]
+    const state = ["4x1", "1x1"] // the state gate over hidden = 4, and its bias
+    const wide = [`${ACTION_DIM}x${WIDE_TAPS}`, `${ACTION_DIM}x${WIDE_TAPS}`, `${ACTION_DIM}x1`, "4x1", "1x1", "1x1000"]
     const head = shapesOf({}).slice(0, n - 4), tail = shapesOf({}).slice(n - 4)
     expect(shapesOf({ stateShift: true })).toEqual([...head, ...state, ...tail])
     expect(shapesOf({ wideShift: true })).toEqual([...head, ...wide, ...tail])
@@ -282,14 +282,14 @@ describe("the predictor's optional mechanisms (Plan 06a1)", () => {
 
     const all = createModel(be, 5, TINY, undefined, ALL)
     const added = all.params.slice(n - 4, all.params.length - 4)
-    expect(added.length).toBe(11)
+    expect(added.length).toBe(8)
     for (const t of added) expect((await t.read()).every(v => v === 0)).toBe(true)
     // Nothing is drawn from the seed for them: every other weight starts as in the plain model.
     for (let i = 0; i < n - 4; i++) expect(await all.params[i]!.read()).toEqual(await plain.params[i]!.read())
     all.outputParams.forEach((t, i) => expect(t).toBe(all.params[all.params.length - 4 + i]))
-    // residualParams: the shift gate, the optional gates (state gate, wide action gate, wide state gate), the output layers.
-    expect(all.residualParams).toEqual([all.params[n - 9], added[2], added[5], added[8], ...all.outputParams])
-    expect(all.paramCount).toBe(plain.paramCount + 2 * 4 * SHIFT_TAPS + 4 + 2 * ACTION_DIM * WIDE_TAPS + ACTION_DIM + 2 * 4 * WIDE_TAPS + 4 + 4 * 1000 + 1000)
+    // residualParams: the shift gate, the wide shift's action gate, the output layers (a state gate at zero is one half, not nothing).
+    expect(all.residualParams).toEqual([all.params[n - 9], added[4], ...all.outputParams])
+    expect(all.paramCount).toBe(plain.paramCount + (4 + 1) + 2 * ACTION_DIM * WIDE_TAPS + ACTION_DIM + (4 + 1) + 1000)
     plain.dispose()
     all.dispose()
     expect(be.stats.liveBuffers).toBe(0)
@@ -323,8 +323,8 @@ describe("the predictor's optional mechanisms (Plan 06a1)", () => {
   it("passes gradCheck on predict with every mechanism live, at tiny widths", () => {
     const m = createModel(getDefaultBackend(), 3, TINY, undefined, ALL)
     const r0 = createRng(12)
-    // Everything that starts at zero is made non-zero (the shift's three, the optional eleven, the four output layers).
-    for (const t of m.params.slice(-(4 + 11 + 4 + 3))) if ((readSyncCpu(t.storage) as Float32Array).every(v => v === 0)) poke(t, () => (r0() < 0.5 ? -1 : 1) * (0.2 + 0.4 * r0()))
+    // Everything that starts at zero is made non-zero (the shift's three, the optional eight, the four output layers).
+    for (const t of m.params.slice(-(4 + 8 + 4 + 3))) if ((readSyncCpu(t.storage) as Float32Array).every(v => v === 0)) poke(t, () => (r0() < 0.5 ? -1 : 1) * (0.2 + 0.4 * r0()))
     const r = createRng(11)
     const h = Float32Array.from({ length: 4 }, () => (r() < 0.5 ? -1 : 1) * (0.3 + 0.5 * r()))
     const a = Float32Array.from({ length: ACTION_DIM }, () => (r() < 0.5 ? -1 : 1) * (0.3 + 0.5 * r()))

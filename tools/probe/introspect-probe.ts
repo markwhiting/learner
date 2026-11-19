@@ -1,10 +1,10 @@
 // Offline diagnostic for docs/research/2026-11-17-task-and-target-introspection.md (not part of the product): the real learner on the CPU backend in the real four-room world with
 // the real caregiver and held-out set, instrumented from the harness side (privileged trace used for diagnosis only).
-//   npx tsx tools/probe/introspect-probe.ts --seed 1 --steps 25000 [--curiosityWeight 0] [--residualDecay 0 --bufferSize 25000 --replayPerSleep 250] [--reservoirShare 1] [--rooms crib] [--ext respond] [--freshEvery 5000] [--out file.json]
+//   npx tsx tools/probe/introspect-probe.ts --seed 1 --steps 25000 [--curiosityWeight 0] [--residualDecay 0 --bufferSize 25000 --replayPerSleep 250] [--reservoirShare 1] [--foveaSurround 1] [--shiftGain 16] [--rooms crib] [--ext respond] [--freshEvery 5000] [--out file.json] [--dumpParams weights.json]
 // The environment switches X_LP, X_SHIFT_MOVE_ONLY and X_EXT_WEIGHT (with --ext respond) are read only by the experiment code on the branch diag/learner-introspect; on main they do nothing.
 import { createCanvas } from "@napi-rs/canvas"
 import { decodeMove, type Action, type Observation } from "@blanktab/interface"
-import { CPU_WIDTHS, DEFAULT_SETTINGS, GPU_WIDTHS, actionOneHot, createLearner, createModel, obsToInputs, targetsFromObs, type LearnerSettings, type UpdateInfo, type Widths } from "@blanktab/learner"
+import { CPU_WIDTHS, DEFAULT_SETTINGS, GPU_WIDTHS, MECHANISMS, actionOneHot, copyLastByView, createLearner, createModel, obsToInputs, targetsFromObs, type LearnerSettings, type SetLosses, type UpdateInfo, type Widths } from "@blanktab/learner"
 import { composite, createCpuBackend, createRng, noGrad, tensor, type Tensor } from "@blanktab/tensor"
 import { BUTTON_OPTIONS, KEYS, MOVE_OPTIONS, SCROLL_OPTIONS } from "@blanktab/interface"
 import { createWorld, hashSeed } from "@blanktab/world"
@@ -21,8 +21,12 @@ const widths = args.get("widths") === "gpu" ? GPU_WIDTHS : CPU_WIDTHS
 const settings: LearnerSettings = { ...DEFAULT_SETTINGS }
 for (const k of Object.keys(settings) as (keyof LearnerSettings)[]) if (args.has(k)) settings[k] = Number(args.get(k))
 if (args.has("reservoirShare")) settings.reservoirShare = Number(args.get("reservoirShare")) // optional, so not among the defaults' keys
+for (const k of MECHANISMS) if (args.has(k)) settings[k] = Number(args.get(k)) // Plan 06a1's optional predictor mechanisms (1 = on)
+if (args.has("shiftGain")) settings.shiftGain = Number(args.get("shiftGain"))
+const modelOptions = { foveaSurround: settings.foveaSurround === 1, ...(settings.shiftGain !== undefined ? { shiftGain: settings.shiftGain } : {}) }
 const NO_CAREGIVER = args.get("caregiver") === "off"
 const OUT = args.get("out")
+const DUMP_PARAMS = args.get("dumpParams") // write the final weights (Model.params order) as JSON, for offline analysis
 const BROAD = num("broad", 800)
 const FRESH_EVERY = num("freshEvery", 0) // score the fresh-world set (Plan 06a) every this many steps; 0: never
 const ROOMS = args.get("rooms")?.split(",") as Parameters<typeof createWorld>[0]["rooms"] | undefined
@@ -47,23 +51,25 @@ const sqv = (a: Float32Array, b: Float32Array) => { let s = 0; for (let i = 0; i
 /** Scores `params` on the broad set (fresh model, core run along it, reset to the zero state at each room carry): ratios to copy-last. */
 async function scoreBroad(params: Float32Array[], w: Widths, set: ReturnType<typeof broadSet>) {
   const be = createCpuBackend()
-  const m = createModel(be, 0, w, params)
+  const m = createModel(be, 0, w, params, modelOptions)
   const T = (d: Float32Array, sh: number[]) => tensor(d, sh, { backend: be })
   let h = m.zeroState()
   let lP = 0, lF = 0, cP = 0, cF = 0
   const byMag: Record<string, [number, number]> = {}
   for (let i = 0; i < set.actions.length; i++) {
     if (i % 40 === 0) { h.dispose(); h = m.zeroState() }
-    const inp = obsToInputs(set.obs[i]!), base = targetsFromObs(set.obs[i]!), y = targetsFromObs(set.obs[i + 1]!)
+    const inp = obsToInputs(set.obs[i]!), base = targetsFromObs(set.obs[i]!, modelOptions.foveaSurround), y = targetsFromObs(set.obs[i + 1]!)
     const its = [T(inp.periphery, [3, 50, 80]), T(inp.fovea, [3, 32, 32]), T(inp.proprio, [1, 3]), T(base.periphery, [1, base.periphery.length]), T(base.fovea, [1, base.fovea.length]), T(actionOneHot(set.actions[i]!), [1, 76])] as [Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
     const hNext = noGrad(() => composite(() => m.core({ periphery: its[0], fovea: its[1], proprio: its[2] }, h)))
-    const pr = noGrad(() => m.predict(hNext, its[5], { periphery: its[3], fovea: its[4] }))
+    const sur = base.surround ? T(base.surround, [1, base.surround.length]) : null
+    const pr = noGrad(() => m.predict(hNext, its[5], { periphery: its[3], fovea: its[4], ...(sur ? { surround: sur } : {}) }))
     const [vp, vf] = await Promise.all([pr.periphery.read(), pr.fovea.read()])
     const eP = sqv(vp, y.periphery), eF = sqv(vf, y.fovea), bP = sqv(base.periphery, y.periphery), bF = sqv(base.fovea, y.fovea)
     lP += eP; lF += eF; cP += bP; cF += bF
     const { dx, dy } = decodeMove(set.actions[i]!.move); const k = String(Math.max(Math.abs(dx), Math.abs(dy)))
     const e = (byMag[k] ??= [0, 0]); e[0] += eF; e[1] += bF
     for (const x of [...its, pr.periphery, pr.fovea, h]) x.dispose()
+    sur?.dispose()
     h = hNext
   }
   h.dispose(); m.dispose()
@@ -118,7 +124,19 @@ async function main() {
   const fresh = FRESH_EVERY > 0 ? buildFreshSet(() => createCanvas(320, 200)) : null
   let freshNow: Record<string, unknown> = {}
   const scoreFreshNow = async () => {
-    const r = await scoreFresh(learner, fresh!)
+    const perSegment: SetLosses[] = []
+    const r = await scoreFresh({ scoreSet: async set => { const l = await learner.scoreSet(set); perSegment.push(l); return l } }, fresh!)
+    // Plain moves' wide-view score by the room the trajectory started in and by whether the action held a scroll:
+    // [transitions, loss ÷ copy-last, mean loss]. A wide-view shift that fires where nothing scrolls shows up here.
+    const byRoom: Record<string, { n: number; loss: number; base: number }> = {}
+    fresh!.forEach((seg, k) => seg.events.forEach((e, i) => {
+      if (e !== "move") return
+      const g = (byRoom[`${seg.room}/${seg.set.actions[i]!.scroll ? "scroll" : "none"}`] ??= { n: 0, loss: 0, base: 0 })
+      g.n++
+      g.loss += perSegment[k]!.periphery[i]!
+      g.base += copyLastByView(targetsFromObs(seg.set.obs[i]!), targetsFromObs(seg.set.obs[i + 1]!)).periphery
+    }))
+    const moveWideByRoom = Object.fromEntries(Object.entries(byRoom).sort().map(([k, g]) => [k, [g.n, +(g.loss / g.base).toFixed(2), +(g.loss / g.n).toExponential(2)]]))
     // Each group as [both views, wide view (periphery), close-up (fovea)].
     const round = (v: number | null) => (v === null ? null : +v.toFixed(4))
     const ratio = (g: FreshScore) => [round(freshRatio(g)), round(freshRatio(g, "periphery")), round(freshRatio(g, "fovea"))]
@@ -128,7 +146,7 @@ async function main() {
     })
     const eventful = (["switch", "navigate", "reveal", "widget", "respond"] as const).map(e => r.events[e])
       .reduce(sum, { n: 0, loss: { periphery: 0, fovea: 0 }, baseline: { periphery: 0, fovea: 0 } })
-    return { fresh: { random: ratio(r.parts.random), probe: ratio(r.parts.probe), eventful: ratio(eventful), events: Object.fromEntries(FRESH_EVENTS.map(e => [e, ratio(r.events[e])])) } }
+    return { fresh: { random: ratio(r.parts.random), probe: ratio(r.parts.probe), eventful: ratio(eventful), events: Object.fromEntries(FRESH_EVENTS.map(e => [e, ratio(r.events[e])])), moveWideByRoom } }
   }
   const flush = (step: number) => {
     const n = win.length; if (!n) return
@@ -211,6 +229,7 @@ async function main() {
     if (step % WIN === 0) { if (broad) broadNow = await scoreBroad(await learner.readParams(), widths, broad); flush(step) }
   }
   if (OUT) writeFileSync(OUT, JSON.stringify({ seed: SEED, steps: STEPS, settings, widths, windows }, null, 1))
+  if (DUMP_PARAMS) writeFileSync(DUMP_PARAMS, JSON.stringify((await learner.readParams()).map(p => Array.from(p))))
   learner.dispose()
 }
 await main()

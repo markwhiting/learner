@@ -714,6 +714,12 @@
    "posteriorSha": "ba7ec16c7bd51c2568fa1c0d37b86b71690c2106d0ad9ba6759d627473687242",
    "reason": null
   },
+  "lrn_f1cef020fb6b4243": {
+   "genomeMismatch": false,
+   "posteriorMode": "flat",
+   "posteriorSha": "ac258858d9ce9efb66b0570f3a8ec9164f2db639e732640758329cac854f7023",
+   "reason": null
+  },
   "lrn_f39d7ad686474af9": {
    "genomeMismatch": false,
    "posteriorMode": "calibrate",
